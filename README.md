@@ -38,6 +38,18 @@ If you are resuming work in a fresh chat, read these first:
 3. `llm-handoff-context.md`
 4. `docs/next-step-fuzzy-boids.md`
 
+## Local Preview
+
+There is now a first-pass browser preview shell for overlay parity work.
+
+Run:
+
+```bash
+npm run preview:dev
+```
+
+That starts a Vite app at `apps/overlay-preview/` which evaluates the overlay-layout operator graph in the browser and supports first-pass text/logo selection and drag snapping.
+
 ## Packages
 
 - `@brand-layout-ops/core-types`: shared contracts and data payloads
@@ -47,6 +59,7 @@ If you are resuming work in a fresh chat, read these first:
 - `@brand-layout-ops/layout-engine`: scene-level layout composition for branded overlay content
 - `@brand-layout-ops/operator-copy-to-points`: Houdini-style point instancing with propagated attributes for later Three.js and SVG backends
 - `@brand-layout-ops/operator-phyllotaxis`: golden-angle point-field generation matching the current Houdini phyllotaxis HDA logic
+- `@brand-layout-ops/parameter-ui`: small DOM helpers for operator-facing control surfaces in preview apps
 
 ## Later additions
 

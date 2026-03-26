@@ -1,0 +1,268 @@
+:root {
+  color-scheme: dark;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  line-height: 1.4;
+  font-weight: 400;
+  background:
+    radial-gradient(circle at top left, rgba(232, 116, 0, 0.14), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(255, 229, 179, 0.08), transparent 32%),
+    #171411;
+  color: #f6efe4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: transparent;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 1px solid rgba(255, 209, 143, 0.22);
+  background: rgba(255, 248, 237, 0.06);
+  color: #f6efe4;
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+}
+
+button:hover {
+  background: rgba(255, 248, 237, 0.12);
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.preview-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 420px);
+  gap: 1.5rem;
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.preview-stage-pane,
+.preview-sidebar {
+  min-width: 0;
+}
+
+.preview-stage-pane {
+  display: grid;
+  gap: 1rem;
+}
+
+.preview-sidebar {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.panel {
+  border: 1px solid rgba(255, 224, 182, 0.12);
+  border-radius: 24px;
+  background: rgba(28, 22, 18, 0.84);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+}
+
+.panel--stage,
+.panel--sidebar {
+  padding: 1rem;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.hero__eyebrow,
+.stage-meta,
+.parameter-field__hint,
+.parameter-section__description,
+.selection-empty,
+.shortcut-note {
+  color: #c8b8a5;
+}
+
+.hero__eyebrow,
+.stage-meta,
+.shortcut-note,
+.parameter-field__readout,
+.selection-chip {
+  font-family: "IBM Plex Mono", "Cascadia Code", monospace;
+}
+
+.hero__eyebrow {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.hero__title {
+  margin: 0;
+  font-size: clamp(1.8rem, 2.6vw, 2.8rem);
+  line-height: 0.98;
+}
+
+.hero__copy {
+  margin: 0.7rem 0 0;
+  max-width: 44rem;
+  color: #e6dccc;
+}
+
+.hero__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.stage-meta {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.stage-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.stage-frame {
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 247, 235, 0.94), rgba(243, 233, 220, 0.98));
+  padding: clamp(0.75rem, 2vw, 1.25rem);
+}
+
+.stage-mount {
+  width: 100%;
+}
+
+.stage-mount svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 24px 42px rgba(41, 26, 10, 0.18);
+}
+
+.parameter-section {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.parameter-section + .parameter-section {
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(255, 224, 182, 0.08);
+}
+
+.parameter-section__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.parameter-section__description {
+  margin: 0.35rem 0 0;
+  font-size: 0.86rem;
+}
+
+.parameter-section__body {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.parameter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.parameter-field {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.parameter-field--checkbox {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.parameter-field__label {
+  font-size: 0.82rem;
+  color: #f2e6d8;
+}
+
+.parameter-field__input,
+.parameter-field__textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 209, 143, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 248, 237, 0.05);
+  color: #fff7ef;
+  padding: 0.72rem 0.82rem;
+}
+
+.parameter-field__textarea {
+  resize: vertical;
+  min-height: 7rem;
+}
+
+.parameter-field__checkbox {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: #e87800;
+}
+
+.parameter-field__hint {
+  margin: 0;
+  font-size: 0.76rem;
+}
+
+.parameter-field__readout {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  background: rgba(255, 248, 237, 0.08);
+  padding: 0.28rem 0.55rem;
+  font-size: 0.78rem;
+}
+
+.selection-chip-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.selection-chip {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.3rem 0.58rem;
+  font-size: 0.78rem;
+  background: rgba(232, 116, 0, 0.12);
+  color: #ffd9aa;
+}
+
+.selection-empty {
+  margin: 0;
+}
+
+@media (max-width: 1120px) {
+  .preview-shell {
+    grid-template-columns: 1fr;
+  }
+}

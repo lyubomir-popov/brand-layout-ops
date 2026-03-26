@@ -11,10 +11,14 @@
     "demo:overlay-layout": "tsx examples/overlay-layout-demo.ts",
     "demo:copy-to-points": "tsx examples/copy-to-points-demo.ts",
     "demo:orbits": "tsx examples/orbits-demo.ts",
-    "demo:spokes": "tsx examples/spokes-demo.ts"
+    "demo:spokes": "tsx examples/spokes-demo.ts",
+    "preview:dev": "vite --config apps/overlay-preview/vite.config.ts --host 127.0.0.1",
+    "preview:build": "vite build --config apps/overlay-preview/vite.config.ts"
   },
   "devDependencies": {
+    "@types/node": "^24.3.0",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vite": "^7.1.3"
   }
 }

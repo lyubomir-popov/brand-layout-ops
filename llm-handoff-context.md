@@ -21,11 +21,13 @@ This new repo already contains:
 - `@brand-layout-ops/layout-grid`
 - `@brand-layout-ops/layout-text`
 - `@brand-layout-ops/layout-engine`
+- `@brand-layout-ops/parameter-ui`
 - architecture docs
 - future backend notes
 - git init completed
 - npm install completed
 - TypeScript typecheck passing
+- first-pass browser preview shell at `apps/overlay-preview`
 
 ## Immediate goal
 
@@ -86,12 +88,11 @@ Rebuild the current project here with 1:1 working behavior first, then continue 
 
 ## Suggested next sequence for a fresh chat
 
-1. Create a minimal runnable preview app in this repo.
-2. Port overlay layout and editor interaction first.
-3. Verify parity for overlay text, logo, and guides.
-4. Port orbits and spokes as coarse operators.
-5. Verify visual parity against the reference repo.
-6. Resume new feature work only after parity is proven.
+1. Deepen the preview shell toward overlay-editor parity.
+2. Verify parity for overlay text, logo, guides, and snapping behavior.
+3. Port orbits and spokes as coarse operators.
+4. Verify visual parity against the reference repo.
+5. Resume new feature work only after parity is proven.
 
 ## Important reference docs in this repo
 
