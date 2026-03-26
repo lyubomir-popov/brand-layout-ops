@@ -1,0 +1,8 @@
+{
+  "name": "@brand-layout-ops/operator-orbits",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}
