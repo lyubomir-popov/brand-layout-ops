@@ -14,92 +14,86 @@ Reference source repo:
 
 - `h:\HOUDINI PROJECTS\RacoonTail\mascot-animation-clean-port`
 
-## Order of work
+## Working Rules
+
+- This file is the active source of truth for sequencing and status.
+- Every completed or started item should be reflected here with a checkbox state.
+- If work jumps ahead of the current phase, record the reason in the deviation log instead of pretending it followed the original order.
+- Open ideas that are important but not yet approved work should stay in the discussion section at the end until we explicitly schedule them.
+
+## Order of Work Checklist
 
 ### Phase 1. Lock the operator boundaries
 
 Keep the first split intentionally coarse.
 
-Initial package families:
-
-- `@brand-layout-ops/core-types`
-- `@brand-layout-ops/graph-runtime`
-- `@brand-layout-ops/layout-grid`
-- `@brand-layout-ops/layout-text`
-- `@brand-layout-ops/layout-engine`
-- `@brand-layout-ops/operator-overlay-layout`
-- `@brand-layout-ops/operator-spokes`
-- `@brand-layout-ops/operator-orbits`
-- `@brand-layout-ops/overlay-interaction`
-- `@brand-layout-ops/parameter-ui`
-
-Important constraint:
-
-- keep all spoke-generation math in one operator family at first
-
-Do not prematurely split:
-
-- construction spokes
-- inner spokes
-- phase-masked spokes
-
-Those are too coupled to justify separate operator packages yet.
+- [x] Establish the initial package families:
+	`@brand-layout-ops/core-types`,
+	`@brand-layout-ops/graph-runtime`,
+	`@brand-layout-ops/layout-grid`,
+	`@brand-layout-ops/layout-text`,
+	`@brand-layout-ops/layout-engine`,
+	`@brand-layout-ops/operator-overlay-layout`,
+	`@brand-layout-ops/operator-spokes`,
+	`@brand-layout-ops/operator-orbits`,
+	`@brand-layout-ops/overlay-interaction`,
+	`@brand-layout-ops/parameter-ui`
+- [x] Keep all spoke-generation math in one operator family at first.
+- [x] Do not prematurely split construction spokes, inner spokes, and phase-masked spokes.
 
 ### Phase 2. Build a runnable preview app in the new repo
 
-Create a small app shell in this repo that can:
-
-- load a document snapshot
-- evaluate the operator graph
-- render the current layout overlay
-- render the current motion background using coarse operators
-- surface operator parameters from manifests and schemas
-
 This preview app is for parity validation, not for polishing the final product UI yet.
+
+- [x] Load a document snapshot.
+- [x] Evaluate the operator graph.
+- [x] Render the current layout overlay.
+- [x] Render the current motion background using coarse operators.
+- [x] Surface operator parameters from manifests and schemas instead of preview-specific controls.
 
 ### Phase 3. Port the layout stack first
 
-Port in this order:
+Port in this order.
 
-1. baseline grid and layout grid math
-2. text wrapping and placement
-3. logo placement
-4. CSV or inline content resolution
-5. selected-element interaction model
+- [x] Baseline grid and layout grid math.
+- [x] Text wrapping and placement.
+- [x] Logo placement.
+- [x] CSV or inline content resolution.
+- [x] Selected-element interaction model fully ported.
 
 The layout-grid package must preserve the current behavior where:
 
-- all rows snap to the baseline grid
-- remainder height is added to the bottom margin
-- keylines and spans determine text width
+- [x] All rows snap to the baseline grid and are verified against the reference app.
+- [ ] Remainder height is added to the bottom margin and is verified against the reference app.
+- [x] Keylines and spans determine text width and are verified against the reference app.
 
 ### Phase 4. Port editor interaction as an operator-facing layer
 
 Port the current interaction model into `overlay-interaction` and `parameter-ui`.
 
-Required parity targets:
-
-- selected-element editing
-- direct text drag
-- logo drag
-- snapped text movement by row and column
-- Shift-drag axis locking
-- double-click inline editing
-- CSV draft editing and writeback staging
-- guide toggle shortcut
-- style-based labels in the selected-element editor
+- [x] Selected-element editing foundation.
+- [x] Direct text drag.
+- [x] Logo drag.
+- [x] Snapped text movement by row and column.
+- [x] Shift-drag axis locking.
+- [x] Double-click inline editing.
+- [x] Guide toggle shortcut.
+- [x] Style-based labels in the selected-element editor.
+- [x] Resize handles for text fields with snapping to grid field widths and baselines.
+- [x] CSV draft editing and writeback staging at parity quality.
+- [x] Baseline guide showing at first baseline of text field, to aid alignment across columns.
 
 ### Phase 5. Port the animation background as coarse operators
 
 Use larger passes, not tiny ones.
 
-Recommended first operators:
+- [x] `operator-orbits`.
+- [x] `operator-spokes`.
+- [x] Integrate coarse motion preview into the preview shell.
+- [ ] Match the current animation background look closely enough for parity signoff.
+- [ ] Decide whether mascot-specific motion stays in an adapter or becomes a coarse scene-family operator.
 
-- `operator-orbits`
-- `operator-spokes`
-- later, a mascot motion package if reuse becomes real
-
-The mascot head shake is probably too specific to deserve its own operator on day one.
+The mascot head shake is probably too specific to deserve its own operator.
 
 If it remains unique to one scene family, keep it as part of a mascot animation operator or preview adapter.
 
@@ -107,40 +101,58 @@ If it remains unique to one scene family, keep it as part of a mascot animation 
 
 Before adding features, verify that the new repo reproduces the current app's working behaviors.
 
-Parity checklist:
-
-- overlay text layout
-- overlay logo placement
-- baseline and composition guides
-- selected-element editor behavior
-- current animation background look
-- export-relevant geometry consistency
+- [x] Overlay text layout.
+- [x] Overlay logo placement.
+- [x] Baseline and composition guides.
+- [x] Selected-element editor behavior.
+- [ ] Current animation background look.
+- [ ] Export-relevant geometry consistency.
 
 ### Phase 7. Continue feature work only after parity
 
 Only after parity is proven in this repo should new feature work resume.
 
-That includes:
+- [ ] Further operatorization of the motion system.
+- [ ] Port user-authored Houdini digital assets where they still make sense in this architecture.
+- [ ] SVG and print backends.
+- [ ] Additional templates once CMYK-capable export exists.
+- [ ] Stakeholder workflow.
+- [ ] Watch-folder automation.
 
-- richer templates
-- stakeholder workflow
-- watch-folder automation
-- SVG and print backends
-- further operatorization of the motion system
+## Deviation Log
+
+- [x] 2026-03-26: Motion preview integration from Phase 5 was pulled forward before Phase 4 and Phase 6 were complete.
+	Reason: Phase 2 already required the preview shell to render the current motion background using coarse operators, and integrating it now improved parity visibility without moving layout semantics into the preview adapter.
+- [x] 2026-03-26: CSV or inline content work landed before the remaining editor-polish items.
+	Reason: This still fits the original ordering because content resolution belongs to Phase 3, while the missing pieces are mainly Phase 4 parity polish.
 
 ## Package split recommendations
 
 ### Good first splits
 
-- grid math
-- text layout
-- overlay composition
-- overlay interaction
-- parameter surface generation
-- orbits
-- spokes
+- [x] Grid math.
+- [x] Text layout.
+- [x] Overlay composition.
+- [x] Overlay interaction.
+- [x] Parameter surface generation.
+- [x] Orbits.
+- [x] Spokes.
+- [ ] Mask operators.
 
-### Splits to delay
+## Discussion Items Not Yet Scheduled
+
+These matter, but they are not approved active work until we discuss placement, cost, and effect on parity sequencing.
+
+- [ ] Timeline and clip model like Houdini or After Effects.
+	Working assumption: this belongs after parity, probably as a sequencing layer above the operator graph rather than as ad hoc timing logic inside each operator.
+- [ ] Execution backend strategy for heavier SOP-like work.
+	Working assumption: keep layout, SVG, document semantics, and moderate-size procedural operators in TypeScript; allow GPU-backed execution paths or adapters for high-count 3D or simulation-heavy operators where profiling proves TypeScript is not enough.
+- [ ] Future spokes decomposition.
+	Working assumption: keep the current `operator-spokes` coarse for parity, then later split toward a wave operator that can run in cartesian and polar coordinates, separate mask operators, and a polar field or radial layout operator for instanced shapes and text.
+- [ ] Move beyond a strict background or overlay abstraction toward a proper layer stack with blend modes.
+	Working assumption: do not widen the abstraction until parity is proven, but keep the future compositor layer in mind.
+
+### Splits to not get bogged down with
 
 - separate spoke sub-operators for every spoke subtype
 - mascot head shake as its own package

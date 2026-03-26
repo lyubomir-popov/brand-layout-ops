@@ -76,6 +76,7 @@ export interface TextStyleSpec {
 
 export interface TextFieldPlacementSpec {
   id: string;
+  contentFieldId?: string;
   styleKey: string;
   text: string;
   keylineIndex: number;
@@ -193,11 +194,56 @@ export interface OperatorPort<TValue = unknown> {
   defaultValue?: TValue;
 }
 
+export interface OperatorParameterSectionSchema {
+  key: string;
+  title: string;
+  description?: string;
+}
+
+interface OperatorParameterFieldSchemaBase {
+  path: string;
+  sectionKey: string;
+  label: string;
+  hint?: string;
+}
+
+export interface OperatorParameterNumberFieldSchema extends OperatorParameterFieldSchemaBase {
+  kind: "number";
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
+export interface OperatorParameterBooleanFieldSchema extends OperatorParameterFieldSchemaBase {
+  kind: "boolean";
+}
+
+export interface OperatorParameterSelectOptionSchema {
+  label: string;
+  value: string;
+}
+
+export interface OperatorParameterSelectFieldSchema extends OperatorParameterFieldSchemaBase {
+  kind: "select";
+  options: OperatorParameterSelectOptionSchema[];
+}
+
+export type OperatorParameterFieldSchema =
+  | OperatorParameterNumberFieldSchema
+  | OperatorParameterBooleanFieldSchema
+  | OperatorParameterSelectFieldSchema;
+
+export interface OperatorParameterSchema {
+  sections: OperatorParameterSectionSchema[];
+  fields: OperatorParameterFieldSchema[];
+}
+
 export interface OperatorDefinition<TParams = unknown> {
   key: string;
   version: string;
   inputs: OperatorPort[];
   outputs: OperatorPort[];
+  parameterSchema?: OperatorParameterSchema;
   run(context: OperatorRunContext<TParams>): Promise<Record<string, unknown>> | Record<string, unknown>;
 }
 

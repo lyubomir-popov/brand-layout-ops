@@ -25,6 +25,7 @@ const DEFAULT_TEXT_STYLES: TextStyleSpec[] = [
 const DEFAULT_TEXT_FIELDS: TextFieldPlacementSpec[] = [
   {
     id: "eyebrow",
+    contentFieldId: "eyebrow",
     styleKey: "eyebrow",
     text: "Ubuntu Summit 2026",
     keylineIndex: 1,
@@ -34,6 +35,7 @@ const DEFAULT_TEXT_FIELDS: TextFieldPlacementSpec[] = [
   },
   {
     id: "headline",
+    contentFieldId: "headline",
     styleKey: "headline",
     text: "Deterministic branded layout, resolved from an operator graph.",
     keylineIndex: 1,
@@ -43,6 +45,7 @@ const DEFAULT_TEXT_FIELDS: TextFieldPlacementSpec[] = [
   },
   {
     id: "body",
+    contentFieldId: "body",
     styleKey: "body",
     text: "This preview shell is the first in-repo browser surface for parity work. It evaluates the overlay-layout operator, draws guides, and snaps drag edits back onto the baseline grid and column keylines.",
     keylineIndex: 1,
@@ -59,6 +62,16 @@ const DEFAULT_LOGO: LogoPlacementSpec = {
   widthPx: 148,
   heightPx: 44
 };
+
+const DEFAULT_INLINE_TEXT_BY_FIELD_ID: Record<string, string> = Object.fromEntries(
+  DEFAULT_TEXT_FIELDS.map((field) => [field.contentFieldId ?? field.id, field.text])
+);
+
+const DEFAULT_CSV_DRAFT = [
+  "eyebrow,headline,body",
+  'Ubuntu Summit 2026,"Deterministic branded layout, resolved from an operator graph.","This preview shell is the first in-repo browser surface for parity work. It evaluates the overlay-layout operator, draws guides, and snaps drag edits back onto the baseline grid and column keylines."',
+  'Operator Graph Week,"CSV-backed content can now drive the same placement specs.","This row exists to validate the content-source split before deeper parity work lands in the preview shell."'
+].join("\n");
 
 export function createDefaultOverlayParams(): OverlayLayoutOperatorParams {
   return {
@@ -86,6 +99,12 @@ export function createDefaultOverlayParams(): OverlayLayoutOperatorParams {
     },
     textStyles: DEFAULT_TEXT_STYLES.map((style) => ({ ...style })),
     textFields: DEFAULT_TEXT_FIELDS.map((field) => ({ ...field })),
-    logo: { ...DEFAULT_LOGO }
+    logo: { ...DEFAULT_LOGO },
+    contentSource: "inline",
+    inlineTextByFieldId: { ...DEFAULT_INLINE_TEXT_BY_FIELD_ID },
+    csvContent: {
+      draft: DEFAULT_CSV_DRAFT,
+      rowIndex: 1
+    }
   };
 }

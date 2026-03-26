@@ -22,7 +22,8 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -191,6 +192,28 @@ button:hover {
   gap: 0.75rem;
 }
 
+.parameter-action-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.parameter-note {
+  margin: 0;
+  color: rgba(242, 230, 216, 0.78);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.parameter-note--warning {
+  color: #ffd9aa;
+}
+
+.parameter-action-row button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
 .parameter-field {
   display: grid;
   gap: 0.42rem;
@@ -255,6 +278,11 @@ button:hover {
   font-size: 0.78rem;
   background: rgba(232, 116, 0, 0.12);
   color: #ffd9aa;
+}
+
+.selection-chip--warning {
+  background: rgba(214, 84, 34, 0.16);
+  color: #ffe4c1;
 }
 
 .selection-empty {

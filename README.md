@@ -40,7 +40,7 @@ If you are resuming work in a fresh chat, read these first:
 
 ## Local Preview
 
-There is now a first-pass browser preview shell for overlay parity work.
+There is now a browser preview shell for parity work.
 
 Run:
 
@@ -48,7 +48,13 @@ Run:
 npm run preview:dev
 ```
 
-That starts a Vite app at `apps/overlay-preview/` which evaluates the overlay-layout operator graph in the browser and supports first-pass text/logo selection and drag snapping.
+That starts a Vite app at `apps/overlay-preview/` which currently:
+
+- evaluates the overlay-layout operator graph in the browser
+- renders the overlay layout and a lightweight SVG motion layer using the coarse orbits and spokes operators
+- supports text and logo selection, double-click text editing, drag snapping, guide toggling, and CSV or inline content switching
+- surfaces the main operator document controls from an operator parameter schema instead of only from preview-local hardcoded controls
+- includes left and right snapped resize handles for selected text fields, a first-baseline guide, and staged CSV apply or discard controls
 
 Other useful local checks:
 
@@ -82,15 +88,18 @@ The repo is past pure kernel extraction.
 Implemented so far:
 
 - overlay-layout operator and deterministic text measurement path
-- first-pass overlay browser preview with guides, selection, double-click text editing, and snapped drag interaction
+- preview shell with guides, selection, double-click text editing, snapped drag interaction, and CSV or inline content switching
+- lightweight motion preview layer using `operator-orbits` and `operator-spokes`
+- schema-driven operator parameter controls for frame, safe area, grid, and content source
+- selected-text baseline guide, snapped resize handles, and staged CSV flow with row diagnostics, header mapping status, and seed/apply/discard controls in the preview shell
 - copy-to-points instancing path
 - coarse orbits and spokes operators with runnable demos
 
 The next work should stay focused on parity, not new feature breadth:
 
-1. deepen the preview shell toward selected-element editor parity
-2. verify overlay text, logo, guide, and snapping behavior against the reference repo
-3. pull orbits and spokes into the preview shell for side-by-side motion validation
+1. verify that the current motion preview is close enough to the reference repo for parity signoff
+2. verify export-relevant geometry consistency
+3. decide whether the bottom-margin remainder behavior is actually equivalent enough to check off or needs adjustment
 4. only then start the next field operator work such as fuzzy boids
 
 ## Later additions

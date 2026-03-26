@@ -33,6 +33,17 @@ export interface TextAreaFieldOptions extends BaseFieldOptions {
   onInput(value: string): void;
 }
 
+export interface SelectFieldOption {
+  label: string;
+  value: string;
+}
+
+export interface SelectFieldOptions extends BaseFieldOptions {
+  value: string;
+  options: SelectFieldOption[];
+  onInput(value: string): void;
+}
+
 export interface ReadoutFieldOptions extends BaseFieldOptions {
   value: string;
 }
@@ -144,6 +155,34 @@ export function createTextAreaField(options: TextAreaFieldOptions): FieldHandle<
   if (options.placeholder) {
     input.placeholder = options.placeholder;
   }
+  input.addEventListener("input", () => {
+    options.onInput(input.value);
+  });
+
+  root.append(label, input);
+  appendHint(root, options.hint);
+  return { root, input };
+}
+
+export function createSelectField(options: SelectFieldOptions): FieldHandle<HTMLSelectElement> {
+  const root = document.createElement("label");
+  root.className = "parameter-field";
+
+  const label = document.createElement("span");
+  label.className = "parameter-field__label";
+  label.textContent = options.label;
+
+  const input = document.createElement("select");
+  input.className = "parameter-field__input";
+
+  for (const option of options.options) {
+    const optionElement = document.createElement("option");
+    optionElement.value = option.value;
+    optionElement.textContent = option.label;
+    optionElement.selected = option.value === options.value;
+    input.append(optionElement);
+  }
+
   input.addEventListener("input", () => {
     options.onInput(input.value);
   });

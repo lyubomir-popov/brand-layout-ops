@@ -1,13 +1,27 @@
 import "./styles.css";
 
-import type { LayerScene, LayoutGridMetrics, LogoPlacementSpec, OperatorGraph, ResolvedTextPlacement, TextFieldPlacementSpec, TextStyleSpec } from "@brand-layout-ops/core-types";
+import type { ColorRgba, LayerScene, LayoutGridMetrics, LogoPlacementSpec, OperatorGraph, OperatorParameterFieldSchema, OperatorParameterSchema, PointField, ResolvedTextPlacement, TextFieldPlacementSpec, TextStyleSpec } from "@brand-layout-ops/core-types";
 import { OperatorRegistry, evaluateGraph } from "@brand-layout-ops/graph-runtime";
+import { getColumnSpanWidthPx, getKeylineXPx } from "@brand-layout-ops/layout-grid";
 import type { DragAxisLock } from "@brand-layout-ops/overlay-interaction";
 import { moveLogo, moveTextField } from "@brand-layout-ops/overlay-interaction";
-import { createOverlayLayoutOperator, OVERLAY_LAYOUT_OPERATOR_KEY, type OverlayLayoutOperatorParams } from "@brand-layout-ops/operator-overlay-layout";
-import { createCheckboxField, createNumberField, createReadoutField, createSection, createTextAreaField } from "@brand-layout-ops/parameter-ui";
+import {
+  createOverlayLayoutOperator,
+  getOverlayFieldContentKey,
+  inspectOverlayCsvDraft,
+  OVERLAY_LAYOUT_OPERATOR_KEY,
+  resolveOverlayTextFields,
+  resolveOverlayTextValue,
+  setOverlayTextValue,
+  type OverlayContentSource,
+  type OverlayLayoutOperatorParams
+} from "@brand-layout-ops/operator-overlay-layout";
+import { resolveOrbitField } from "@brand-layout-ops/operator-orbits";
+import { resolveSpokeField } from "@brand-layout-ops/operator-spokes";
+import { createCheckboxField, createNumberField, createReadoutField, createSection, createSelectField, createTextAreaField } from "@brand-layout-ops/parameter-ui";
 
 import { createDefaultOverlayParams } from "./sample-document.js";
+import { buildPreviewOrbitParams, buildPreviewSpokesParams, createDefaultMotionState, getPreviewMotionCenter, type MotionLayerMode, type PreviewMotionState } from "./sample-motion.js";
 
 type Selection =
   | { kind: "text"; id: string }
@@ -17,6 +31,8 @@ interface PreviewState {
   params: OverlayLayoutOperatorParams;
   selected: Selection | null;
   showGuides: boolean;
+  motion: PreviewMotionState;
+  stagedCsvDraft: string | null;
 }
 
 interface DragState {
@@ -24,6 +40,8 @@ interface DragState {
   metrics: LayoutGridMetrics;
   startClientX: number;
   startClientY: number;
+  mode: "move" | "resize-text";
+  resizeHandle?: "left" | "right";
   initialField?: TextFieldPlacementSpec;
   initialLogo?: LogoPlacementSpec;
 }
@@ -35,13 +53,17 @@ registry.register(createOverlayLayoutOperator());
 const state: PreviewState = {
   params: createDefaultOverlayParams(),
   selected: { kind: "text", id: "headline" },
-  showGuides: true
+  showGuides: true,
+  motion: createDefaultMotionState(),
+  stagedCsvDraft: null
 };
 
 let currentScene: LayerScene | null = null;
 let currentDrag: DragState | null = null;
 let currentTextEditor: HTMLTextAreaElement | null = null;
 let renderToken = 0;
+let motionAnimationFrameId: number | null = null;
+let previousMotionTimestampMs: number | null = null;
 
 function escapeXml(value: string): string {
   return String(value)
@@ -73,6 +95,279 @@ function buildGraph(params: OverlayLayoutOperatorParams): OperatorGraph {
   };
 }
 
+function getOverlayParameterSchema(): OperatorParameterSchema | undefined {
+  return registry.get(OVERLAY_LAYOUT_OPERATOR_KEY).parameterSchema;
+}
+
+function getPathSegments(path: string): string[] {
+  return path.split(".").filter(Boolean);
+}
+
+function getValueAtPath(target: unknown, path: string): unknown {
+  let current: unknown = target;
+  for (const segment of getPathSegments(path)) {
+    if (!current || typeof current !== "object") {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+}
+
+function setValueAtPath<TValue>(target: TValue, path: string, value: unknown): TValue {
+  const segments = getPathSegments(path);
+  if (segments.length === 0) {
+    return target;
+  }
+
+  const root = Array.isArray(target) ? [...target] as unknown[] : { ...(target as Record<string, unknown>) };
+  let current: Record<string, unknown> | unknown[] = root as Record<string, unknown>;
+
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const segment = segments[index];
+    const nextValue = current[segment as keyof typeof current];
+    const clonedNextValue = Array.isArray(nextValue)
+      ? [...nextValue]
+      : { ...((nextValue as Record<string, unknown> | undefined) ?? {}) };
+    current[segment as keyof typeof current] = clonedNextValue as never;
+    current = clonedNextValue as Record<string, unknown> | unknown[];
+  }
+
+  const finalSegment = segments[segments.length - 1];
+  current[finalSegment as keyof typeof current] = value as never;
+  return root as TValue;
+}
+
+function updateParamAtPath(path: string, value: unknown): void {
+  state.params = setValueAtPath(state.params, path, value);
+}
+
+function createSchemaFieldControl(field: OperatorParameterFieldSchema): HTMLElement | null {
+  if (field.path === "csvContent.rowIndex" && getContentSource() !== "csv") {
+    return null;
+  }
+
+  const currentValue = getValueAtPath(state.params, field.path);
+  switch (field.kind) {
+    case "number": {
+      const nextValue = typeof currentValue === "number" ? currentValue : Number(currentValue ?? 0);
+      return createNumberField({
+        label: field.label,
+        value: Number.isFinite(nextValue) ? nextValue : 0,
+        ...(field.hint ? { hint: field.hint } : {}),
+        ...(field.min !== undefined ? { min: field.min } : {}),
+        ...(field.max !== undefined ? { max: field.max } : {}),
+        ...(field.step !== undefined ? { step: field.step } : {}),
+        onInput(value) {
+          updateParamAtPath(field.path, field.min === undefined && field.max === undefined
+            ? value
+            : clamp(value, field.min ?? Number.NEGATIVE_INFINITY, field.max ?? Number.POSITIVE_INFINITY));
+          if (field.path === "csvContent.rowIndex") {
+            renderDocumentControls();
+            renderSelectionPanel();
+          }
+          void renderStage();
+        }
+      }).root;
+    }
+
+    case "boolean":
+      return createCheckboxField({
+        label: field.label,
+        ...(field.hint ? { hint: field.hint } : {}),
+        checked: Boolean(currentValue),
+        onInput(checked) {
+          updateParamAtPath(field.path, checked);
+          if (field.path === "grid.fitWithinSafeArea") {
+            renderCurrentStage();
+          } else {
+            void renderStage();
+          }
+        }
+      }).root;
+
+    case "select":
+      return createSelectField({
+        label: field.label,
+        ...(field.hint ? { hint: field.hint } : {}),
+        value: typeof currentValue === "string" ? currentValue : String(currentValue ?? field.options[0]?.value ?? ""),
+        options: field.options,
+        onInput(value) {
+          updateParamAtPath(field.path, value);
+          renderDocumentControls();
+          renderSelectionPanel();
+          void renderStage();
+        }
+      }).root;
+
+    default:
+      return null;
+  }
+}
+
+function createSchemaDrivenSections(): HTMLElement[] {
+  const schema = getOverlayParameterSchema();
+  if (!schema) {
+    return [];
+  }
+
+  return schema.sections.map((sectionSchema) => {
+    const section = createSection(sectionSchema.title, sectionSchema.description);
+    const sectionGrid = document.createElement("div");
+    sectionGrid.className = "parameter-grid";
+
+    const sectionFields = schema.fields.filter((field) => field.sectionKey === sectionSchema.key);
+    for (const field of sectionFields) {
+      const control = createSchemaFieldControl(field);
+      if (control) {
+        sectionGrid.append(control);
+      }
+    }
+
+    if (sectionGrid.childElementCount > 0) {
+      section.body.append(sectionGrid);
+    }
+
+    if (sectionSchema.key === "content" && getContentSource() === "csv") {
+      const csvSummary = getCsvDraftSummary();
+      const csvStatusRow = document.createElement("div");
+      csvStatusRow.className = "selection-chip-row";
+      csvStatusRow.append(
+        createReadoutField({ label: "Headers", value: String(csvSummary.headers.length) }),
+        createReadoutField({ label: "Rows", value: String(csvSummary.rowCount) }),
+        createReadoutField({ label: "Editing", value: `row ${csvSummary.selectedRowIndex}` }),
+        createReadoutField({ label: "Stage", value: hasStagedCsvDraft() ? "pending" : "clean" })
+      );
+      section.body.append(csvStatusRow);
+
+      const csvFieldStatusRow = document.createElement("div");
+      csvFieldStatusRow.className = "selection-chip-row";
+      for (const field of state.params.textFields) {
+        const contentKey = getOverlayFieldContentKey(field);
+        const isMissingFieldKey = csvSummary.missingFieldKeys.includes(contentKey);
+        const chipElement = document.createElement("span");
+        chipElement.className = `selection-chip${isMissingFieldKey ? " selection-chip--warning" : ""}`;
+        chipElement.textContent = `${contentKey}: ${isMissingFieldKey ? "missing" : "mapped"}`;
+        csvFieldStatusRow.append(chipElement);
+      }
+      section.body.append(csvFieldStatusRow);
+
+      const csvRowActionRow = document.createElement("div");
+      csvRowActionRow.className = "parameter-action-row";
+
+      const previousRowButton = document.createElement("button");
+      previousRowButton.type = "button";
+      previousRowButton.textContent = "Previous row";
+      previousRowButton.disabled = csvSummary.selectedRowIndex <= 1;
+      previousRowButton.addEventListener("click", () => {
+        setCsvRowIndex(csvSummary.selectedRowIndex - 1);
+        renderDocumentControls();
+        renderSelectionPanel();
+        void renderStage();
+      });
+
+      const nextRowButton = document.createElement("button");
+      nextRowButton.type = "button";
+      nextRowButton.textContent = csvSummary.selectedRowExists ? "Next row" : "Stay on new row";
+      nextRowButton.disabled = !csvSummary.selectedRowExists;
+      nextRowButton.addEventListener("click", () => {
+        setCsvRowIndex(csvSummary.selectedRowIndex + 1);
+        renderDocumentControls();
+        renderSelectionPanel();
+        void renderStage();
+      });
+
+      const normalizeButton = document.createElement("button");
+      normalizeButton.type = "button";
+      normalizeButton.textContent = "Seed row + headers";
+      normalizeButton.disabled = csvSummary.selectedRowExists && csvSummary.missingFieldKeys.length === 0;
+      normalizeButton.addEventListener("click", () => {
+        normalizeCsvDraftForCurrentFields();
+        renderDocumentControls();
+        renderSelectionPanel();
+        void renderStage();
+      });
+
+      csvRowActionRow.append(previousRowButton, nextRowButton, normalizeButton);
+      section.body.append(csvRowActionRow);
+
+      if (csvSummary.headers.length > 0) {
+        const headersNote = document.createElement("p");
+        headersNote.className = "parameter-note";
+        headersNote.textContent = `Headers: ${csvSummary.headers.join(", ")}`;
+        section.body.append(headersNote);
+      }
+
+      if (!csvSummary.selectedRowExists) {
+        const rowNote = document.createElement("p");
+        rowNote.className = "parameter-note parameter-note--warning";
+        rowNote.textContent = `Row ${csvSummary.selectedRowIndex} does not exist yet. Field edits stay live in the preview and will create that row when you seed or apply the staged CSV.`;
+        section.body.append(rowNote);
+      }
+
+      if (csvSummary.missingFieldKeys.length > 0) {
+        const missingColumnsNote = document.createElement("p");
+        missingColumnsNote.className = "parameter-note parameter-note--warning";
+        missingColumnsNote.textContent = `Missing CSV columns for current field mapping: ${csvSummary.missingFieldKeys.join(", ")}.`;
+        section.body.append(missingColumnsNote);
+      }
+
+      if (csvSummary.hasUnterminatedQuote) {
+        const quoteWarning = document.createElement("p");
+        quoteWarning.className = "parameter-note parameter-note--warning";
+        quoteWarning.textContent = "The staged CSV draft has an unmatched quote. Preview rendering may fall back to inline values until the draft is valid again.";
+        section.body.append(quoteWarning);
+      }
+
+      section.body.append(
+        createTextAreaField({
+          label: "CSV draft",
+          value: getEffectiveCsvDraft(),
+          rows: 8,
+          placeholder: "eyebrow,headline,body",
+          hint: "Headers map to each field's content id. The selection editor stages edits into the current row until you apply them.",
+          onInput(value) {
+            stageCsvDraft(value);
+            renderDocumentControls();
+            renderSelectionPanel();
+            void renderStage();
+          }
+        }).root
+      );
+
+      const csvActionRow = document.createElement("div");
+      csvActionRow.className = "parameter-action-row";
+
+      const applyButton = document.createElement("button");
+      applyButton.type = "button";
+      applyButton.textContent = "Apply staged CSV";
+      applyButton.disabled = !hasStagedCsvDraft();
+      applyButton.addEventListener("click", () => {
+        applyStagedCsvDraft();
+        renderDocumentControls();
+        renderSelectionPanel();
+        void renderStage();
+      });
+
+      const discardButton = document.createElement("button");
+      discardButton.type = "button";
+      discardButton.textContent = "Discard staged CSV";
+      discardButton.disabled = !hasStagedCsvDraft();
+      discardButton.addEventListener("click", () => {
+        discardStagedCsvDraft();
+        renderDocumentControls();
+        renderSelectionPanel();
+        void renderStage();
+      });
+
+      csvActionRow.append(applyButton, discardButton);
+      section.body.append(csvActionRow);
+    }
+
+    return section.root;
+  }).filter((sectionRoot) => sectionRoot.querySelector(".parameter-section__body")?.childElementCount);
+}
+
 function getStyleByKey(textStyles: TextStyleSpec[]): Map<string, TextStyleSpec> {
   return new Map(textStyles.map((style) => [style.key, style]));
 }
@@ -92,6 +387,82 @@ function getSelectedLogo(): LogoPlacementSpec | null {
   }
 
   return state.params.logo.id === state.selected.id ? state.params.logo : null;
+}
+
+function getContentSource(): OverlayContentSource {
+  return state.params.contentSource === "csv" ? "csv" : "inline";
+}
+
+function getEffectiveCsvDraft(): string {
+  return state.stagedCsvDraft ?? state.params.csvContent?.draft ?? "";
+}
+
+function getCsvDraftSummary() {
+  return inspectOverlayCsvDraft(getEffectiveParams());
+}
+
+function hasStagedCsvDraft(): boolean {
+  return state.stagedCsvDraft !== null && state.stagedCsvDraft !== (state.params.csvContent?.draft ?? "");
+}
+
+function getEffectiveParams(): OverlayLayoutOperatorParams {
+  if (getContentSource() !== "csv" || state.stagedCsvDraft === null) {
+    return state.params;
+  }
+
+  return {
+    ...state.params,
+    csvContent: {
+      draft: state.stagedCsvDraft,
+      rowIndex: state.params.csvContent?.rowIndex ?? 1
+    }
+  };
+}
+
+function getResolvedTextFieldText(field: TextFieldPlacementSpec): string {
+  return resolveOverlayTextValue(getEffectiveParams(), field);
+}
+
+function setCsvRowIndex(rowIndex: number): void {
+  state.params = {
+    ...state.params,
+    csvContent: {
+      draft: state.params.csvContent?.draft ?? "",
+      rowIndex: Math.max(1, Math.round(rowIndex))
+    }
+  };
+}
+
+function stageCsvDraft(draft: string): void {
+  state.stagedCsvDraft = draft;
+}
+
+function applyStagedCsvDraft(): void {
+  if (state.stagedCsvDraft === null) {
+    return;
+  }
+
+  state.params = {
+    ...state.params,
+    csvContent: {
+      draft: state.stagedCsvDraft,
+      rowIndex: state.params.csvContent?.rowIndex ?? 1
+    }
+  };
+  state.stagedCsvDraft = null;
+}
+
+function discardStagedCsvDraft(): void {
+  state.stagedCsvDraft = null;
+}
+
+function normalizeCsvDraftForCurrentFields(): void {
+  let nextParams = getEffectiveParams();
+  for (const field of state.params.textFields) {
+    nextParams = setOverlayTextValue(nextParams, field.id, resolveOverlayTextValue(nextParams, field));
+  }
+
+  stageCsvDraft(nextParams.csvContent?.draft ?? "");
 }
 
 function updateTextField(textFieldId: string, updater: (field: TextFieldPlacementSpec) => TextFieldPlacementSpec): void {
@@ -163,9 +534,46 @@ function formatSelectionChip(label: string, value: string): string {
   return `${label}: ${value}`;
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function isColorRgba(value: unknown): value is ColorRgba {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<ColorRgba>;
+  return [candidate.r, candidate.g, candidate.b].every((channel) => typeof channel === "number" && Number.isFinite(channel));
+}
+
+function formatRgbaColor(color: ColorRgba, alphaMultiplier = 1): string {
+  const alpha = clamp((color.a ?? 1) * alphaMultiplier, 0, 1);
+  const red = clamp(Math.round(color.r * 255), 0, 255);
+  const green = clamp(Math.round(color.g * 255), 0, 255);
+  const blue = clamp(Math.round(color.b * 255), 0, 255);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function getMotionLayerMode(): MotionLayerMode {
+  return state.motion.mode;
+}
+
+function hasMotionLayer(mode: MotionLayerMode, layer: Exclude<MotionLayerMode, "none" | "both">): boolean {
+  return mode === "both" || mode === layer;
+}
+
+function getMotionBackdropRadiusPx(): number {
+  return Math.min(state.params.frame.widthPx, state.params.frame.heightPx) * 0.36;
+}
+
+function createBackdropMarkup(): string {
+  return `<rect x="0" y="0" width="${state.params.frame.widthPx}" height="${state.params.frame.heightPx}" fill="#f9f4ed" />`;
+}
+
 function createGuideMarkup(metrics: LayoutGridMetrics): string {
   if (!state.showGuides) {
-    return `<rect x="0" y="0" width="${state.params.frame.widthPx}" height="${state.params.frame.heightPx}" fill="#f9f4ed" />`;
+    return "";
   }
 
   const baselineLines: string[] = [];
@@ -184,11 +592,171 @@ function createGuideMarkup(metrics: LayoutGridMetrics): string {
 
   return `
     <g data-guides>
-      <rect x="0" y="0" width="${state.params.frame.widthPx}" height="${state.params.frame.heightPx}" fill="#f9f4ed" />
       <rect x="${metrics.layoutLeftPx}" y="${metrics.layoutTopPx}" width="${metrics.layoutRightPx - metrics.layoutLeftPx}" height="${metrics.layoutBottomPx - metrics.layoutTopPx}" fill="none" stroke="rgba(232, 116, 0, 0.24)" stroke-width="2" />
       <rect x="${metrics.contentLeftPx}" y="${metrics.contentTopPx}" width="${metrics.contentRightPx - metrics.contentLeftPx}" height="${metrics.contentBottomPx - metrics.contentTopPx}" fill="rgba(232, 116, 0, 0.04)" stroke="rgba(232, 116, 0, 0.14)" stroke-width="2" />
       ${baselineLines.join("")}
       ${keylines.join("")}
+    </g>
+  `;
+}
+
+function createMotionPointMarkup(pointField: PointField, fallbackColor: ColorRgba, className: string): string {
+  return pointField.points.map((point) => {
+    const pointColor = isColorRgba(point.attributes.color) ? point.attributes.color : fallbackColor;
+    const pscaleValue = Number(point.attributes.pscale ?? 1);
+    const radius = clamp(1.6 + pscaleValue * 3.6, 1.4, 9.2);
+    const glowRadius = radius * 1.9;
+
+    return `
+      <g class="${className}">
+        <circle cx="${point.position.x}" cy="${point.position.y}" r="${glowRadius}" fill="${formatRgbaColor(pointColor, state.motion.opacity * 0.08)}" />
+        <circle cx="${point.position.x}" cy="${point.position.y}" r="${radius}" fill="${formatRgbaColor(pointColor, state.motion.opacity)}" />
+      </g>
+    `;
+  }).join("");
+}
+
+function createMotionMarkup(): string {
+  const mode = getMotionLayerMode();
+  if (mode === "none") {
+    return "";
+  }
+
+  const motionLayers: string[] = [];
+  if (hasMotionLayer(mode, "spokes")) {
+    motionLayers.push(
+      createMotionPointMarkup(
+        resolveSpokeField(buildPreviewSpokesParams(state.params.frame, state.motion.timeSeconds)),
+        { r: 0.84, g: 0.92, b: 1, a: 0.45 },
+        "motion-layer motion-layer--spokes"
+      )
+    );
+  }
+
+  if (hasMotionLayer(mode, "orbits")) {
+    motionLayers.push(
+      createMotionPointMarkup(
+        resolveOrbitField(buildPreviewOrbitParams(state.params.frame, state.motion.timeSeconds)),
+        { r: 1, g: 0.84, b: 0.58, a: 0.76 },
+        "motion-layer motion-layer--orbits"
+      )
+    );
+  }
+
+  const center = getPreviewMotionCenter(state.params.frame);
+  const backdropRadiusPx = getMotionBackdropRadiusPx();
+
+  return `
+    <g data-motion aria-hidden="true" style="pointer-events: none;">
+      <defs>
+        <radialGradient id="motion-aura-gradient" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="rgba(255, 242, 220, 0.75)" />
+          <stop offset="55%" stop-color="rgba(255, 224, 182, 0.18)" />
+          <stop offset="100%" stop-color="rgba(255, 224, 182, 0)" />
+        </radialGradient>
+      </defs>
+      <circle cx="${center.x}" cy="${center.y}" r="${backdropRadiusPx}" fill="url(#motion-aura-gradient)" opacity="${clamp(state.motion.opacity, 0, 1)}" />
+      ${motionLayers.join("")}
+    </g>
+  `;
+}
+
+function createSelectedBaselineGuideMarkup(scene: LayerScene): string {
+  const selected = state.selected;
+  if (selected?.kind !== "text") {
+    return "";
+  }
+
+  const text = scene.texts.find((candidate) => candidate.id === selected.id);
+  if (!text) {
+    return "";
+  }
+
+  const baselineYPx = text.anchorBaselineYPx;
+  const baselineStartXPx = scene.grid.contentLeftPx;
+  const baselineEndXPx = scene.grid.contentRightPx;
+  const labelXPx = Math.min(baselineEndXPx - 110, text.anchorXPx + 12);
+  const labelYPx = Math.max(scene.grid.contentTopPx + 18, baselineYPx - 10);
+
+  return `
+    <g data-selected-baseline-guide aria-hidden="true" style="pointer-events: none;">
+      <line x1="${baselineStartXPx}" y1="${baselineYPx}" x2="${baselineEndXPx}" y2="${baselineYPx}" stroke="rgba(0, 122, 255, 0.72)" stroke-width="2" stroke-dasharray="10 8" />
+      <circle cx="${text.anchorXPx}" cy="${baselineYPx}" r="5" fill="rgba(0, 122, 255, 0.92)" />
+      <rect x="${labelXPx - 10}" y="${labelYPx - 18}" width="118" height="22" rx="11" fill="rgba(0, 122, 255, 0.12)" stroke="rgba(0, 122, 255, 0.28)" stroke-width="1" />
+      <text x="${labelXPx}" y="${labelYPx - 3}" fill="rgba(0, 72, 163, 0.95)" font-size="13" font-family="IBM Plex Mono, monospace">first baseline</text>
+    </g>
+  `;
+}
+
+function resolveTextFieldResize(
+  field: TextFieldPlacementSpec,
+  metrics: LayoutGridMetrics,
+  handle: "left" | "right",
+  deltaXPx: number
+): TextFieldPlacementSpec {
+  const safeStartKeyline = clamp(Math.round(field.keylineIndex), 1, Math.max(1, metrics.columnCount));
+  const safeEndKeyline = clamp(safeStartKeyline + Math.max(1, Math.round(field.columnSpan)) - 1, safeStartKeyline, Math.max(1, metrics.columnCount));
+
+  if (handle === "right") {
+    const anchorXPx = getKeylineXPx(metrics, safeStartKeyline);
+    const targetRightXPx = anchorXPx + getColumnSpanWidthPx(metrics, safeStartKeyline, safeEndKeyline - safeStartKeyline + 1) + deltaXPx;
+
+    let bestSpan = 1;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    const maxAvailableSpan = Math.max(1, metrics.columnCount - safeStartKeyline + 1);
+    for (let span = 1; span <= maxAvailableSpan; span += 1) {
+      const candidateRightXPx = anchorXPx + getColumnSpanWidthPx(metrics, safeStartKeyline, span);
+      const distance = Math.abs(targetRightXPx - candidateRightXPx);
+      if (distance < bestDistance) {
+        bestSpan = span;
+        bestDistance = distance;
+      }
+    }
+
+    return {
+      ...field,
+      keylineIndex: safeStartKeyline,
+      columnSpan: bestSpan
+    };
+  }
+
+  let bestStartKeyline = safeStartKeyline;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  const targetLeftXPx = getKeylineXPx(metrics, safeStartKeyline) + deltaXPx;
+  for (let candidateStartKeyline = 1; candidateStartKeyline <= safeEndKeyline; candidateStartKeyline += 1) {
+    const candidateLeftXPx = getKeylineXPx(metrics, candidateStartKeyline);
+    const distance = Math.abs(targetLeftXPx - candidateLeftXPx);
+    if (distance < bestDistance) {
+      bestStartKeyline = candidateStartKeyline;
+      bestDistance = distance;
+    }
+  }
+
+  return {
+    ...field,
+    keylineIndex: bestStartKeyline,
+    columnSpan: Math.max(1, safeEndKeyline - bestStartKeyline + 1)
+  };
+}
+
+function createTextResizeHandlesMarkup(text: ResolvedTextPlacement): string {
+  if (state.selected?.kind !== "text" || state.selected.id !== text.id) {
+    return "";
+  }
+
+  const centerYPx = text.bounds.top + text.bounds.height * 0.5;
+  const handleMarkup = (handle: "left" | "right", xPx: number) => `
+    <g data-kind="text-resize-handle" data-id="${escapeXml(text.id)}" data-handle="${handle}" style="cursor: ew-resize;">
+      <rect x="${xPx - 13}" y="${centerYPx - 17}" width="26" height="34" rx="13" fill="rgba(255,255,255,0.001)" />
+      <circle cx="${xPx}" cy="${centerYPx}" r="8" fill="rgba(255, 255, 255, 0.95)" stroke="rgba(232, 116, 0, 0.88)" stroke-width="3" />
+      <path d="M ${xPx - 3} ${centerYPx - 4} L ${xPx - 3} ${centerYPx + 4} M ${xPx + 3} ${centerYPx - 4} L ${xPx + 3} ${centerYPx + 4}" stroke="rgba(140, 77, 21, 0.95)" stroke-width="1.8" stroke-linecap="round" />
+    </g>
+  `;
+
+  return `
+    <g data-text-resize-handles aria-hidden="true">
+      ${handleMarkup("left", text.bounds.left)}
+      ${handleMarkup("right", text.bounds.right)}
     </g>
   `;
 }
@@ -206,6 +774,7 @@ function createTextMarkup(text: ResolvedTextPlacement, style: TextStyleSpec): st
       <text x="${text.bounds.left}" y="${labelY}" fill="rgba(84, 61, 43, 0.85)" font-size="14" font-family="IBM Plex Mono, monospace">${escapeXml(text.id)} / K${text.keylineIndex} / R${text.rowIndex} +${text.offsetBaselines}</text>
       <text x="${text.anchorXPx}" y="${text.anchorBaselineYPx}" fill="#23160d" font-size="${style.fontSizePx}" font-weight="${style.fontWeight ?? 400}" font-family="IBM Plex Sans, Segoe UI, sans-serif">${lineMarkup}</text>
     </g>
+    ${createTextResizeHandlesMarkup(text)}
   `;
 }
 
@@ -236,7 +805,10 @@ function renderStageMarkup(scene: LayerScene): string {
 
   return `
     <svg data-preview-stage viewBox="0 0 ${state.params.frame.widthPx} ${state.params.frame.heightPx}" role="img" aria-label="Overlay layout preview">
+      ${createBackdropMarkup()}
+      ${createMotionMarkup()}
       ${createGuideMarkup(scene.grid)}
+      ${createSelectedBaselineGuideMarkup(scene)}
       ${textMarkup}
       ${createLogoMarkup()}
     </svg>
@@ -251,132 +823,67 @@ function renderDocumentControls(): void {
 
   documentPanel.replaceChildren();
 
-  const frameSection = createSection("Frame", "The shell stays intentionally narrow, but it already exercises real graph evaluation and document-sized layout resolution.");
-  const frameGrid = document.createElement("div");
-  frameGrid.className = "parameter-grid";
-  frameGrid.append(
-    createNumberField({
-      label: "Width",
-      value: state.params.frame.widthPx,
-      min: 320,
-      step: 1,
+  const motionSection = createSection("Motion", "This preview layer stays adapter-side. It uses the existing orbits and spokes operators without pulling motion semantics into the layout kernel.");
+  const motionGrid = document.createElement("div");
+  motionGrid.className = "parameter-grid";
+  motionGrid.append(
+    createSelectField({
+      label: "Layer",
+      value: getMotionLayerMode(),
+      options: [
+        { label: "Off", value: "none" },
+        { label: "Orbits", value: "orbits" },
+        { label: "Spokes", value: "spokes" },
+        { label: "Both", value: "both" }
+      ],
       onInput(value) {
-        state.params = {
-          ...state.params,
-          frame: {
-            ...state.params.frame,
-            widthPx: Math.max(320, Math.round(value))
-          }
-        };
-        void renderStage();
-      }
-    }).root,
-    createNumberField({
-      label: "Height",
-      value: state.params.frame.heightPx,
-      min: 320,
-      step: 1,
-      onInput(value) {
-        state.params = {
-          ...state.params,
-          frame: {
-            ...state.params.frame,
-            heightPx: Math.max(320, Math.round(value))
-          }
-        };
-        void renderStage();
+        state.motion.mode = value === "none" || value === "orbits" || value === "spokes" || value === "both"
+          ? value
+          : "both";
+        renderCurrentStage();
       }
     }).root,
     createCheckboxField({
-      label: "Show guides",
-      checked: state.showGuides,
-      hint: "Shortcut: press G outside inputs.",
+      label: "Animate",
+      checked: state.motion.animate,
       onInput(checked) {
-        state.showGuides = checked;
-        syncGuideButton();
-        void renderStage();
+        state.motion.animate = checked;
+        syncMotionAnimation();
+        renderCurrentStage();
+      }
+    }).root,
+    createNumberField({
+      label: "Speed",
+      value: state.motion.speed,
+      min: 0,
+      step: 0.1,
+      onInput(value) {
+        state.motion.speed = Math.max(0, value);
+      }
+    }).root,
+    createNumberField({
+      label: "Time",
+      value: state.motion.timeSeconds,
+      min: 0,
+      step: 0.1,
+      onInput(value) {
+        state.motion.timeSeconds = Math.max(0, value);
+        renderCurrentStage();
+      }
+    }).root,
+    createNumberField({
+      label: "Opacity",
+      value: state.motion.opacity,
+      min: 0,
+      max: 1,
+      step: 0.05,
+      onInput(value) {
+        state.motion.opacity = clamp(value, 0, 1);
+        renderCurrentStage();
       }
     }).root
   );
-  frameSection.body.append(frameGrid);
-
-  const safeAreaSection = createSection("Safe Area");
-  const safeAreaGrid = document.createElement("div");
-  safeAreaGrid.className = "parameter-grid";
-  (["top", "right", "bottom", "left"] as const).forEach((side) => {
-    safeAreaGrid.append(
-      createNumberField({
-        label: side[0].toUpperCase() + side.slice(1),
-        value: state.params.safeArea[side],
-        min: 0,
-        step: 1,
-        onInput(value) {
-          state.params = {
-            ...state.params,
-            safeArea: {
-              ...state.params.safeArea,
-              [side]: Math.max(0, Math.round(value))
-            }
-          };
-          void renderStage();
-        }
-      }).root
-    );
-  });
-  safeAreaSection.body.append(safeAreaGrid);
-
-  const gridSection = createSection("Grid");
-  const gridControls = document.createElement("div");
-  gridControls.className = "parameter-grid";
-  const gridFieldSpecs: Array<{ label: string; key: keyof OverlayLayoutOperatorParams["grid"]; min?: number }> = [
-    { label: "Baseline step", key: "baselineStepPx", min: 1 },
-    { label: "Rows", key: "rowCount", min: 1 },
-    { label: "Columns", key: "columnCount", min: 1 },
-    { label: "Top margin", key: "marginTopBaselines", min: 0 },
-    { label: "Bottom margin", key: "marginBottomBaselines", min: 0 },
-    { label: "Left margin", key: "marginLeftBaselines", min: 0 },
-    { label: "Right margin", key: "marginRightBaselines", min: 0 },
-    { label: "Row gutter", key: "rowGutterBaselines", min: 0 },
-    { label: "Column gutter", key: "columnGutterBaselines", min: 0 }
-  ];
-  for (const spec of gridFieldSpecs) {
-    const numberFieldOptions = {
-      label: spec.label,
-      value: Number(state.params.grid[spec.key]),
-      step: 1,
-      ...(typeof spec.min === "number" ? { min: spec.min } : {}),
-      onInput(value: number) {
-        state.params = {
-          ...state.params,
-          grid: {
-            ...state.params.grid,
-            [spec.key]: Math.max(spec.min ?? Number.NEGATIVE_INFINITY, Math.round(value))
-          }
-        };
-        void renderStage();
-      }
-    };
-    gridControls.append(
-      createNumberField(numberFieldOptions).root
-    );
-  }
-  gridControls.append(
-    createCheckboxField({
-      label: "Fit within safe area",
-      checked: state.params.grid.fitWithinSafeArea,
-      onInput(checked) {
-        state.params = {
-          ...state.params,
-          grid: {
-            ...state.params.grid,
-            fitWithinSafeArea: checked
-          }
-        };
-        void renderStage();
-      }
-    }).root
-  );
-  gridSection.body.append(gridControls);
+  motionSection.body.append(motionGrid);
 
   const stylesSection = createSection("Text Styles");
   for (const style of state.params.textStyles) {
@@ -413,7 +920,9 @@ function renderDocumentControls(): void {
     stylesSection.body.append(styleGrid);
   }
 
-  documentPanel.append(frameSection.root, safeAreaSection.root, gridSection.root, stylesSection.root);
+  const schemaSectionRoots = createSchemaDrivenSections();
+
+  documentPanel.append(...schemaSectionRoots.slice(0, 1), motionSection.root, ...schemaSectionRoots.slice(1), stylesSection.root);
 }
 
 function renderSelectionPanel(): void {
@@ -453,6 +962,7 @@ function renderSelectionPanel(): void {
     const positionChipRow = document.createElement("div");
     positionChipRow.className = "selection-chip-row";
     for (const chip of [
+      formatSelectionChip("content", getContentSource()),
       formatSelectionChip("keyline", String(field.keylineIndex)),
       formatSelectionChip("row", String(field.rowIndex)),
       formatSelectionChip("offset", String(field.offsetBaselines)),
@@ -465,20 +975,36 @@ function renderSelectionPanel(): void {
     }
     section.body.append(positionChipRow);
 
+    const contentFieldKey = getOverlayFieldContentKey(field);
+    const csvSummary = getContentSource() === "csv" ? getCsvDraftSummary() : null;
     const textArea = createTextAreaField({
-      label: "Text",
-      value: field.text,
+      label: getContentSource() === "csv" ? `CSV value (${contentFieldKey})` : "Inline text",
+      value: getResolvedTextFieldText(field),
       rows: 6,
       onInput(value) {
-        updateTextField(field.id, (currentField) => ({
-          ...currentField,
-          text: value
-        }));
+        if (getContentSource() === "csv") {
+          const nextParams = setOverlayTextValue(getEffectiveParams(), field.id, value);
+          stageCsvDraft(nextParams.csvContent?.draft ?? "");
+        } else {
+          state.params = setOverlayTextValue(state.params, field.id, value);
+        }
+        renderDocumentControls();
+        renderSelectionPanel();
         void renderStage();
       }
     });
     currentTextEditor = textArea.input;
     section.body.append(textArea.root);
+
+    if (csvSummary) {
+      const isMissingColumn = csvSummary.missingFieldKeys.includes(contentFieldKey);
+      const stagedEditNote = document.createElement("p");
+      stagedEditNote.className = `parameter-note${isMissingColumn || !csvSummary.selectedRowExists ? " parameter-note--warning" : ""}`;
+      stagedEditNote.textContent = isMissingColumn || !csvSummary.selectedRowExists
+        ? `This field edit is staging row ${csvSummary.selectedRowIndex}. Apply it from the Content section to write back the row${isMissingColumn ? ` and add the ${contentFieldKey} column` : ""}.`
+        : `This field edit is staging row ${csvSummary.selectedRowIndex}. Apply it from the Content section when you want the CSV draft to become the live source.`;
+      section.body.append(stagedEditNote);
+    }
 
     const textGrid = document.createElement("div");
     textGrid.className = "parameter-grid";
@@ -578,14 +1104,9 @@ function renderSelectionPanel(): void {
 }
 
 async function renderStage(): Promise<void> {
-  const stageMount = document.querySelector("[data-stage-mount]");
-  const stageMeta = document.querySelector("[data-stage-meta]");
-  if (!(stageMount instanceof HTMLElement) || !(stageMeta instanceof HTMLElement)) {
-    return;
-  }
-
   const token = ++renderToken;
-  const outputs = await evaluateGraph(buildGraph(state.params), registry);
+  const effectiveParams = getEffectiveParams();
+  const outputs = await evaluateGraph(buildGraph(effectiveParams), registry);
   if (token !== renderToken) {
     return;
   }
@@ -596,8 +1117,63 @@ async function renderStage(): Promise<void> {
   }
 
   currentScene = scene as LayerScene;
+  renderCurrentStage();
+}
+
+function renderCurrentStage(): void {
+  const stageMount = document.querySelector("[data-stage-mount]");
+  const stageMeta = document.querySelector("[data-stage-meta]");
+  if (!(stageMount instanceof HTMLElement) || !(stageMeta instanceof HTMLElement)) {
+    return;
+  }
+
+  if (!currentScene) {
+    stageMount.innerHTML = "";
+    stageMeta.textContent = "";
+    return;
+  }
   stageMount.innerHTML = renderStageMarkup(currentScene);
-  stageMeta.textContent = `${state.params.frame.widthPx} x ${state.params.frame.heightPx} frame | ${currentScene.texts.length} text blocks | ${state.showGuides ? "guides on" : "guides off"}`;
+  const csvSummary = getContentSource() === "csv" ? getCsvDraftSummary() : null;
+  const motionLabel = getMotionLayerMode() === "none"
+    ? "motion off"
+    : `${getMotionLayerMode()} ${state.motion.animate ? `@ ${state.motion.timeSeconds.toFixed(1)}s` : "paused"}`;
+  stageMeta.textContent = `${state.params.frame.widthPx} x ${state.params.frame.heightPx} frame | ${currentScene.texts.length} text blocks | ${motionLabel} | ${getContentSource()} content${csvSummary ? ` row ${csvSummary.selectedRowIndex}/${Math.max(csvSummary.rowCount, csvSummary.selectedRowIndex)}${hasStagedCsvDraft() ? " staged" : ""}` : ""} | ${state.showGuides ? "guides on" : "guides off"}`;
+}
+
+function stopMotionAnimation(): void {
+  if (motionAnimationFrameId !== null) {
+    window.cancelAnimationFrame(motionAnimationFrameId);
+    motionAnimationFrameId = null;
+  }
+  previousMotionTimestampMs = null;
+}
+
+function tickMotion(timestampMs: number): void {
+  if (!state.motion.animate) {
+    stopMotionAnimation();
+    return;
+  }
+
+  if (previousMotionTimestampMs === null) {
+    previousMotionTimestampMs = timestampMs;
+  }
+
+  const deltaSeconds = clamp((timestampMs - previousMotionTimestampMs) / 1000, 0, 0.05);
+  previousMotionTimestampMs = timestampMs;
+  state.motion.timeSeconds = Math.max(0, state.motion.timeSeconds + deltaSeconds * state.motion.speed);
+  renderCurrentStage();
+  motionAnimationFrameId = window.requestAnimationFrame(tickMotion);
+}
+
+function syncMotionAnimation(): void {
+  if (state.motion.animate) {
+    if (motionAnimationFrameId === null) {
+      motionAnimationFrameId = window.requestAnimationFrame(tickMotion);
+    }
+    return;
+  }
+
+  stopMotionAnimation();
 }
 
 function syncGuideButton(): void {
@@ -611,10 +1187,13 @@ function resetPreview(): void {
   state.params = createDefaultOverlayParams();
   state.selected = { kind: "text", id: "headline" };
   state.showGuides = true;
+  state.motion = createDefaultMotionState();
+  state.stagedCsvDraft = null;
   currentDrag = null;
   renderDocumentControls();
   renderSelectionPanel();
   syncGuideButton();
+  syncMotionAnimation();
   void renderStage();
 }
 
@@ -632,7 +1211,7 @@ function buildAppShell(): void {
             <div>
               <p class="hero__eyebrow">Brand Layout Ops / Preview Shell</p>
               <h1 class="hero__title">Overlay parity now has a browser surface inside the extracted repo.</h1>
-              <p class="hero__copy">This shell stays intentionally narrow: it runs the overlay operator graph, draws guides, and lets you select and drag text or logo placements without pulling layout semantics back into a renderer-specific app.</p>
+              <p class="hero__copy">This shell stays intentionally narrow: it runs the overlay operator graph, layers the coarse motion operators behind it, and lets you validate text or logo interaction without pulling layout semantics back into a renderer-specific app.</p>
             </div>
             <div class="hero__actions">
               <button type="button" data-action="reset">Reset demo</button>
@@ -646,7 +1225,7 @@ function buildAppShell(): void {
           <div class="stage-frame">
             <div class="stage-mount" data-stage-mount></div>
           </div>
-          <p class="shortcut-note">Shortcuts: press G to toggle guides. Hold Shift while dragging to axis-lock.</p>
+          <p class="shortcut-note">Shortcuts: press G to toggle guides. Hold Shift while dragging to axis-lock. Motion animation is preview-only and does not affect layout resolution.</p>
         </section>
       </main>
 
@@ -684,7 +1263,28 @@ function handleStagePointerDown(event: PointerEvent): void {
 
   const id = itemElement.dataset.id;
   const kind = itemElement.dataset.kind;
-  if (!id || (kind !== "text" && kind !== "logo")) {
+  if (!id || (kind !== "text" && kind !== "logo" && kind !== "text-resize-handle")) {
+    return;
+  }
+
+  if (kind === "text-resize-handle") {
+    const textField = state.params.textFields.find((field) => field.id === id);
+    const handle = itemElement.dataset.handle === "left" ? "left" : "right";
+    if (!textField) {
+      return;
+    }
+
+    select({ kind: "text", id });
+    currentDrag = {
+      selection: { kind: "text", id },
+      mode: "resize-text",
+      resizeHandle: handle,
+      metrics: currentScene.grid,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      initialField: { ...textField }
+    };
+    void renderStage();
     return;
   }
 
@@ -702,6 +1302,7 @@ function handleStagePointerDown(event: PointerEvent): void {
 
     currentDrag = {
       selection,
+      mode: "move",
       metrics: currentScene.grid,
       startClientX: event.clientX,
       startClientY: event.clientY,
@@ -716,6 +1317,7 @@ function handleStagePointerDown(event: PointerEvent): void {
 
   currentDrag = {
     selection,
+    mode: "move",
     metrics: currentScene.grid,
     startClientX: event.clientX,
     startClientY: event.clientY,
@@ -742,6 +1344,14 @@ function handlePointerMove(event: PointerEvent): void {
 
   const { deltaXPx, deltaYPx } = getFrameDeltaFromPointer(event.clientX, event.clientY);
   const axisLock = getAxisLock(deltaXPx, deltaYPx, event.shiftKey);
+
+  if (drag.mode === "resize-text" && drag.selection.kind === "text" && drag.initialField && drag.resizeHandle) {
+    const initialField = drag.initialField;
+    const metrics = drag.metrics;
+    updateTextField(drag.selection.id, () => resolveTextFieldResize(initialField, metrics, drag.resizeHandle!, deltaXPx));
+    void renderStage();
+    return;
+  }
 
   if (drag.selection.kind === "text" && drag.initialField) {
     const initialField = drag.initialField;
@@ -791,6 +1401,7 @@ function handleKeyDown(event: KeyboardEvent): void {
 }
 
 buildAppShell();
+syncMotionAnimation();
 document.addEventListener("pointerdown", (event) => {
   const stageMount = document.querySelector("[data-stage-mount]");
   if (!(stageMount instanceof HTMLElement) || !stageMount.contains(event.target as Node)) {

@@ -6,6 +6,14 @@ description: "Use when continuing work in the brand-layout-ops repo, resuming pa
 
 Use this agent when continuing work in `h:\WSL_dev_projects\brand-layout-ops`.
 
+## Working discipline
+
+- Keep an eye on duplication across `docs/rebuild-plan.md`, `llm-handoff-context.md`, `README.md`, and other planning files.
+- Keep a disciplined todo list and move completed items into history instead of leaving stale active lists behind.
+- Update `llm-handoff-context.md` and `README.md` on every commit.
+- Update `docs/product-roadmap.md` when the roadmap meaningfully changes.
+- Follow `docs/rebuild-plan.md` by default; if work departs from the listed order, record why in the rebuild plan deviation log.
+
 ## First step: normalize if needed
 
 Before doing anything substantial, check whether the working tree is genuinely dirty or whether the repo just needs normalization.
@@ -66,6 +74,8 @@ Implemented so far:
 - overlay interaction helpers
 - parameter-ui helpers
 - browser preview shell at `apps/overlay-preview`
+- CSV or inline content resolution in the preview shell
+- lightweight SVG motion preview layer for orbits and spokes in the same preview surface
 
 ## What to verify first
 
@@ -93,8 +103,9 @@ Priority order:
 
 1. Deepen the preview shell toward selected-element editor parity.
 2. Verify overlay text, logo, guides, double-click editing, and snapping against the reference repo.
-3. Pull orbits and spokes into the same preview surface for motion validation.
-4. Only after parity, continue with the next field operator work such as fuzzy boids.
+3. Finish the remaining editor-parity items such as resize handles, staged CSV writeback quality, and baseline-guide assistance.
+4. Verify motion parity against the reference repo now that orbits and spokes are in the same preview surface.
+5. Only after parity, continue with the next field operator work such as fuzzy boids.
 
 ## Key docs
 

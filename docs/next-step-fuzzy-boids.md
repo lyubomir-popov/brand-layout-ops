@@ -238,6 +238,10 @@ This should align cleanly with the existing copy-to-points operator.
 
 The fuzzy boids system is exactly the kind of thing that becomes messy if every force is made into a separate public operator too soon.
 
+Treat fuzzy boids as one coarse operator.
+
+The reference Houdini setup may have used multiple wrangles for clarity, but that should not force the TypeScript rebuild into multiple public operators.
+
 Keep it coarse first.
 
 ### Warning 2. Avoid backend leakage
