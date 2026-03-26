@@ -21,6 +21,12 @@ This new repo already contains:
 - `@brand-layout-ops/layout-grid`
 - `@brand-layout-ops/layout-text`
 - `@brand-layout-ops/layout-engine`
+- `@brand-layout-ops/operator-overlay-layout`
+- `@brand-layout-ops/operator-copy-to-points`
+- `@brand-layout-ops/operator-orbits`
+- `@brand-layout-ops/operator-phyllotaxis`
+- `@brand-layout-ops/operator-spokes`
+- `@brand-layout-ops/overlay-interaction`
 - `@brand-layout-ops/parameter-ui`
 - architecture docs
 - future backend notes
@@ -28,6 +34,24 @@ This new repo already contains:
 - npm install completed
 - TypeScript typecheck passing
 - first-pass browser preview shell at `apps/overlay-preview`
+
+## Verified runnable paths
+
+- `npm run typecheck`
+- `npm run preview:dev`
+- `npm run demo:overlay-layout`
+- `npm run demo:copy-to-points`
+- `npm run demo:orbits`
+- `npm run demo:spokes`
+
+## Recently completed work
+
+- overlay-layout operator wired into the graph runtime
+- deterministic text measurement path so layout can resolve outside a renderer
+- first-pass overlay interaction math for snapped text and logo drag
+- parameter-ui helper package for operator-facing DOM controls
+- browser preview shell with guide toggle, selection, double-click text editing, and drag snapping
+- coarse orbits and spokes operators verified through graph-runtime plus copy-to-points demos
 
 ## Immediate goal
 
@@ -88,10 +112,10 @@ Rebuild the current project here with 1:1 working behavior first, then continue 
 
 ## Suggested next sequence for a fresh chat
 
-1. Deepen the preview shell toward overlay-editor parity.
-2. Verify parity for overlay text, logo, guides, and snapping behavior.
-3. Port orbits and spokes as coarse operators.
-4. Verify visual parity against the reference repo.
+1. Deepen the preview shell toward selected-element editor parity and CSV-or-inline content editing.
+2. Verify parity for overlay text, logo, guides, double-click editing, and snapping behavior against the reference repo.
+3. Bring orbits and spokes into the browser preview shell so motion can be validated in the same surface.
+4. Verify visual parity against the reference repo before broadening the operator set.
 5. Resume new feature work only after parity is proven.
 
 ## Important reference docs in this repo
@@ -116,4 +140,4 @@ Rebuild the current project here with 1:1 working behavior first, then continue 
 - The main reason for the rebuild is separation of concerns, not a maximal node-graph toy.
 - Treat parity as the gating milestone.
 - The old repo already has valuable working interaction behavior; port that behavior, not its monolithic structure.
-- The next planned point-field operator after phyllotaxis is fuzzy boids; implement it Three-first, SVG-later, and keep it as one coarse operator package initially.
+- The next planned point-field operator after phyllotaxis is fuzzy boids, but only after preview parity work and current motion validation are further along.

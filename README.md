@@ -50,6 +50,16 @@ npm run preview:dev
 
 That starts a Vite app at `apps/overlay-preview/` which evaluates the overlay-layout operator graph in the browser and supports first-pass text/logo selection and drag snapping.
 
+Other useful local checks:
+
+```bash
+npm run typecheck
+npm run demo:overlay-layout
+npm run demo:copy-to-points
+npm run demo:orbits
+npm run demo:spokes
+```
+
 ## Packages
 
 - `@brand-layout-ops/core-types`: shared contracts and data payloads
@@ -57,9 +67,31 @@ That starts a Vite app at `apps/overlay-preview/` which evaluates the overlay-la
 - `@brand-layout-ops/layout-grid`: baseline-grid and column-grid resolution
 - `@brand-layout-ops/layout-text`: wrapping and placement math using a provided measurer
 - `@brand-layout-ops/layout-engine`: scene-level layout composition for branded overlay content
+- `@brand-layout-ops/operator-overlay-layout`: graph-facing overlay composition operator built on the layout kernels
 - `@brand-layout-ops/operator-copy-to-points`: Houdini-style point instancing with propagated attributes for later Three.js and SVG backends
+- `@brand-layout-ops/operator-orbits`: coarse orbit-ring point-field generator for motion-side rebuild work
 - `@brand-layout-ops/operator-phyllotaxis`: golden-angle point-field generation matching the current Houdini phyllotaxis HDA logic
+- `@brand-layout-ops/operator-spokes`: coarse spoke-band point-field generator for motion-side rebuild work
+- `@brand-layout-ops/overlay-interaction`: snapped text/logo drag math for operator-facing overlay editing
 - `@brand-layout-ops/parameter-ui`: small DOM helpers for operator-facing control surfaces in preview apps
+
+## Resume Point
+
+The repo is past pure kernel extraction.
+
+Implemented so far:
+
+- overlay-layout operator and deterministic text measurement path
+- first-pass overlay browser preview with guides, selection, double-click text editing, and snapped drag interaction
+- copy-to-points instancing path
+- coarse orbits and spokes operators with runnable demos
+
+The next work should stay focused on parity, not new feature breadth:
+
+1. deepen the preview shell toward selected-element editor parity
+2. verify overlay text, logo, guide, and snapping behavior against the reference repo
+3. pull orbits and spokes into the preview shell for side-by-side motion validation
+4. only then start the next field operator work such as fuzzy boids
 
 ## Later additions
 
