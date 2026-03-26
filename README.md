@@ -90,6 +90,7 @@ Implemented so far:
 - overlay-layout operator and deterministic text measurement path
 - preview shell with guides, selection, double-click text editing, snapped drag interaction, and CSV or inline content switching
 - lightweight motion preview layer using `operator-orbits` and `operator-spokes`
+- richer motion preview layering with orbit trails, spoke segments, and echo rings, still kept adapter-side for parity work
 - schema-driven operator parameter controls for frame, safe area, grid, and content source
 - selected-text baseline guide, snapped resize handles, and staged CSV flow with row diagnostics, header mapping status, and seed/apply/discard controls in the preview shell
 - copy-to-points instancing path
@@ -99,8 +100,7 @@ The next work should stay focused on parity, not new feature breadth:
 
 1. verify that the current motion preview is close enough to the reference repo for parity signoff
 2. verify export-relevant geometry consistency
-3. decide whether the bottom-margin remainder behavior is actually equivalent enough to check off or needs adjustment
-4. only then start the next field operator work such as fuzzy boids
+3. only then start the next field operator work such as fuzzy boids
 
 ## Later additions
 

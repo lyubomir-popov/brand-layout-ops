@@ -25,9 +25,9 @@ export function computeLayoutGridMetrics(frame: FrameSize, safeArea: SafeAreaIns
   const columnGutterPx = Math.max(0, Math.round(grid.columnGutterBaselines)) * baselineStepPx;
   const maxRowHeightSpace = layoutHeightPx - topMarginPx - minimumBottomMarginPx - rowGutterPx * Math.max(0, rowCount - 1);
   const rowHeightPx = Math.max(0, Math.floor(Math.max(0, maxRowHeightSpace) / (rowCount * baselineStepPx)) * baselineStepPx);
-  const bottomMarginPx = minimumBottomMarginPx + Math.max(
+  const bottomMarginPx = Math.max(
     0,
-    layoutHeightPx - topMarginPx - minimumBottomMarginPx - rowHeightPx * rowCount - rowGutterPx * Math.max(0, rowCount - 1)
+    layoutHeightPx - topMarginPx - rowHeightPx * rowCount - rowGutterPx * Math.max(0, rowCount - 1)
   );
   const contentWidthPx = Math.max(0, layoutWidthPx - leftMarginPx - rightMarginPx - columnGutterPx * Math.max(0, columnCount - 1));
   const columnWidthPx = columnCount <= 0 ? 0 : contentWidthPx / columnCount;

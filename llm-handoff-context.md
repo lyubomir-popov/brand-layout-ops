@@ -69,6 +69,8 @@ If a WSL clone under `/mnt/h/...` suddenly shows many modified text files after 
 - selected-text first-baseline guide and left or right snapped resize handles in the preview shell
 - staged CSV draft flow with explicit apply or discard controls in the preview shell
 - richer CSV staging diagnostics in the preview shell: row navigation, header mapping status, unmatched-quote warning, and seed-row-plus-headers normalization
+- bottom-margin remainder behavior fixed and verified against the old row-height formula, including overconstrained safe-area cases
+- motion preview layer improved with orbit trails, spoke segments, and echo rings, but still not signed off as full visual parity
 
 ## Immediate goal
 
@@ -133,9 +135,8 @@ Rebuild the current project here with 1:1 working behavior first, then continue 
 
 1. Verify the current motion preview against the reference repo now that orbits and spokes live in the same surface.
 2. Verify export-relevant geometry consistency.
-3. Decide whether the bottom-margin remainder behavior is equivalent enough to check off or needs adjustment.
-4. Keep following `docs/rebuild-plan.md` in order; if work jumps ahead, update the deviation log there.
-5. Resume new feature work only after parity is proven.
+3. Keep following `docs/rebuild-plan.md` in order; if work jumps ahead, update the deviation log there.
+4. Resume new feature work only after parity is proven.
 
 ## Open Questions To Discuss Later
 

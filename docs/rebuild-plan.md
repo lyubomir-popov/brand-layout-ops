@@ -64,7 +64,7 @@ Port in this order.
 The layout-grid package must preserve the current behavior where:
 
 - [x] All rows snap to the baseline grid and are verified against the reference app.
-- [ ] Remainder height is added to the bottom margin and is verified against the reference app.
+- [x] Remainder height is added to the bottom margin and is verified against the reference app.
 - [x] Keylines and spans determine text width and are verified against the reference app.
 
 ### Phase 4. Port editor interaction as an operator-facing layer

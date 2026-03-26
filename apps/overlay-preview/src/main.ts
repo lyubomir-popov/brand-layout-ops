@@ -616,6 +616,91 @@ function createMotionPointMarkup(pointField: PointField, fallbackColor: ColorRgb
   }).join("");
 }
 
+function getNumericPointAttribute(point: PointField["points"][number], key: string): number | null {
+  const value = Number(point.attributes[key]);
+  return Number.isFinite(value) ? value : null;
+}
+
+function createOrbitTrailMarkup(pointField: PointField, center: { x: number; y: number }, fallbackColor: ColorRgba): string {
+  const rings = new Map<number, PointField["points"]>();
+
+  for (const point of pointField.points) {
+    const orbitIndex = getNumericPointAttribute(point, "orbit_index");
+    if (orbitIndex === null) {
+      continue;
+    }
+
+    const ringPoints = rings.get(orbitIndex) ?? [];
+    ringPoints.push(point);
+    rings.set(orbitIndex, ringPoints);
+  }
+
+  return Array.from(rings.entries()).map(([ringIndex, ringPoints]) => {
+    const sortedPoints = [...ringPoints].sort((left, right) => {
+      return (getNumericPointAttribute(left, "orbit_point_index") ?? 0) - (getNumericPointAttribute(right, "orbit_point_index") ?? 0);
+    });
+
+    const ringColor = isColorRgba(sortedPoints[0]?.attributes.color) ? sortedPoints[0].attributes.color : fallbackColor;
+    const radiusPx = Math.max(0, getNumericPointAttribute(sortedPoints[0], "orbit_radius_px") ?? 0);
+    const ringOutline = radiusPx > 0
+      ? `<circle cx="${center.x}" cy="${center.y}" r="${radiusPx}" fill="none" stroke="${formatRgbaColor(ringColor, state.motion.opacity * 0.12)}" stroke-width="1.2" />`
+      : "";
+
+    const ringSegments = sortedPoints.map((point, index) => {
+      const nextPoint = sortedPoints[(index + 1) % sortedPoints.length];
+      if (!nextPoint) {
+        return "";
+      }
+
+      return `<line x1="${point.position.x}" y1="${point.position.y}" x2="${nextPoint.position.x}" y2="${nextPoint.position.y}" stroke="${formatRgbaColor(ringColor, state.motion.opacity * 0.16)}" stroke-width="1.4" stroke-linecap="round" />`;
+    }).join("");
+
+    return `<g class="motion-layer motion-layer--orbit-trail" data-ring-index="${ringIndex}">${ringOutline}${ringSegments}</g>`;
+  }).join("");
+}
+
+function createSpokeTrailMarkup(pointField: PointField, center: { x: number; y: number }, fallbackColor: ColorRgba): string {
+  const spokeGroups = new Map<string, PointField["points"]>();
+
+  for (const point of pointField.points) {
+    const bandIndex = getNumericPointAttribute(point, "spoke_band_index");
+    const spokeIndex = getNumericPointAttribute(point, "spoke_index");
+    if (bandIndex === null || spokeIndex === null) {
+      continue;
+    }
+
+    const groupKey = `${bandIndex}:${spokeIndex}`;
+    const spokePoints = spokeGroups.get(groupKey) ?? [];
+    spokePoints.push(point);
+    spokeGroups.set(groupKey, spokePoints);
+  }
+
+  return Array.from(spokeGroups.values()).map((spokePoints) => {
+    const sortedPoints = [...spokePoints].sort((left, right) => {
+      return (getNumericPointAttribute(left, "spoke_point_index") ?? 0) - (getNumericPointAttribute(right, "spoke_point_index") ?? 0);
+    });
+    const spokeColor = isColorRgba(sortedPoints[0]?.attributes.color) ? sortedPoints[0].attributes.color : fallbackColor;
+
+    return sortedPoints.map((point, index) => {
+      const previousPoint = index === 0 ? null : sortedPoints[index - 1];
+      const startX = previousPoint?.position.x ?? center.x;
+      const startY = previousPoint?.position.y ?? center.y;
+      const alphaScale = previousPoint ? 0.16 + index * 0.035 : 0.1;
+      const widthPx = previousPoint ? 1.4 : 1.1;
+
+      return `<line x1="${startX}" y1="${startY}" x2="${point.position.x}" y2="${point.position.y}" stroke="${formatRgbaColor(spokeColor, state.motion.opacity * alphaScale)}" stroke-width="${widthPx}" stroke-linecap="round" />`;
+    }).join("");
+  }).join("");
+}
+
+function createMotionEchoMarkup(center: { x: number; y: number }, backdropRadiusPx: number): string {
+  const echoScales = [0.28, 0.46, 0.68];
+  return echoScales.map((scale, index) => {
+    const radiusPx = backdropRadiusPx * scale;
+    return `<circle cx="${center.x}" cy="${center.y}" r="${radiusPx}" fill="none" stroke="rgba(255, 248, 237, ${0.12 - index * 0.025})" stroke-width="${2 - index * 0.35}" stroke-dasharray="${index === 0 ? "none" : "10 16"}" />`;
+  }).join("");
+}
+
 function createMotionMarkup(): string {
   const mode = getMotionLayerMode();
   if (mode === "none") {
@@ -623,10 +708,22 @@ function createMotionMarkup(): string {
   }
 
   const motionLayers: string[] = [];
+  const spokeField = hasMotionLayer(mode, "spokes")
+    ? resolveSpokeField(buildPreviewSpokesParams(state.params.frame, state.motion.timeSeconds))
+    : null;
+  const orbitField = hasMotionLayer(mode, "orbits")
+    ? resolveOrbitField(buildPreviewOrbitParams(state.params.frame, state.motion.timeSeconds))
+    : null;
+
   if (hasMotionLayer(mode, "spokes")) {
     motionLayers.push(
+      createSpokeTrailMarkup(
+        spokeField!,
+        getPreviewMotionCenter(state.params.frame),
+        { r: 0.84, g: 0.92, b: 1, a: 0.45 }
+      ),
       createMotionPointMarkup(
-        resolveSpokeField(buildPreviewSpokesParams(state.params.frame, state.motion.timeSeconds)),
+        spokeField!,
         { r: 0.84, g: 0.92, b: 1, a: 0.45 },
         "motion-layer motion-layer--spokes"
       )
@@ -635,8 +732,13 @@ function createMotionMarkup(): string {
 
   if (hasMotionLayer(mode, "orbits")) {
     motionLayers.push(
+      createOrbitTrailMarkup(
+        orbitField!,
+        getPreviewMotionCenter(state.params.frame),
+        { r: 1, g: 0.84, b: 0.58, a: 0.76 }
+      ),
       createMotionPointMarkup(
-        resolveOrbitField(buildPreviewOrbitParams(state.params.frame, state.motion.timeSeconds)),
+        orbitField!,
         { r: 1, g: 0.84, b: 0.58, a: 0.76 },
         "motion-layer motion-layer--orbits"
       )
@@ -650,12 +752,13 @@ function createMotionMarkup(): string {
     <g data-motion aria-hidden="true" style="pointer-events: none;">
       <defs>
         <radialGradient id="motion-aura-gradient" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="rgba(255, 242, 220, 0.75)" />
-          <stop offset="55%" stop-color="rgba(255, 224, 182, 0.18)" />
-          <stop offset="100%" stop-color="rgba(255, 224, 182, 0)" />
+          <stop offset="0%" stop-color="#fff2dc" stop-opacity="0.75" />
+          <stop offset="55%" stop-color="#ffe0b6" stop-opacity="0.18" />
+          <stop offset="100%" stop-color="#ffe0b6" stop-opacity="0" />
         </radialGradient>
       </defs>
       <circle cx="${center.x}" cy="${center.y}" r="${backdropRadiusPx}" fill="url(#motion-aura-gradient)" opacity="${clamp(state.motion.opacity, 0, 1)}" />
+      ${createMotionEchoMarkup(center, backdropRadiusPx)}
       ${motionLayers.join("")}
     </g>
   `;
