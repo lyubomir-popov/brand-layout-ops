@@ -44,6 +44,17 @@ This new repo already contains:
 - `npm run demo:orbits`
 - `npm run demo:spokes`
 
+## Cross-platform Git note
+
+This repo now includes `.gitattributes` with LF normalization.
+
+Reason:
+
+- the repo may be opened from Windows and from WSL via `/mnt/h/...`
+- Windows Git with `core.autocrlf=true` can otherwise make a WSL working tree look dirty even when content did not really change
+
+If a WSL clone under `/mnt/h/...` suddenly shows many modified text files after a Windows-side checkout, renormalize or refresh the checkout after pulling the `.gitattributes` change.
+
 ## Recently completed work
 
 - overlay-layout operator wired into the graph runtime
