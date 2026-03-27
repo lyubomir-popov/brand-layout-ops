@@ -830,13 +830,15 @@ function switchContentFormat(formatKey: string) {
 
 function buildCurrentPresetPayload(overrides?: Partial<Pick<Preset, "id" | "name">>): Preset {
   persistActiveProfileBuckets();
+  persistActiveExportSettings();
   return {
     id: overrides?.id ?? createPresetId(),
     name: overrides?.name ?? getNextPresetName(state.presets),
     config: cloneOverlayParams(getEffectiveParams()),
     outputProfileKey: state.outputProfileKey,
     contentFormatKey: state.contentFormatKey,
-    profileFormatBuckets: cloneProfileFormatBuckets(state.profileFormatBuckets)
+    profileFormatBuckets: cloneProfileFormatBuckets(state.profileFormatBuckets),
+    exportSettingsByProfile: cloneExportSettingsByProfile(state.exportSettingsByProfile)
   };
 }
 
@@ -993,9 +995,9 @@ function loadPreset(preset: Preset) {
   ));
   state.activePresetId = preset.id;
   state.pendingCsvDraftsByBucket = {};
-  state.exportSettingsByProfile = {
+  state.exportSettingsByProfile = cloneExportSettingsByProfile(preset.exportSettingsByProfile ?? {
     [state.outputProfileKey]: createDefaultExportSettings(state.outputProfileKey)
-  };
+  });
   state.exportSettings = getOrCreateExportSettingsForProfile(state.outputProfileKey);
   normalizeSelection();
   syncHaloConfigToProfile(state.outputProfileKey);

@@ -365,6 +365,7 @@ export interface Preset {
   outputProfileKey?: string;
   contentFormatKey?: string;
   profileFormatBuckets?: ProfileFormatBuckets;
+  exportSettingsByProfile?: Record<string, ExportSettings>;
 }
 
 export type ProfileFormatBuckets = Record<string, Record<string, OverlayLayoutOperatorParams>>;
@@ -376,6 +377,7 @@ export interface PersistedPreset {
   outputProfileKey?: string;
   contentFormatKey?: string;
   profileFormatBuckets?: unknown;
+  exportSettingsByProfile?: unknown;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -482,7 +484,8 @@ export function normalizePresetForPersistence(preset: Preset): PersistedPreset {
     config: normalizeOverlayParams(preset.config, outputProfileKey, contentFormatKey),
     outputProfileKey,
     contentFormatKey,
-    profileFormatBuckets: persistedBuckets
+    profileFormatBuckets: persistedBuckets,
+    exportSettingsByProfile: cloneJson(preset.exportSettingsByProfile ?? {})
   };
 }
 
@@ -528,13 +531,26 @@ export function denormalizePresetFromPersistence(rawPreset: unknown): Preset | n
     buckets[outputProfileKey][contentFormatKey] = cloneOverlayParams(config);
   }
 
+  const exportSettingsByProfile: Record<string, ExportSettings> = {};
+  if (isRecord(rawPreset.exportSettingsByProfile)) {
+    for (const [profileKey, rawExportSettings] of Object.entries(rawPreset.exportSettingsByProfile)) {
+      exportSettingsByProfile[profileKey] = isRecord(rawExportSettings)
+        ? {
+          ...createDefaultExportSettings(profileKey),
+          ...rawExportSettings
+        }
+        : createDefaultExportSettings(profileKey);
+    }
+  }
+
   return {
     id,
     name,
     config,
     outputProfileKey,
     contentFormatKey,
-    profileFormatBuckets: buckets
+    profileFormatBuckets: buckets,
+    exportSettingsByProfile
   };
 }
 

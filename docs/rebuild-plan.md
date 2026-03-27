@@ -207,7 +207,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	Reference files: `editor-constants.js` (`OVERLAY_TEXT_STYLE_TAB_SPECS`, `OVERLAY_LOGO_CONTROL_ROWS`, `OVERLAY_GRID_CONTROL_ROWS`), `index.js` (editor panel architecture).
 
 8. **Preset workflow (PARTIAL).**
-	Save, update, delete presets in localStorage. Import/export as JSON files with auto-versioned naming. Active preset dirty-state now exists and payloads are normalized against generated defaults instead of always writing full snapshots.
+	Save, update, delete presets in localStorage. Import/export as JSON files with auto-versioned naming. Active preset dirty-state now exists and payloads are normalized against generated defaults instead of always writing full snapshots. Presets now also carry the preview's per-profile export settings map.
 	Reference files: `index.js` (save_preset, delete_active_preset, export_current_preset, import_presets_from_file, apply_preset_by_id).
 
 9. **Source-default writeback (PARTIAL).**
