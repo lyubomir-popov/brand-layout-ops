@@ -216,8 +216,9 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	The preview shell now loads a source-default snapshot on startup, resets back to that authored snapshot, exposes a Write Source Default button, and writes the current snapshot to `/__authoring/source-default-config` via `Ctrl/Cmd+S` or the button.
 	Reference files: `index.js` (write_source_default_snapshot, read_source_default_snapshot).
 
-10. **Export pipeline (MISSING).**
-	Single frame PNG, PNG sequence (frame range), MP4 via dev server (`/__authoring/export-mp4`). Fade-in/fade-out (2s each). Transparent background. Export options modal. File naming: `{export_name}_{dimensions}_f{NNNN}.png`. Directory Picker API with `output/{dimensions}/stills/`, `sequence/` folder organization.
+10. **Export pipeline (PARTIAL).**
+	Single frame PNG ✔, PNG sequence with frame-range modal + File System Access directory picker ✔, headless Playwright PNG exporter (`scripts/export-headless.ts`) ✔, FFmpeg MP4 encoder (`scripts/encode-mp4.ts`) ✔ (libx264, CRF 10/14, yuv444p/yuv420p, slow preset, -tune animation, bt709). `window.__layoutOpsAutomation` API matches reference `__mascotAutomation` pattern. Transparent background option ✔.
+	Remaining: end-to-end verification of headless export → MP4 pipeline, fade-in/fade-out integration, `output/{dimensions}/` folder organization.
 	Reference files: `index.js` (export_current_frame_png, export_png_sequence, export_current_mp4).
 
 11. **Guide toggle 3-state cycle (PARTIAL).**

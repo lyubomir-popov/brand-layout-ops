@@ -30,7 +30,7 @@ Other useful checks: `npm run demo:overlay-layout`, `demo:copy-to-points`, `demo
 
 All scoped under `@brand-layout-ops/`.
 
-## Current state (updated 2026-03-27)
+## Current state (updated 2026-03-28)
 
 **Stage 1 — Parity Rebuild** is in progress. The overlay-preview app has:
 
@@ -41,10 +41,14 @@ All scoped under `@brand-layout-ops/`.
 - Center derived from global `getOutputProfileMetrics`, not hardcoded per profile
 - Preset save/load/delete/import/export via localStorage with editable name field
 - Shortcut parity: `W` guide toggle, `Ctrl+S` writeback, `Space`/`P` playback
-- PNG sequence export with frame-range modal dialog
+- PNG sequence export with frame-range modal + File System Access directory picker
+- `window.__layoutOpsAutomation` API for headless Playwright export (ready/getState/applySnapshot/exportFrame)
+- Headless PNG exporter (`scripts/export-headless.ts`) + FFmpeg MP4 encoder (`scripts/encode-mp4.ts`)
 - Logo intrinsic aspect ratio loading via `Image.naturalWidth/naturalHeight`
 - Column gutter, safe area override inputs, release label and screensaver pulse controls
 - Per-profile defaults: safe area, grid, font sizes, halo center Y offset
+- Canvas scale-to-fit with `--stage-aspect-ratio` CSS variable (supports portrait/landscape)
+- Accordion mutual exclusion (one open section at a time)
 
 ## Current sprint TODO (do in order)
 
@@ -75,18 +79,18 @@ All scoped under `@brand-layout-ops/`.
 
 ### E. Export pipeline & headless Playwright (priority)
 
-- [ ] `window.__layoutOpsAutomation` API for headless frame export (matches reference `__mascotAutomation` pattern)
-- [ ] `scripts/export_frames.py` — Playwright headless PNG sequence export
-- [ ] `scripts/encode_mp4.py` — FFmpeg PNG→MP4 encoder (libx264, CRF 10, yuv444p master / delivery mode)
-- [ ] PNG sequence export via File System Access API (write to folder instead of individual downloads)
-- [ ] Verify end-to-end: PNG sequence → encode_mp4.py → MP4
+- [x] `window.__layoutOpsAutomation` API for headless frame export (matches reference `__mascotAutomation` pattern)
+- [x] `scripts/export-headless.ts` — Playwright headless PNG sequence export (rewrites old DOM-manipulation approach)
+- [x] `scripts/encode-mp4.ts` — FFmpeg PNG→MP4 encoder (libx264, CRF 10/14, yuv444p/yuv420p, slow preset, -tune animation, bt709)
+- [x] PNG sequence export via File System Access API (`showDirectoryPicker`, fallback to download links)
+- [ ] Verify end-to-end: `npm run export:headless` → `npm run export:encode-mp4` → MP4
 
 ### F. Bug fixes from user notes
 
-- [ ] Canvas not true to size / not scrollable — scale to fit (match reference approach)
-- [ ] Accordion shouldn't change when clicking inside — only manually or when another opens
-- [ ] Show overlay checkbox in wrong place — move to grid accordion section
-- [ ] Text resize bug — top edge of text frame goes to top of safe area
+- [x] Canvas not true to size / not scrollable — scale to fit via `--stage-aspect-ratio` CSS variable
+- [x] Accordion shouldn't change when clicking inside — mutual exclusion on open, no close-on-content-click
+- [x] Show overlay checkbox in wrong place — moved to grid accordion section
+- [ ] Text resize bug — top edge of text frame goes to top of safe area *(needs interactive debugging, could not reproduce from code reading)*
 
 ### D. UI parity quick wins (done)
 
@@ -165,3 +169,57 @@ Continue parity work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\U
 - For heavier SOP-like work, TypeScript remains the default until profiling shows a real bottleneck; GPU-backed execution paths should remain an architectural option, especially for future 3D or simulation-heavy operators.
 - The current `operator-spokes` should stay coarse for parity; later decomposition may split it toward reusable wave, mask, and polar-field operators.
 - user note: I want to be able to transition from one operator to the next, for example, for a video  Imight start with a phylotaxis with 500 points; I animate it to expand, then I group points based on proximity to another set of focal points, and seamlessly animate 0 them to smaller pools of boids lets say that circle aroudn those focal points; think how this behavior can be broken down into modular operators that create points, animate them for a while, then hand them over to other operators to continue the animation.
+
+## Consumer handoff: portable-vertical-rhythm
+
+There is now a sibling repo at `c:\Users\lyubo\work\repos\portable-vertical-rhythm` that should replace the current Vanilla control-surface dependency incrementally in `apps/overlay-preview`.
+
+Use this package as a prebuilt local dependency, not as source to copy inline.
+
+### Package surface
+
+- package name: `portable-vertical-rhythm`
+- CSS entry: `portable-vertical-rhythm/styles.css`
+- browser JS entry: `portable-vertical-rhythm`
+- Node build entry: `portable-vertical-rhythm/build` (do not import this in the Vite app)
+
+### What it currently provides
+
+- dense body/UI text at `0.75rem` with `1rem` line-height
+- one heading size for actual UI section headings at `1rem` with `1.5rem` line-height
+- `p-muted-heading` style treatment using semibold Ubuntu Sans, small caps, muted color
+- text/form/button/panel/accordion styling
+- `u-baseline-grid` utility for alignment inspection
+- `initAccordions()` and `initBaselineGridToggles()` browser helpers
+- Vanilla-compatible aliases for `p-button`, `p-form__*`, `p-panel__*`, `p-accordion__*`, `p-muted-heading`, and `u-baseline-grid`
+
+### Recommended integration steps
+
+1. Add a local dependency in `brand-layout-ops/package.json`:
+  - `"portable-vertical-rhythm": "file:../portable-vertical-rhythm"`
+2. Run install from `c:\Users\lyubo\work\repos\brand-layout-ops`.
+3. In `apps/overlay-preview/src/main.ts`, import:
+  - `import "portable-vertical-rhythm/styles.css";`
+  - `import { initAccordions, initBaselineGridToggles } from "portable-vertical-rhythm";`
+4. Keep the existing DOM markup where possible and let the alias layer style current Vanilla-shaped classes first.
+5. Call `initAccordions()` after the panel DOM exists.
+6. Only call `initBaselineGridToggles()` if the preview includes a checkbox with `.js-baseline-toggle[aria-controls]` wired to a target carrying `u-baseline-grid`.
+
+### Migration guidance
+
+- Start by replacing the stylesheet dependency for the preview panel surface, not the whole app.
+- Remove `vanilla-framework` imports from the preview surface only when the portable package is covering that same area.
+- Prefer the package's current compatibility classes first, then optionally rename markup to `vr-*` later.
+- Do not import the package's Node build entry into Vite; generation stays in the package repo.
+
+### Important behavior constraints from the package
+
+- single-direction spacing discipline: margin-bottom only; padding-top is reserved for nudges
+- borders are compensated so they do not push components off the baseline rhythm
+- `hr`/rule thickness is accounted for against the next baseline unit
+- anchor links inside the themed surface inherit body text sizing and line-height
+- accordion tabs intentionally use body text sizing, not heading sizing
+
+### If the next agent needs to change the package
+
+Make changes in `c:\Users\lyubo\work\repos\portable-vertical-rhythm`, rebuild there, then return to this repo and verify the preview again. Do not fork or duplicate its CSS into `brand-layout-ops` unless explicitly requested.
