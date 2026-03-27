@@ -1534,6 +1534,13 @@ function buildPlaybackExportSection(): HTMLElement {
   exportBtn.addEventListener("click", () => { void exportComposedFramePng(); });
   row.append(wrapCol(2, exportBtn));
 
+  const seqBtn = document.createElement("button");
+  seqBtn.className = "p-button--base is-dense";
+  seqBtn.type = "button";
+  seqBtn.textContent = "Export Sequence";
+  seqBtn.addEventListener("click", () => { void exportPngSequence(); });
+  row.append(wrapCol(2, seqBtn));
+
   const resetBtn = document.createElement("button");
   resetBtn.className = "p-button--base is-dense";
   resetBtn.type = "button";
