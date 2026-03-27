@@ -96,8 +96,8 @@ Port the current interaction model into `overlay-interaction` and `parameter-ui`
 - [x] Snapped text movement by row and column.
 - [x] Shift-drag axis locking.
 - [x] Double-click inline editing.
-- [ ] Guide toggle shortcut parity.
-- [ ] Style-based labels in the selected-element editor.
+- [x] Guide toggle shortcut parity.
+- [x] Style-based labels in the selected-element editor.
 - [x] Resize handles for text fields with snapping to grid field widths and baselines.
 - [ ] CSV draft editing and source writeback staging at parity quality.
 - [x] Baseline guide showing at first baseline of text field, to aid alignment across columns.
@@ -185,24 +185,21 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	Current repo: 4 hardcoded text fields in `sample-document.ts` with no format abstraction, no aliases, no bucket storage.
 	Reference files: `config-schema.js` (format specs, alias matching, format bucket sync), `default-config-source.js` (per-profile overlay_content_formats).
 
-3. **Text style parity (PARTIAL).**
-	Reference has 3 distinct styles: `title` (A Head, 42px/48px, weight 200), `b_head` (B Head, 24px/32px, weight 400), `paragraph` (P, 24px/32px, weight 400). Current repo has only 2 styles (`title`, `body`) — missing `b_head` as a separate style. Reference font: Ubuntu Sans with explicit weight controls per style.
-	Reference files: `editor-constants.js` (`OVERLAY_TEXT_STYLE_TAB_SPECS`).
+3. **Text style parity (DONE).**
+	Reference has 3 distinct styles: `title` (A Head, 42px/48px, weight 200), `b_head` (B Head, 24px/32px, weight 400), `paragraph` (P, 24px/32px, weight 400). Current repo now has all 3 styles with per-profile font size overrides and display labels (`TEXT_STYLE_DISPLAY_LABELS`).
 
 4. **Linked title-to-logo sizing (MISSING).**
 	`link_title_size_to_logo_height = true` scales title font size proportionally to `overlay_logo.height_px` using `LINKED_TITLE_BASE_FONT_SIZE_PX = 63` as the reference base. Current repo has no linked sizing logic.
 	Reference files: `rendering.js` (linked title font size calculation in text rendering).
 	Update 2026-03-27 late pass: a preview-side helper now exists, but this still remains a critical parity item because the rule must become canonical document/layout behavior rather than an editor-only convenience.
 
-5. **Logo asset sizing and aspect ratio (PARTIAL).**
-	Reference loads the logo image, reads `naturalWidth / naturalHeight` for dynamic aspect ratio, and derives width from the configured height. Current repo uses fixed `widthPx` and `heightPx` in `sample-document.ts` — no dynamic image loading or aspect ratio computation.
-	Reference files: `rendering.js` (`build_overlay_logo_layout_item`).
+5. **Logo asset sizing and aspect ratio (DONE).**
+	Logo image is loaded via `Image`, `naturalWidth`/`naturalHeight` read for dynamic aspect ratio. Width derived from configured height via `getCurrentLogoAspectRatio()`. Logo drag and resize with aspect-ratio lock on corner handles.
 
 ### High — required for editor and workflow parity
 
-6. **Style-based labels in selected-element editor (MISSING).**
-	Reference dynamically labels items as "A Head", "B Head", "Paragraph 1", "Paragraph 2" with ordinal counting when multiple fields share a style. Logo is labeled "Selected Logo". Current repo has no style-aware labeling.
-	Reference files: `index.js` (`get_overlay_item_panel_title`, `build_overlay_variable_item_label`).
+6. **Style-based labels in selected-element editor (DONE).**
+	`getOverlayFieldDisplayLabel` produces "A Head", "B Head 1", "P 2" etc. with ordinal counting when multiple fields share a style. Logo is "Selected Logo". Uses `TEXT_STYLE_DISPLAY_LABELS` map from `sample-document.ts`.
 
 7. **Selected-element authoring surface (PARTIAL).**
 	Missing: add text blocks, change style assignment (b_head ↔ paragraph), per-style property tabs (font size, line height, weight), richer selected-item controls panel. The current repo has selection + drag + resize + inline editing, but no style controls.
@@ -221,9 +218,8 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	Remaining: end-to-end verification of headless export → MP4 pipeline, fade-in/fade-out integration, `output/{dimensions}/` folder organization.
 	Reference files: `index.js` (export_current_frame_png, export_png_sequence, export_current_mp4).
 
-11. **Guide toggle 3-state cycle (PARTIAL).**
-	Reference `W` cycles: off → composition grid → baseline grid → off. Current repo has `W` and `G` shortcuts but the exact 3-state cycle may not match. Also need `G` parity if the reference uses it.
-	Reference files: `index.js` (keyboard handler, `layout_grid.show_baseline_grid` / `show_composition_grid`).
+11. **Guide toggle 3-state cycle (DONE).**
+	`W` and `G` cycle: off → composition → baseline → off. Matches reference `W` cycle. `GUIDE_MODES` array in `main.ts` drives `cycleGuideMode()`.
 
 12. **Keyboard shortcuts (PARTIAL).**
 	`Ctrl/Cmd+S` now writes source defaults, `Escape` closes the inline editor and drawer, and `P` or `Space` now toggles the preview motion loop.
