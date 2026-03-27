@@ -797,8 +797,8 @@ function isActivePresetDirty(): boolean {
   );
 }
 
-function saveCurrentAsPreset() {
-  const preset = buildCurrentPresetPayload();
+function saveCurrentAsPreset(name?: string) {
+  const preset = buildCurrentPresetPayload(name ? { name } : undefined);
   state.presets = [...state.presets, preset];
   state.activePresetId = preset.id;
   savePresets(state.presets);
@@ -1649,6 +1649,13 @@ function buildPresetsSection(): HTMLElement {
   helpText.textContent = "Presets are stored in this browser.";
   body.append(helpText);
 
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.className = "p-form-validation__input is-dense";
+  nameInput.placeholder = "Preset name";
+  nameInput.setAttribute("data-preset-name-input", "");
+  body.append(createFormGroup("Name", nameInput));
+
   const toolbar = document.createElement("div");
   toolbar.className = "preset-toolbar";
 
@@ -1682,7 +1689,9 @@ function buildPresetsSection(): HTMLElement {
 
   // Inline event listeners for preset buttons
   toolbar.querySelector("[data-preset-save]")?.addEventListener("click", () => {
-    saveCurrentAsPreset();
+    const name = nameInput.value.trim() || undefined;
+    saveCurrentAsPreset(name);
+    nameInput.value = "";
     buildPresetTabs();
   });
   toolbar.querySelector("[data-preset-update]")?.addEventListener("click", () => {
