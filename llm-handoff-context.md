@@ -51,6 +51,7 @@ All scoped under `@brand-layout-ops/`.
 - Accordion mutual exclusion (one open section at a time)
 - Text north-corner resize now snaps vertically on the baseline grid instead of discarding vertical drag
 - CSV content resolution now matches overlay fields by format aliases and legacy slots, not only exact field IDs
+- Pending CSV drafts now survive output-profile and content-format switches instead of being discarded globally
 
 ## Current sprint TODO (do in order)
 

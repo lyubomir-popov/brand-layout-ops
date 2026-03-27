@@ -109,7 +109,7 @@ interface PreviewState {
   selected: Selection | null;
   guideMode: GuideMode;
   overlayVisible: boolean;
-  stagedCsvDraft: string | null;
+  pendingCsvDraftsByBucket: Record<string, string>;
   outputProfileKey: string;
   contentFormatKey: string;
   profileFormatBuckets: ProfileFormatBuckets;
@@ -224,7 +224,7 @@ const state: PreviewState = {
   selected: { kind: "text", id: "main_heading" },
   guideMode: "composition",
   overlayVisible: false,
-  stagedCsvDraft: null,
+  pendingCsvDraftsByBucket: {},
   outputProfileKey: _startProfileKey,
   contentFormatKey: _startFormatKey,
   profileFormatBuckets: {
@@ -315,6 +315,37 @@ function escapeXml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function getCsvDraftBucketKey(
+  profileKey: string = state.outputProfileKey,
+  formatKey: string = state.contentFormatKey
+): string {
+  return `${profileKey}::${formatKey}`;
+}
+
+function getStagedCsvDraft(
+  profileKey: string = state.outputProfileKey,
+  formatKey: string = state.contentFormatKey
+): string | null {
+  const bucketKey = getCsvDraftBucketKey(profileKey, formatKey);
+  return Object.prototype.hasOwnProperty.call(state.pendingCsvDraftsByBucket, bucketKey)
+    ? state.pendingCsvDraftsByBucket[bucketKey]
+    : null;
+}
+
+function setStagedCsvDraft(
+  draft: string | null,
+  profileKey: string = state.outputProfileKey,
+  formatKey: string = state.contentFormatKey
+): void {
+  const bucketKey = getCsvDraftBucketKey(profileKey, formatKey);
+  if (draft === null) {
+    delete state.pendingCsvDraftsByBucket[bucketKey];
+    return;
+  }
+
+  state.pendingCsvDraftsByBucket[bucketKey] = draft;
+}
+
 // ─── Operator graph evaluation ────────────────────────────────────────
 
 function buildGraph(params: OverlayLayoutOperatorParams): OperatorGraph {
@@ -325,14 +356,15 @@ function buildGraph(params: OverlayLayoutOperatorParams): OperatorGraph {
 }
 
 function getEffectiveParams(): OverlayLayoutOperatorParams {
-  if (getContentSource() !== "csv" || state.stagedCsvDraft === null) {
+  const stagedCsvDraft = getStagedCsvDraft();
+  if (getContentSource() !== "csv" || stagedCsvDraft === null) {
     return normalizeParamsTextFieldOffsets(state.params);
   }
 
   return normalizeParamsTextFieldOffsets({
     ...state.params,
     csvContent: {
-      draft: state.stagedCsvDraft,
+      draft: stagedCsvDraft,
       rowIndex: state.params.csvContent?.rowIndex ?? 1
     }
   });
@@ -349,8 +381,9 @@ function getResolvedTextFieldText(field: TextFieldPlacementSpec): string {
 }
 
 function hasStagedCsvDraft(): boolean {
-  return state.stagedCsvDraft !== null &&
-    state.stagedCsvDraft !== (state.params.csvContent?.draft ?? "");
+  const stagedCsvDraft = getStagedCsvDraft();
+  return stagedCsvDraft !== null &&
+    stagedCsvDraft !== (state.params.csvContent?.draft ?? "");
 }
 
 function getProfileFormatBucket(profileKey: string): Record<string, OverlayLayoutOperatorParams> {
@@ -432,7 +465,7 @@ function syncSharedProfileParams(
 }
 
 function persistActiveProfileBuckets(): void {
-  const activeParams = cloneOverlayParams(getEffectiveParams());
+  const activeParams = cloneOverlayParams(state.params);
   const profileBucket = getProfileFormatBucket(state.outputProfileKey);
   const formatKeys = new Set<string>([
     ...OVERLAY_CONTENT_FORMAT_ORDER,
@@ -712,19 +745,20 @@ function select(sel: Selection | null) {
 }
 
 function applyStagedCsvDraft() {
-  if (state.stagedCsvDraft === null) return;
+  const stagedCsvDraft = getStagedCsvDraft();
+  if (stagedCsvDraft === null) return;
   state.params = {
     ...state.params,
     csvContent: {
-      draft: state.stagedCsvDraft,
+      draft: stagedCsvDraft,
       rowIndex: state.params.csvContent?.rowIndex ?? 1
     }
   };
-  state.stagedCsvDraft = null;
+  setStagedCsvDraft(null);
 }
 
 function discardStagedCsvDraft() {
-  state.stagedCsvDraft = null;
+  setStagedCsvDraft(null);
 }
 
 // ─── Profile / format / preset ────────────────────────────────────────
@@ -738,7 +772,6 @@ function switchOutputProfile(profileKey: string) {
   state.params = normalizeParamsTextFieldOffsets(
     cloneOverlayParams(getOrCreateProfileFormatParams(profileKey, state.contentFormatKey))
   );
-  state.stagedCsvDraft = null;
   normalizeSelection();
   state.exportSettings = { ...state.exportSettings, frameRate: profile.defaultFrameRate };
   syncHaloConfigToProfile(state.outputProfileKey);
@@ -759,7 +792,6 @@ function switchContentFormat(formatKey: string) {
   getProfileFormatBucket(state.outputProfileKey)[formatKey] = cloneOverlayParams(nextParams);
   state.contentFormatKey = formatKey;
   state.params = normalizeParamsTextFieldOffsets(cloneOverlayParams(nextParams));
-  state.stagedCsvDraft = null;
   normalizeSelection();
   saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
 }
@@ -928,7 +960,7 @@ function loadPreset(preset: Preset) {
     getOrCreateProfileFormatParams(state.outputProfileKey, state.contentFormatKey)
   ));
   state.activePresetId = preset.id;
-  state.stagedCsvDraft = null;
+  state.pendingCsvDraftsByBucket = {};
   normalizeSelection();
   syncHaloConfigToProfile(state.outputProfileKey);
   saveActivePresetId(preset.id);
@@ -1021,7 +1053,7 @@ function applySourceDefaultSnapshot(snapshot: SourceDefaultSnapshot) {
   state.guideMode = snapshot.guideMode;
   state.overlayVisible = false;
   state.selected = { kind: "text", id: "main_heading" };
-  state.stagedCsvDraft = null;
+  state.pendingCsvDraftsByBucket = {};
   normalizeSelection();
   syncHaloConfigToProfile(state.outputProfileKey);
 }
@@ -2003,8 +2035,8 @@ function buildContentFormatSection(): HTMLElement {
     const textarea = document.createElement("textarea");
     textarea.className = "p-form-validation__input is-dense control-inline-text";
     textarea.rows = 5;
-    textarea.value = state.stagedCsvDraft ?? state.params.csvContent?.draft ?? "";
-    textarea.addEventListener("input", () => { state.stagedCsvDraft = textarea.value; });
+    textarea.value = getStagedCsvDraft() ?? state.params.csvContent?.draft ?? "";
+    textarea.addEventListener("input", () => { setStagedCsvDraft(textarea.value); });
     body.append(createFormGroup("CSV Data", textarea));
 
     const actions = document.createElement("div");
