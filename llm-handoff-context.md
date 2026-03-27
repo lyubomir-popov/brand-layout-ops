@@ -46,27 +46,15 @@ All scoped under `@brand-layout-ops/`.
 
 ### A. Per-profile document defaults
 
-- [ ] **Fix safe area values** (`core-types/src/index.ts` — data fix)
-  - instagram: `{24,24,24,24}` → `{0,0,0,0}`
-  - screen: `{0,0,0,0}` → `{24,24,24,24}`
-  - tablet: `{0,0,0,0}` → `{250,65,250,65}`
+- [x] **Fix safe area values** (`core-types/src/index.ts` — data fix)
+  - instagram: `{0,0,0,0}`, screen: `{24,24,24,24}`, tablet: `{250,65,250,65}`
 
-- [ ] **Per-profile grid defaults** (`sample-document.ts` — add `getDefaultGridForProfile`)
-  - landscape: baseline=8, rows=4, cols=4, margins=4/4/5/5, row_gutter=4, col_gutter=0, fit_safe=true
-  - instagram: baseline=8, rows=8, cols=4, margins=5/6/6/6, row_gutter=0, col_gutter=0, fit_safe=true
-  - story: baseline=8, rows=4, cols=4, margins=6/9/0/0, row_gutter=0, col_gutter=0, fit_safe=true
-  - screen: baseline=24, rows=4, cols=8, margins=4/4/4/4, row_gutter=0, col_gutter=0, fit_safe=false
-  - tablet: baseline=8, rows=4, cols=4, margins=0/9/0/0, row_gutter=4, col_gutter=4, fit_safe=true
+- [x] **Per-profile grid defaults** (`sample-document.ts` — `PROFILE_GRID_DEFAULTS` table + `getDefaultGridForProfile`)
 
-- [ ] **Per-profile halo center Y offset** (`operator-halo-field/src/index.ts`)
-  - landscape: (0, -26), instagram: (0, -121), story: (0, -156), screen: (0, +82), tablet: (0, 0)
+- [x] **Per-profile halo center Y offset** (`operator-halo-field/src/index.ts` — `center_offset_y_px` in composition overrides)
+  - landscape: -26, instagram: -121, story: -156, screen: +82, tablet: 0
 
-- [ ] **Per-profile font sizes** (text style override table)
-  - landscape: title=42, b_head=24, paragraph=24, spoke_text=18
-  - instagram: title=63, b_head=32, paragraph=32, spoke_text=14
-  - story: title=63, b_head=32, paragraph=32, spoke_text=14
-  - screen: title=110, b_head=55, paragraph=32, spoke_text=14
-  - tablet: title=63, b_head=32, paragraph=32, spoke_text=14
+- [x] **Per-profile font sizes** (`sample-document.ts` — `PROFILE_TEXT_STYLE_OVERRIDES` table + `getTextStylesForProfile`)
 
 ### B. UI organization
 
