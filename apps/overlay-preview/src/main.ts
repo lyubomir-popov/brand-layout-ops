@@ -29,7 +29,7 @@ import {
   OVERLAY_CONTENT_FORMATS
 } from "@brand-layout-ops/core-types";
 import { OperatorRegistry, evaluateGraph } from "@brand-layout-ops/graph-runtime";
-import { getColumnSpanWidthPx, getKeylineXPx } from "@brand-layout-ops/layout-grid";
+import { getColumnSpanWidthPx, getKeylineXPx, snapBaselineToGrid } from "@brand-layout-ops/layout-grid";
 import { createApproximateTextMeasurer, getMinimumFirstBaselineInsetBaselines } from "@brand-layout-ops/layout-text";
 import type { DragAxisLock } from "@brand-layout-ops/overlay-interaction";
 import { moveLogo, moveTextField } from "@brand-layout-ops/overlay-interaction";
@@ -3116,15 +3116,16 @@ function handlePointerMove(e: PointerEvent) {
         const metrics = currentDrag.metrics;
         const colW = metrics.columnWidthPx + metrics.columnGutterPx;
         const edge = currentDrag.resizeEdge;
+        let horizontalUpdate: Partial<TextFieldPlacementSpec> = {};
+        let verticalUpdate: Partial<TextFieldPlacementSpec> = {};
 
+        // Horizontal: adjust columnSpan and/or keylineIndex
         if (edge === "e" || edge === "ne" || edge === "se") {
-          // Expand/shrink right edge → change columnSpan
           const spanDelta = colW > 0 ? Math.round(delta.deltaXPx / colW) : 0;
           const maxSpan = metrics.columnCount - currentDrag.initialField.keylineIndex + 1;
           const newSpan = Math.max(1, Math.min(maxSpan, currentDrag.initialField.columnSpan + spanDelta));
-          updateTextField(currentDrag.selection.id, f => ({ ...f, columnSpan: newSpan }));
+          horizontalUpdate = { columnSpan: newSpan };
         } else if (edge === "w" || edge === "nw" || edge === "sw") {
-          // Shrink/expand left edge → change keylineIndex + columnSpan
           const colDelta = colW > 0 ? Math.round(delta.deltaXPx / colW) : 0;
           const newKeyline = Math.max(1, Math.min(
             currentDrag.initialField.keylineIndex + currentDrag.initialField.columnSpan - 1,
@@ -3132,8 +3133,19 @@ function handlePointerMove(e: PointerEvent) {
           ));
           const keylineDiff = newKeyline - currentDrag.initialField.keylineIndex;
           const newSpan = Math.max(1, currentDrag.initialField.columnSpan - keylineDiff);
-          updateTextField(currentDrag.selection.id, f => ({ ...f, keylineIndex: newKeyline, columnSpan: newSpan }));
+          horizontalUpdate = { keylineIndex: newKeyline, columnSpan: newSpan };
         }
+
+        // Vertical: north corners adjust rowIndex via grid snap
+        if (edge === "ne" || edge === "nw") {
+          const rowStepPx = metrics.rowHeightPx + metrics.rowGutterPx;
+          const initialRowTopPx = metrics.contentTopPx + (currentDrag.initialField.rowIndex - 1) * rowStepPx;
+          const initialBaselineYPx = initialRowTopPx + currentDrag.initialField.offsetBaselines * metrics.baselineStepPx;
+          const snapped = snapBaselineToGrid(metrics, initialBaselineYPx + delta.deltaYPx);
+          verticalUpdate = { rowIndex: snapped.rowIndex, offsetBaselines: snapped.offsetBaselines };
+        }
+
+        updateTextField(currentDrag.selection.id, f => ({ ...f, ...horizontalUpdate, ...verticalUpdate }));
         void renderStage();
       }
 
