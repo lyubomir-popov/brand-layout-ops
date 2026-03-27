@@ -3663,4 +3663,120 @@ async function init() {
   setSourceDefaultStatus("Source default ready.");
 }
 
-void init();
+const initPromise = init();
+
+// ─── Headless automation API ──────────────────────────────────────────
+// Matches the reference repo's window.__mascotAutomation pattern.
+// Used by scripts/export_frames.py (Playwright) to drive headless rendering.
+
+function getAutomationState() {
+  const profile = getOutputProfile(state.outputProfileKey);
+  return {
+    output_profile_key: state.outputProfileKey,
+    output_profile: {
+      key: state.outputProfileKey,
+      width_px: profile.widthPx,
+      height_px: profile.heightPx,
+      label: profile.label
+    },
+    frame_rate: Math.max(1, Math.round(state.exportSettings.frameRate)),
+    current_playback_time_sec: state.playbackTimeSec,
+    transparent_background: state.exportSettings.transparentBackground
+  };
+}
+
+async function applyAutomationSnapshot(payload: Record<string, unknown> = {}) {
+  if (typeof payload.output_profile_key === "string" && OUTPUT_PROFILES[payload.output_profile_key]) {
+    switchOutputProfile(payload.output_profile_key);
+    buildConfigEditor();
+    buildOutputProfileOptions();
+  }
+
+  if (typeof payload.transparent_background === "boolean") {
+    state.exportSettings = { ...state.exportSettings, transparentBackground: payload.transparent_background };
+  }
+
+  if (typeof payload.frame_rate === "number" && Number.isFinite(payload.frame_rate)) {
+    state.exportSettings = { ...state.exportSettings, frameRate: Math.max(1, Math.round(payload.frame_rate)) };
+  }
+
+  const playbackTimeSec = typeof payload.playback_time_sec === "number" && Number.isFinite(payload.playback_time_sec)
+    ? Math.max(0, payload.playback_time_sec)
+    : 0;
+
+  setPlaybackPlaying(false);
+  state.playbackTimeSec = playbackTimeSec;
+  renderHaloFrame();
+  await renderStage();
+
+  return getAutomationState();
+}
+
+async function exportAutomationFrame(payload: Record<string, unknown> = {}) {
+  const playbackTimeSec = typeof payload.playback_time_sec === "number" && Number.isFinite(payload.playback_time_sec)
+    ? Math.max(0, payload.playback_time_sec)
+    : state.playbackTimeSec;
+  const transparentBackground = typeof payload.transparent_background === "boolean"
+    ? payload.transparent_background
+    : state.exportSettings.transparentBackground;
+
+  setPlaybackPlaying(false);
+
+  const composed = await composeFrameToCanvas(playbackTimeSec);
+  if (!composed) {
+    throw new Error("Failed to compose frame to canvas.");
+  }
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    composed.toBlob((b) => resolve(b), "image/png")
+  );
+  if (!blob) {
+    throw new Error("Failed to create PNG blob from composed canvas.");
+  }
+
+  // Convert blob to base64 data URL, strip prefix
+  const pngBase64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      // Strip "data:image/png;base64," prefix
+      const commaIndex = dataUrl.indexOf(",");
+      resolve(commaIndex >= 0 ? dataUrl.slice(commaIndex + 1) : dataUrl);
+    };
+    reader.onerror = () => reject(new Error("Failed to read blob as base64."));
+    reader.readAsDataURL(blob);
+  });
+
+  const profile = getOutputProfile(state.outputProfileKey);
+  return {
+    png_base64: pngBase64,
+    width_px: profile.widthPx,
+    height_px: profile.heightPx,
+    playback_time_sec: playbackTimeSec,
+    output_profile_key: state.outputProfileKey,
+    frame_rate: Math.max(1, Math.round(state.exportSettings.frameRate)),
+    transparent_background: transparentBackground
+  };
+}
+
+(window as unknown as Record<string, unknown>).__layoutOpsAutomation = {
+  version: 1,
+  ready: async () => {
+    await initPromise;
+    setPlaybackPlaying(false);
+    return getAutomationState();
+  },
+  getState: () => getAutomationState(),
+  applySnapshot: async (payload: Record<string, unknown> = {}) => {
+    await initPromise;
+    return applyAutomationSnapshot(payload);
+  },
+  exportFrame: async (payload: Record<string, unknown> = {}) => {
+    await initPromise;
+    return exportAutomationFrame(payload);
+  }
+};
+
+initPromise.catch((error: unknown) => {
+  console.error(error);
+});
