@@ -50,6 +50,7 @@ All scoped under `@brand-layout-ops/`.
 - Canvas scale-to-fit with `--stage-aspect-ratio` CSS variable (supports portrait/landscape)
 - Accordion mutual exclusion (one open section at a time)
 - Text north-corner resize now snaps vertically on the baseline grid instead of discarding vertical drag
+- CSV content resolution now matches overlay fields by format aliases and legacy slots, not only exact field IDs
 
 ## Current sprint TODO (do in order)
 

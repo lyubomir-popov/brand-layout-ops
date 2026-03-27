@@ -1,4 +1,17 @@
-import type { FrameSize, GridSettings, LayerScene, LayoutGridMetrics, LogoPlacement, LogoPlacementSpec, OperatorDefinition, OperatorParameterSchema, SafeAreaInsets, TextFieldPlacementSpec, TextStyleSpec } from "@brand-layout-ops/core-types";
+import {
+  OVERLAY_CONTENT_FORMATS,
+  type FrameSize,
+  type GridSettings,
+  type LayerScene,
+  type LayoutGridMetrics,
+  type LogoPlacement,
+  type LogoPlacementSpec,
+  type OperatorDefinition,
+  type OperatorParameterSchema,
+  type SafeAreaInsets,
+  type TextFieldPlacementSpec,
+  type TextStyleSpec
+} from "@brand-layout-ops/core-types";
 import { resolveLayerScene } from "@brand-layout-ops/layout-engine";
 import { createApproximateTextMeasurer, type ApproximateTextMeasureOptions } from "@brand-layout-ops/layout-text";
 
@@ -231,10 +244,63 @@ function getInlineTextValue(params: OverlayLayoutOperatorParams, field: TextFiel
   return field.text;
 }
 
+function normalizeCsvLookupValue(value: string): string {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getOverlayFieldHeaderAliases(field: TextFieldPlacementSpec): string[] {
+  const contentKey = getOverlayFieldContentKey(field);
+  const aliases = new Set<string>([contentKey]);
+
+  for (const formatSpec of Object.values(OVERLAY_CONTENT_FORMATS)) {
+    const fieldSpec = formatSpec.fields.find((candidate) => {
+      if (candidate.id === contentKey || candidate.legacySlot === contentKey) {
+        return true;
+      }
+
+      return candidate.aliases.some((alias) => alias === contentKey);
+    });
+
+    if (!fieldSpec) {
+      continue;
+    }
+
+    aliases.add(fieldSpec.id);
+    if (fieldSpec.legacySlot) {
+      aliases.add(fieldSpec.legacySlot);
+    }
+    for (const alias of fieldSpec.aliases) {
+      aliases.add(alias);
+    }
+  }
+
+  return Array.from(aliases).filter(Boolean);
+}
+
+function findCsvHeaderIndex(headers: string[], field: TextFieldPlacementSpec): number {
+  const normalizedHeaderIndex = new Map<string, number>();
+
+  headers.forEach((header, index) => {
+    const normalizedHeader = normalizeCsvLookupValue(header);
+    if (!normalizedHeaderIndex.has(normalizedHeader)) {
+      normalizedHeaderIndex.set(normalizedHeader, index);
+    }
+  });
+
+  for (const alias of getOverlayFieldHeaderAliases(field)) {
+    const headerIndex = normalizedHeaderIndex.get(normalizeCsvLookupValue(alias));
+    if (headerIndex !== undefined) {
+      return headerIndex;
+    }
+  }
+
+  return -1;
+}
+
 function getCsvTextValue(params: OverlayLayoutOperatorParams, field: TextFieldPlacementSpec): string {
   const table = parseCsvDraft(params.csvContent?.draft ?? "");
   const rowIndex = Math.max(1, Math.round(params.csvContent?.rowIndex ?? 1)) - 1;
-  const headerIndex = table.headers.indexOf(getOverlayFieldContentKey(field));
+  const headerIndex = findCsvHeaderIndex(table.headers, field);
 
   if (headerIndex === -1 || rowIndex < 0 || rowIndex >= table.rows.length) {
     return getInlineTextValue(params, field);
@@ -279,7 +345,13 @@ export function inspectOverlayCsvDraft(params: OverlayLayoutOperatorParams): Ove
     selectedRowIndex,
     selectedRowExists: selectedRowIndex >= 1 && selectedRowIndex <= table.rows.length,
     selectedRowValues,
-    missingFieldKeys: fieldKeys.filter((fieldKey) => !table.headers.includes(fieldKey)),
+    missingFieldKeys: params.textFields
+      .filter((field, index, fields) => fields.findIndex((candidate) => getOverlayFieldContentKey(candidate) === getOverlayFieldContentKey(field)) === index)
+      .map((field) => getOverlayFieldContentKey(field))
+      .filter((fieldKey) => {
+        const matchingField = params.textFields.find((field) => getOverlayFieldContentKey(field) === fieldKey);
+        return matchingField ? findCsvHeaderIndex(table.headers, matchingField) === -1 : !fieldKeys.includes(fieldKey);
+      }),
     hasUnterminatedQuote: table.hasUnterminatedQuote
   };
 }
@@ -297,7 +369,10 @@ export function setOverlayTextValue(
   if (normalizeContentSource(params.contentSource) === "csv") {
     const table = parseCsvDraft(params.csvContent?.draft ?? "");
     const rowIndex = Math.max(1, Math.round(params.csvContent?.rowIndex ?? 1)) - 1;
-    const headerIndex = ensureCsvColumn(table, getOverlayFieldContentKey(field));
+    const matchedHeaderIndex = findCsvHeaderIndex(table.headers, field);
+    const headerIndex = matchedHeaderIndex !== -1
+      ? matchedHeaderIndex
+      : ensureCsvColumn(table, getOverlayFieldContentKey(field));
     const row = ensureCsvRow(table, rowIndex);
     row[headerIndex] = value;
 

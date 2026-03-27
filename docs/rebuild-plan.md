@@ -180,9 +180,9 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	Current repo hard-codes a single 1280×720 frame. The sample-document.ts intentionally uses landscape defaults for comparison, but the profile switching infrastructure is absent.
 	Reference files: `config-schema.js` (`OUTPUT_PROFILES`, `get_output_profile_metrics`), `default-config-source.js` (per-profile full configs), `index.js` (profile architecture init, profile tab UI).
 
-2. **Content format system (MISSING).**
+2. **Content format system (PARTIAL).**
 	Reference has 2 overlay content formats: `generic_social` (3 fields: body_intro, detail_primary, detail_secondary) and `speaker_highlight` (3 fields: session_title, speaker_name, speaker_role). Each field has id, label, style, legacy_slot, and aliases for CSV column matching. Per-format field layout overrides (keyline_index, column_span, y_row_index, y_offset_baselines) are stored in format buckets per profile. Format switching syncs runtime fields to/from the active format bucket.
-	Current repo: 4 hardcoded text fields in `sample-document.ts` with no format abstraction, no aliases, no bucket storage.
+	Current repo now has format specs, per-format buckets, and operator-side CSV alias matching, but still lacks reference-grade source-default bucket writeback and per-format pending CSV edit staging.
 	Reference files: `config-schema.js` (format specs, alias matching, format bucket sync), `default-config-source.js` (per-profile overlay_content_formats).
 
 3. **Text style parity (DONE).**
