@@ -2233,6 +2233,12 @@ function buildGridSection(): HTMLElement {
     })
   )));
 
+  fields.append(wrapCol(1, createFormGroup("Col Gutter",
+    createNumberInput(grid.columnGutterBaselines, { min: 0, max: 24, step: 1 }, v => {
+      state.params = { ...state.params, grid: { ...state.params.grid, columnGutterBaselines: v } }; void renderStage();
+    })
+  )));
+
   body.append(fields);
 
   const margins = document.createElement("div");
@@ -2266,9 +2272,43 @@ function buildGridSection(): HTMLElement {
 
   body.append(createFormGroup("Fit Within Safe Area",
     createCheckboxInput(grid.fitWithinSafeArea ?? true, v => {
-      state.params = { ...state.params, grid: { ...state.params.grid, fitWithinSafeArea: v } }; void renderStage();
+      state.params = { ...state.params, grid: { ...state.params.grid, fitWithinSafeArea: v } };
+      buildConfigEditor();
+      void renderStage();
     })
   ));
+
+  if (grid.fitWithinSafeArea !== false) {
+    const safeArea = state.params.safeArea;
+    const safeFields = document.createElement("div");
+    safeFields.className = "overlay-control-grid grid-row";
+
+    safeFields.append(wrapCol(1, createFormGroup("Safe Top",
+      createNumberInput(safeArea.top, { min: 0, step: 1 }, v => {
+        state.params = { ...state.params, safeArea: { ...safeArea, top: v } }; void renderStage();
+      })
+    )));
+
+    safeFields.append(wrapCol(1, createFormGroup("Safe Right",
+      createNumberInput(safeArea.right, { min: 0, step: 1 }, v => {
+        state.params = { ...state.params, safeArea: { ...safeArea, right: v } }; void renderStage();
+      })
+    )));
+
+    safeFields.append(wrapCol(1, createFormGroup("Safe Bottom",
+      createNumberInput(safeArea.bottom, { min: 0, step: 1 }, v => {
+        state.params = { ...state.params, safeArea: { ...safeArea, bottom: v } }; void renderStage();
+      })
+    )));
+
+    safeFields.append(wrapCol(1, createFormGroup("Safe Left",
+      createNumberInput(safeArea.left, { min: 0, step: 1 }, v => {
+        state.params = { ...state.params, safeArea: { ...safeArea, left: v } }; void renderStage();
+      })
+    )));
+
+    body.append(safeFields);
+  }
 
   body.append(createFormGroup("Guides",
     createSelectInput(state.guideMode,
