@@ -2093,9 +2093,57 @@ function buildOverlaySection(): HTMLElement {
   if (state.selected.kind === "text") {
     const field = getSelectedTextField();
     if (!field) return root;
+    const selectedStyle = state.params.textStyles.find((style) => style.key === field.styleKey);
 
     body.append(createFormGroup("Label", createReadonlySpan(getOverlayFieldDisplayLabel(field.id))));
     body.append(createFormGroup("ID", createReadonlySpan(field.id)));
+
+    body.append(createFormGroup("Style",
+      createSelectInput(
+        field.styleKey,
+        state.params.textStyles.map((style) => ({
+          label: getOverlayStyleDisplayLabel(style.key),
+          value: style.key
+        })),
+        (value) => {
+          applySelectedTextStyle(value);
+        }
+      )
+    ));
+
+    if (selectedStyle) {
+      const styleGrid = document.createElement("div");
+      styleGrid.className = "overlay-control-grid grid-row";
+
+      styleGrid.append(wrapCol(1, createFormGroup("Font Size",
+        createNumberInput(selectedStyle.fontSizePx, { min: 1, max: 512, step: 1 }, (value) => {
+          updateTextStyle(selectedStyle.key, (style) => ({ ...style, fontSizePx: value }));
+          if (selectedStyle.key === "title" && state.params.logo) {
+            syncLogoToTitleFontSize(value);
+          }
+          buildConfigEditor();
+          void renderStage();
+        })
+      )));
+
+      styleGrid.append(wrapCol(1, createFormGroup("Line Height",
+        createNumberInput(selectedStyle.lineHeightPx, { min: 1, max: 512, step: 1 }, (value) => {
+          updateTextStyle(selectedStyle.key, (style) => ({ ...style, lineHeightPx: value }));
+          buildConfigEditor();
+          void renderStage();
+        })
+      )));
+
+      styleGrid.append(wrapCol(1, createFormGroup("Weight",
+        createNumberInput(selectedStyle.fontWeight ?? 400, { min: 100, max: 900, step: 100 }, (value) => {
+          updateTextStyle(selectedStyle.key, (style) => ({ ...style, fontWeight: value }));
+          buildConfigEditor();
+          void renderStage();
+        })
+      )));
+
+      body.append(styleGrid);
+    }
 
     if (getContentSource() === "inline") {
       const textarea = document.createElement("textarea");

@@ -203,7 +203,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	`getOverlayFieldDisplayLabel` produces "A Head", "B Head 1", "P 2" etc. with ordinal counting when multiple fields share a style. Logo is "Selected Logo". Uses `TEXT_STYLE_DISPLAY_LABELS` map from `sample-document.ts`.
 
 7. **Selected-element authoring surface (PARTIAL).**
-	Missing: add text blocks, change style assignment (b_head ↔ paragraph), per-style property tabs (font size, line height, weight), richer selected-item controls panel. The current repo has selection + drag + resize + inline editing, but no style controls.
+	Missing: richer selected-item controls panel and full reference-grade per-style tab structure. The current repo now has selection + drag + resize + inline editing, direct style assignment, add/delete text blocks, and selected-text controls for font size, line height, and weight, but it still does not match the full editor-panel breadth of the reference app.
 	Reference files: `editor-constants.js` (`OVERLAY_TEXT_STYLE_TAB_SPECS`, `OVERLAY_LOGO_CONTROL_ROWS`, `OVERLAY_GRID_CONTROL_ROWS`), `index.js` (editor panel architecture).
 
 8. **Preset workflow (PARTIAL).**
