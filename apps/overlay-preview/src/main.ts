@@ -2493,6 +2493,66 @@ function buildHaloConfigSection(): HTMLElement {
 
   body.append(spokeDetails);
 
+  /* echo shape details row */
+  const echoDetails = document.createElement("div");
+  echoDetails.className = "overlay-control-grid grid-row";
+
+  echoDetails.append(wrapCol(1, createFormGroup("Phase End Width",
+    createSliderInput(hc.spoke_lines.phase_end_width_px, { min: 0, max: 32, step: 1 }, v => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, phase_end_width_px: v } }; void renderStage();
+    })
+  )));
+
+  echoDetails.append(wrapCol(1, createFormGroup("Echo Stroke",
+    createSliderInput(hc.spoke_lines.echo_marker_stroke_px, { min: 0, max: 12, step: 0.5 }, v => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_marker_stroke_px: v } }; void renderStage();
+    })
+  )));
+
+  echoDetails.append(wrapCol(1, createFormGroup("Echo Scale",
+    createSliderInput(hc.spoke_lines.echo_marker_scale_mult, { min: 0.1, max: 6, step: 0.1 }, v => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_marker_scale_mult: v } }; void renderStage();
+    })
+  )));
+
+  echoDetails.append(wrapCol(1, createFormGroup("Sparse Boost",
+    createSliderInput(hc.spoke_lines.echo_sparse_scale_boost, { min: 0, max: 6, step: 0.1 }, v => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_sparse_scale_boost: v } }; void renderStage();
+    })
+  )));
+
+  body.append(echoDetails);
+
+  /* echo pattern details row */
+  const echoPatternDetails = document.createElement("div");
+  echoPatternDetails.className = "overlay-control-grid grid-row";
+
+  echoPatternDetails.append(wrapCol(1, createFormGroup("Shape Seed",
+    createNumberInput(hc.spoke_lines.echo_shape_seed, { min: 0, max: 9999, step: 1 }, v => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_shape_seed: Math.round(v) } }; void renderStage();
+    })
+  )));
+
+  echoPatternDetails.append(wrapCol(1, createFormGroup("Mix Shape %",
+    createSliderInput(hc.spoke_lines.echo_mix_shape_pct, { min: 0, max: 1, step: 0.01 }, v => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_mix_shape_pct: v } }; void renderStage();
+    })
+  )));
+
+  echoPatternDetails.append(wrapCol(1, createFormGroup("Ripple Count",
+    createSliderInput(hc.spoke_lines.echo_wave_count, { min: 0, max: 12, step: 1 }, v => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_wave_count: Math.round(v) } }; void renderStage();
+    })
+  )));
+
+  echoPatternDetails.append(wrapCol(1, createFormGroup("Echo Fade",
+    createSliderInput(hc.spoke_lines.echo_opacity_mult, { min: 0, max: 1, step: 0.01 }, v => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_opacity_mult: v } }; void renderStage();
+    })
+  )));
+
+  body.append(echoPatternDetails);
+
   const screensaverDetails = document.createElement("div");
   screensaverDetails.className = "overlay-control-grid grid-row";
 
@@ -2521,6 +2581,58 @@ function buildHaloConfigSection(): HTMLElement {
   )));
 
   body.append(screensaverDetails);
+
+  /* pulse checkboxes */
+  body.append(createFormGroup("Pulse Orbits",
+    createCheckboxInput(hc.screensaver?.pulse_orbits ?? false, v => {
+      state.haloConfig = { ...hc, screensaver: { ...hc.screensaver!, pulse_orbits: v } }; void renderStage();
+    })
+  ));
+
+  body.append(createFormGroup("Pulse Spokes",
+    createCheckboxInput(hc.screensaver?.pulse_spokes ?? false, v => {
+      state.haloConfig = { ...hc, screensaver: { ...hc.screensaver!, pulse_spokes: v } }; void renderStage();
+    })
+  ));
+
+  /* release labels (spoke_text) */
+  body.append(createFormGroup("Show Release Labels",
+    createCheckboxInput(hc.spoke_text?.enabled ?? false, v => {
+      state.haloConfig = { ...hc, spoke_text: { ...hc.spoke_text!, enabled: v } }; void renderStage();
+    })
+  ));
+
+  if (hc.spoke_text?.enabled) {
+    const labelFields = document.createElement("div");
+    labelFields.className = "overlay-control-grid grid-row";
+
+    labelFields.append(wrapCol(1, createFormGroup("Label Size",
+      createSliderInput(hc.spoke_text.font_size_px, { min: 3, max: 24, step: 0.5 }, v => {
+        state.haloConfig = { ...hc, spoke_text: { ...hc.spoke_text!, font_size_px: v } }; void renderStage();
+      })
+    )));
+
+    labelFields.append(wrapCol(1, createFormGroup("Label Position",
+      createSliderInput(hc.spoke_text.radial_u, { min: 0, max: 1, step: 0.01 }, v => {
+        state.haloConfig = { ...hc, spoke_text: { ...hc.spoke_text!, radial_u: v } }; void renderStage();
+      })
+    )));
+
+    body.append(labelFields);
+  }
+
+  /* debug overlays */
+  body.append(createFormGroup("Show Reference Halo",
+    createCheckboxInput(hc.spoke_lines.show_reference_halo, v => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, show_reference_halo: v } }; void renderStage();
+    })
+  ));
+
+  body.append(createFormGroup("Show Debug Masks",
+    createCheckboxInput(hc.spoke_lines.show_debug_masks, v => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, show_debug_masks: v } }; void renderStage();
+    })
+  ));
 
   return root;
 }
