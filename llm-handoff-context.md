@@ -58,8 +58,8 @@ All scoped under `@brand-layout-ops/`.
 
 ### B. UI organization
 
-- [ ] **Accordion UI** for top sections (Document Setup, Export, Presets)
-- [ ] **UI audit report** — reference vs current, checkboxes
+- [x] **Accordion UI** for top sections (Playback & Export, Output Format, Presets)
+- [x] **UI audit report** — `docs/ui-audit.md` (136 controls catalogued, 37% implemented, 57% missing)
 
 ### C. Remaining parity (see `docs/rebuild-plan.md` gap audit)
 
