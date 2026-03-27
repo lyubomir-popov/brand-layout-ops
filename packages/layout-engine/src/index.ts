@@ -27,6 +27,7 @@ function resolveLogoPlacement(frame: FrameSize, safeArea: SafeAreaInsets, fitWit
     yPx: logo.yPx,
     widthPx: logo.widthPx,
     heightPx: logo.heightPx,
+    ...(logo.assetPath ? { assetPath: logo.assetPath } : {}),
     bounds: {
       left,
       top,

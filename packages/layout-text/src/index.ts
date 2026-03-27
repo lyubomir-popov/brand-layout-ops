@@ -125,6 +125,21 @@ export function measureTextBlock(lines: string[], style: TextStyleSpec, measurer
   return { widthPx, ascentPx, descentPx };
 }
 
+export function getMinimumFirstBaselineInsetPx(style: TextStyleSpec, measurer: TextMeasurer): number {
+  const measured = measurer.measureLine("H", style);
+  return Math.max(0, measured.ascentPx || style.fontSizePx * 0.8);
+}
+
+export function getMinimumFirstBaselineInsetBaselines(
+  baselineStepPx: number,
+  style: TextStyleSpec,
+  measurer: TextMeasurer
+): number {
+  const safeBaselineStepPx = Math.max(1, baselineStepPx);
+  const minimumInsetPx = getMinimumFirstBaselineInsetPx(style, measurer);
+  return Math.max(0, Math.ceil(minimumInsetPx / safeBaselineStepPx));
+}
+
 export function resolveTextPlacement(metrics: LayoutGridMetrics, field: TextFieldPlacementSpec, style: TextStyleSpec, measurer: TextMeasurer): ResolvedTextPlacement | null {
   const safeText = String(field.text || "").trim();
   if (!safeText) {
@@ -145,7 +160,12 @@ export function resolveTextPlacement(metrics: LayoutGridMetrics, field: TextFiel
   const measured = measureTextBlock(wrappedLines, style, measurer);
   const rowTopPx = metrics.contentTopPx + (safeRowIndex - 1) * (metrics.rowHeightPx + metrics.rowGutterPx);
   const anchorXPx = getKeylineXPx(metrics, safeKeylineIndex);
-  const anchorBaselineYPx = rowTopPx + safeOffsetBaselines * metrics.baselineStepPx;
+  const minimumOffsetBaselines = Math.max(
+    getMinimumFirstBaselineInsetBaselines(metrics.baselineStepPx, style, measurer),
+    Math.ceil(measured.ascentPx / Math.max(1, metrics.baselineStepPx))
+  );
+  const appliedOffsetBaselines = Math.max(safeOffsetBaselines, minimumOffsetBaselines);
+  const anchorBaselineYPx = rowTopPx + appliedOffsetBaselines * metrics.baselineStepPx;
   const textHeightPx = measured.ascentPx + measured.descentPx + Math.max(0, wrappedLines.length - 1) * style.lineHeightPx;
   const bounds: LayoutBounds = {
     left: anchorXPx,
@@ -164,7 +184,7 @@ export function resolveTextPlacement(metrics: LayoutGridMetrics, field: TextFiel
     lineHeightPx: style.lineHeightPx,
     keylineIndex: safeKeylineIndex,
     rowIndex: safeRowIndex,
-    offsetBaselines: safeOffsetBaselines,
+    offsetBaselines: appliedOffsetBaselines,
     columnSpan: safeColumnSpan,
     anchorXPx,
     anchorBaselineYPx,
