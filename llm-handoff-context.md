@@ -71,7 +71,9 @@ If a WSL clone under `/mnt/h/...` suddenly shows many modified text files after 
 - richer CSV staging diagnostics in the preview shell: row navigation, header mapping status, unmatched-quote warning, and seed-row-plus-headers normalization
 - bottom-margin remainder behavior fixed and verified against the old row-height formula, including overconstrained safe-area cases
 - motion preview layer improved with orbit trails, spoke segments, and echo rings, but still not signed off as full visual parity
+- motion preview further refined with denser spoke and orbit fields plus a simple phase-lobed halo treatment; still open for parity signoff by eye
 - export-relevant geometry verified with a deterministic parity script covering text anchors, text bounds, grid edges, and explicit resolved logo rectangles
+- mascot-specific face and head motion should stay adapter-side for now; the old app keeps those controls and passes scene-specific rather than exposing them as coarse reusable operators
 
 ## Immediate goal
 

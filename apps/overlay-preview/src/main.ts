@@ -604,13 +604,14 @@ function createMotionPointMarkup(pointField: PointField, fallbackColor: ColorRgb
   return pointField.points.map((point) => {
     const pointColor = isColorRgba(point.attributes.color) ? point.attributes.color : fallbackColor;
     const pscaleValue = Number(point.attributes.pscale ?? 1);
+    const phaseOpacityMultiplier = getPointPhaseOpacityMultiplier(point);
     const radius = clamp(1.6 + pscaleValue * 3.6, 1.4, 9.2);
     const glowRadius = radius * 1.9;
 
     return `
       <g class="${className}">
-        <circle cx="${point.position.x}" cy="${point.position.y}" r="${glowRadius}" fill="${formatRgbaColor(pointColor, state.motion.opacity * 0.08)}" />
-        <circle cx="${point.position.x}" cy="${point.position.y}" r="${radius}" fill="${formatRgbaColor(pointColor, state.motion.opacity)}" />
+        <circle cx="${point.position.x}" cy="${point.position.y}" r="${glowRadius}" fill="${formatRgbaColor(pointColor, state.motion.opacity * 0.08 * phaseOpacityMultiplier)}" />
+        <circle cx="${point.position.x}" cy="${point.position.y}" r="${radius}" fill="${formatRgbaColor(pointColor, state.motion.opacity * phaseOpacityMultiplier)}" />
       </g>
     `;
   }).join("");
@@ -619,6 +620,34 @@ function createMotionPointMarkup(pointField: PointField, fallbackColor: ColorRgb
 function getNumericPointAttribute(point: PointField["points"][number], key: string): number | null {
   const value = Number(point.attributes[key]);
   return Number.isFinite(value) ? value : null;
+}
+
+function getPhaseFillFromAngleDegrees(angleDeg: number): number {
+  const normalized = ((angleDeg % 360) + 360) % 360;
+  const displayU = normalized / 360;
+  if (displayU > 0 && displayU <= 0.5) {
+    return displayU / 0.5;
+  }
+
+  if (displayU > 0.5) {
+    return (displayU - 0.5) / 0.5;
+  }
+
+  return 1;
+}
+
+function getPointPhaseOpacityMultiplier(point: PointField["points"][number]): number {
+  const spokeAngleDeg = getNumericPointAttribute(point, "spoke_angle_deg");
+  if (spokeAngleDeg !== null) {
+    return 0.24 + getPhaseFillFromAngleDegrees(spokeAngleDeg) * 0.9;
+  }
+
+  const orbitAngleDeg = getNumericPointAttribute(point, "orbit_angle_deg");
+  if (orbitAngleDeg !== null) {
+    return 0.55 + getPhaseFillFromAngleDegrees(orbitAngleDeg) * 0.3;
+  }
+
+  return 1;
 }
 
 function createOrbitTrailMarkup(pointField: PointField, center: { x: number; y: number }, fallbackColor: ColorRgba): string {
@@ -685,12 +714,25 @@ function createSpokeTrailMarkup(pointField: PointField, center: { x: number; y: 
       const previousPoint = index === 0 ? null : sortedPoints[index - 1];
       const startX = previousPoint?.position.x ?? center.x;
       const startY = previousPoint?.position.y ?? center.y;
-      const alphaScale = previousPoint ? 0.16 + index * 0.035 : 0.1;
+      const phaseOpacityMultiplier = getPointPhaseOpacityMultiplier(point);
+      const alphaScale = (previousPoint ? 0.16 + index * 0.035 : 0.1) * phaseOpacityMultiplier;
       const widthPx = previousPoint ? 1.4 : 1.1;
 
       return `<line x1="${startX}" y1="${startY}" x2="${point.position.x}" y2="${point.position.y}" stroke="${formatRgbaColor(spokeColor, state.motion.opacity * alphaScale)}" stroke-width="${widthPx}" stroke-linecap="round" />`;
     }).join("");
   }).join("");
+}
+
+function createMotionPhaseLobeMarkup(center: { x: number; y: number }, backdropRadiusPx: number): string {
+  const lobeOffsetPx = backdropRadiusPx * 0.18;
+  const lobeRadiusPx = backdropRadiusPx * 0.54;
+
+  return `
+    <g data-motion-phase-lobes>
+      <circle cx="${center.x - lobeOffsetPx}" cy="${center.y}" r="${lobeRadiusPx}" fill="rgba(255, 245, 228, 0.1)" />
+      <circle cx="${center.x + lobeOffsetPx}" cy="${center.y}" r="${lobeRadiusPx}" fill="rgba(232, 244, 255, 0.08)" />
+    </g>
+  `;
 }
 
 function createMotionEchoMarkup(center: { x: number; y: number }, backdropRadiusPx: number): string {
@@ -758,6 +800,7 @@ function createMotionMarkup(): string {
         </radialGradient>
       </defs>
       <circle cx="${center.x}" cy="${center.y}" r="${backdropRadiusPx}" fill="url(#motion-aura-gradient)" opacity="${clamp(state.motion.opacity, 0, 1)}" />
+      ${createMotionPhaseLobeMarkup(center, backdropRadiusPx)}
       ${createMotionEchoMarkup(center, backdropRadiusPx)}
       ${motionLayers.join("")}
     </g>

@@ -91,11 +91,15 @@ Use larger passes, not tiny ones.
 - [x] `operator-spokes`.
 - [x] Integrate coarse motion preview into the preview shell.
 - [ ] Match the current animation background look closely enough for parity signoff.
-- [ ] Decide whether mascot-specific motion stays in an adapter or becomes a coarse scene-family operator.
+- [x] Decide whether mascot-specific motion stays in an adapter or becomes a coarse scene-family operator.
 
 The mascot head shake is probably too specific to deserve its own operator.
 
 If it remains unique to one scene family, keep it as part of a mascot animation operator or preview adapter.
+
+Decision so far:
+
+- keep mascot-specific face or head motion in an adapter or scene-family layer until reuse becomes concrete
 
 ### Phase 6. Verify parity here
 

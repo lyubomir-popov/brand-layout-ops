@@ -48,26 +48,26 @@ export function buildPreviewOrbitParams(frame: FrameSize, timeSeconds: number): 
     defaultPscale: 1,
     rings: [
       {
-        pointCount: 10,
+        pointCount: 18,
         radiusPx: unit * 0.11,
         angularVelocityDegPerSecond: 22,
-        pscale: 0.52,
+        pscale: 0.42,
         color: createColor(1, 0.83, 0.56, 0.85)
       },
       {
-        pointCount: 16,
+        pointCount: 28,
         radiusPx: unit * 0.19,
         angularVelocityDegPerSecond: -12,
         angleOffsetDeg: 10,
-        pscale: 0.74,
+        pscale: 0.62,
         color: createColor(0.84, 0.92, 1, 0.8)
       },
       {
-        pointCount: 24,
+        pointCount: 40,
         radiusPx: unit * 0.28,
         angularVelocityDegPerSecond: 7,
         angleOffsetDeg: -14,
-        pscale: 0.96,
+        pscale: 0.78,
         color: createColor(1, 0.97, 0.92, 0.72)
       }
     ]
@@ -84,25 +84,36 @@ export function buildPreviewSpokesParams(frame: FrameSize, timeSeconds: number):
     defaultPscale: 0.8,
     bands: [
       {
-        spokeCount: 12,
-        pointsPerSpoke: 5,
+        spokeCount: 28,
+        pointsPerSpoke: 6,
         innerRadiusPx: unit * 0.04,
         outerRadiusPx: unit * 0.21,
         angularVelocityDegPerSecond: 8,
-        pscaleStart: 0.34,
-        pscaleEnd: 0.76,
-        color: createColor(1, 0.86, 0.66, 0.52)
+        pscaleStart: 0.22,
+        pscaleEnd: 0.58,
+        color: createColor(1, 0.86, 0.66, 0.42)
       },
       {
-        spokeCount: 22,
-        pointsPerSpoke: 4,
+        spokeCount: 46,
+        pointsPerSpoke: 5,
         innerRadiusPx: unit * 0.13,
-        outerRadiusPx: unit * 0.34,
+        outerRadiusPx: unit * 0.35,
         angleOffsetDeg: 8,
         angularVelocityDegPerSecond: -4,
-        pscaleStart: 0.44,
-        pscaleEnd: 0.92,
-        color: createColor(0.79, 0.91, 1, 0.44)
+        pscaleStart: 0.24,
+        pscaleEnd: 0.72,
+        color: createColor(0.79, 0.91, 1, 0.34)
+      },
+      {
+        spokeCount: 18,
+        pointsPerSpoke: 4,
+        innerRadiusPx: unit * 0.2,
+        outerRadiusPx: unit * 0.39,
+        angleOffsetDeg: -12,
+        angularVelocityDegPerSecond: 3,
+        pscaleStart: 0.3,
+        pscaleEnd: 0.9,
+        color: createColor(1, 0.95, 0.87, 0.22)
       }
     ]
   };
