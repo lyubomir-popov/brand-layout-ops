@@ -1480,6 +1480,201 @@ function updatePresetToolbarState() {
 
 // ─── Aside panel: config editor ───────────────────────────────────────
 
+function buildPlaybackExportSection(): HTMLElement {
+  const { root, body } = buildSectionEl("Playback & Export");
+
+  const row = document.createElement("div");
+  row.className = "row";
+
+  const playBtn = document.createElement("button");
+  playBtn.className = "p-button is-dense";
+  playBtn.type = "button";
+  playBtn.setAttribute("data-playback-toggle", "");
+  playBtn.textContent = state.isPlaying ? "Pause Motion" : "Play Motion";
+  playBtn.addEventListener("click", () => { togglePlayback(); });
+  row.append(wrapCol(2, playBtn));
+
+  const exportBtn = document.createElement("button");
+  exportBtn.className = "p-button--base is-dense";
+  exportBtn.type = "button";
+  exportBtn.textContent = "Export Frame";
+  exportBtn.addEventListener("click", () => { void exportComposedFramePng(); });
+  row.append(wrapCol(2, exportBtn));
+
+  const resetBtn = document.createElement("button");
+  resetBtn.className = "p-button--base is-dense";
+  resetBtn.type = "button";
+  resetBtn.textContent = "Reset Defaults";
+  resetBtn.addEventListener("click", () => {
+    applySourceDefaultSnapshot(state.sourceDefaults);
+    state.playbackTimeSec = 0;
+    resizeRenderer();
+    buildOutputProfileOptions();
+    buildPresetTabs();
+    buildConfigEditor();
+    setSourceDefaultStatus("Reset to source default.");
+    void renderStage();
+  });
+  row.append(wrapCol(2, resetBtn));
+
+  const writeBtn = document.createElement("button");
+  writeBtn.className = "p-button--base is-dense";
+  writeBtn.type = "button";
+  writeBtn.setAttribute("data-write-source-default", "");
+  writeBtn.textContent = "Write Source Default";
+  writeBtn.addEventListener("click", () => {
+    void (async () => {
+      writeBtn.disabled = true;
+      setSourceDefaultStatus("Saving source default...");
+      try {
+        await writeCurrentAsSourceDefault();
+        setSourceDefaultStatus("Source default saved.", "success");
+      } catch {
+        setSourceDefaultStatus("Source default save failed.", "error");
+      } finally {
+        writeBtn.disabled = false;
+      }
+    })();
+  });
+  row.append(wrapCol(2, writeBtn));
+
+  body.append(row);
+
+  const status = document.createElement("p");
+  status.className = "p-form-help-text u-no-margin--bottom";
+  status.setAttribute("data-source-default-status", "");
+  status.textContent = "Source defaults are using the built-in preview snapshot.";
+  body.append(status);
+
+  const transparentGroup = document.createElement("div");
+  transparentGroup.className = "p-form__group";
+  const transparentLabel = document.createElement("label");
+  transparentLabel.className = "p-form__label u-no-margin--bottom";
+  transparentLabel.textContent = "Transparent PNG background";
+  const transparentCtrl = document.createElement("div");
+  transparentCtrl.className = "p-form__control";
+  const transparentInput = document.createElement("input");
+  transparentInput.type = "checkbox";
+  transparentInput.setAttribute("data-export-transparent-background", "");
+  transparentInput.checked = state.exportSettings.transparentBackground;
+  transparentInput.addEventListener("change", () => {
+    state.exportSettings = { ...state.exportSettings, transparentBackground: transparentInput.checked };
+  });
+  transparentCtrl.append(transparentInput);
+  transparentGroup.append(transparentLabel, transparentCtrl);
+  body.append(transparentGroup);
+
+  const overlayGroup = document.createElement("div");
+  overlayGroup.className = "p-form__group";
+  const overlayLabel = document.createElement("label");
+  overlayLabel.className = "p-form__label u-no-margin--bottom";
+  overlayLabel.textContent = "Show overlay";
+  const overlayCtrl = document.createElement("div");
+  overlayCtrl.className = "p-form__control";
+  const overlayInput = document.createElement("input");
+  overlayInput.type = "checkbox";
+  overlayInput.setAttribute("data-overlay-visibility", "");
+  overlayInput.checked = state.overlayVisible;
+  overlayInput.addEventListener("change", () => {
+    setOverlayVisible(overlayInput.checked);
+    void renderStage();
+  });
+  overlayCtrl.append(overlayInput);
+  overlayGroup.append(overlayLabel, overlayCtrl);
+  body.append(overlayGroup);
+
+  return root;
+}
+
+function buildOutputFormatSection(): HTMLElement {
+  const { root, body } = buildSectionEl("Output Format");
+
+  const helpText = document.createElement("p");
+  helpText.className = "p-form-help-text u-no-margin--bottom";
+  helpText.textContent = "Switching format rebuilds the stage at that size and swaps in the layout settings stored for that screen size.";
+  body.append(helpText);
+
+  const optionsContainer = document.createElement("div");
+  optionsContainer.setAttribute("data-output-profile-options", "");
+  body.append(optionsContainer);
+
+  return root;
+}
+
+function buildPresetsSection(): HTMLElement {
+  const { root, body } = buildSectionEl("Presets");
+
+  const helpText = document.createElement("p");
+  helpText.className = "p-form-help-text u-no-margin--bottom";
+  helpText.textContent = "Presets are stored in this browser.";
+  body.append(helpText);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "preset-toolbar";
+
+  const btnSpec: Array<{ label: string; attr: string; className: string }> = [
+    { label: "Save", attr: "data-preset-save", className: "p-button is-dense" },
+    { label: "Update", attr: "data-preset-update", className: "p-button--base is-dense" },
+    { label: "Import", attr: "data-preset-import", className: "p-button--base is-dense" },
+    { label: "Export", attr: "data-preset-export", className: "p-button--base is-dense" },
+    { label: "Delete", attr: "data-preset-delete", className: "p-button--base is-dense" }
+  ];
+  for (const spec of btnSpec) {
+    const btn = document.createElement("button");
+    btn.className = spec.className;
+    btn.type = "button";
+    btn.setAttribute(spec.attr, "");
+    btn.textContent = spec.label;
+    toolbar.append(btn);
+  }
+  body.append(toolbar);
+
+  const importInput = document.createElement("input");
+  importInput.type = "file";
+  importInput.setAttribute("data-preset-import-input", "");
+  importInput.accept = "application/json,.json";
+  importInput.hidden = true;
+  body.append(importInput);
+
+  const tabsContainer = document.createElement("div");
+  tabsContainer.setAttribute("data-preset-tabs", "");
+  body.append(tabsContainer);
+
+  // Inline event listeners for preset buttons
+  toolbar.querySelector("[data-preset-save]")?.addEventListener("click", () => {
+    saveCurrentAsPreset();
+    buildPresetTabs();
+  });
+  toolbar.querySelector("[data-preset-update]")?.addEventListener("click", () => {
+    updateActivePreset();
+    buildPresetTabs();
+  });
+  toolbar.querySelector("[data-preset-export]")?.addEventListener("click", () => {
+    const activePreset = getActivePreset();
+    if (activePreset) exportPreset(activePreset);
+  });
+  toolbar.querySelector("[data-preset-import]")?.addEventListener("click", () => {
+    importInput.click();
+  });
+  importInput.addEventListener("change", async () => {
+    await importPresetsFromFiles(importInput.files);
+    importInput.value = "";
+    buildOutputProfileOptions();
+    buildPresetTabs();
+    buildConfigEditor();
+    resizeRenderer();
+    void renderStage();
+  });
+  toolbar.querySelector("[data-preset-delete]")?.addEventListener("click", () => {
+    if (state.activePresetId) {
+      deletePreset(state.activePresetId);
+      buildPresetTabs();
+    }
+  });
+
+  return root;
+}
+
 function buildConfigEditor() {
   const container = getConfigEditor();
   if (!container) return;
@@ -1491,6 +1686,9 @@ function buildConfigEditor() {
   const list = document.createElement("ul");
   list.className = "p-accordion__list";
 
+  list.append(buildPlaybackExportSection());
+  list.append(buildOutputFormatSection());
+  list.append(buildPresetsSection());
   list.append(buildContentFormatSection());
   list.append(buildOverlaySection());
   list.append(buildParagraphStylesSection());
@@ -1500,6 +1698,12 @@ function buildConfigEditor() {
   accordion.append(list);
   container.append(accordion);
   setupAccordion(accordion);
+
+  // Populate dynamic content inside the new accordion sections
+  buildOutputProfileOptions();
+  buildPresetTabs();
+  updatePlaybackToggleUi();
+  syncOverlayVisibilityUi();
 }
 
 /* shared form helpers */
@@ -2986,111 +3190,10 @@ async function exportComposedFramePng() {
 }
 
 function setupButtons() {
-  const presetImportInput = $<HTMLInputElement>("[data-preset-import-input]");
-  const transparentBackgroundInput = $<HTMLInputElement>("[data-export-transparent-background]");
-  const overlayVisibilityInput = getOverlayVisibilityInput();
-  const writeSourceDefaultButton = $<HTMLButtonElement>("[data-write-source-default]");
-  const playbackToggleButton = getPlaybackToggleButton();
-
-  updatePlaybackToggleUi();
-  syncOverlayVisibilityUi();
-
-  playbackToggleButton?.addEventListener("click", () => {
-    togglePlayback();
-  });
-
-  if (transparentBackgroundInput) {
-    transparentBackgroundInput.checked = state.exportSettings.transparentBackground;
-    transparentBackgroundInput.addEventListener("change", () => {
-      state.exportSettings = {
-        ...state.exportSettings,
-        transparentBackground: transparentBackgroundInput.checked
-      };
-    });
-  }
-
-  if (overlayVisibilityInput) {
-    overlayVisibilityInput.checked = state.overlayVisible;
-    overlayVisibilityInput.addEventListener("change", () => {
-      setOverlayVisible(overlayVisibilityInput.checked);
-      void renderStage();
-    });
-  }
-
-  $("[data-export-frame-button]")?.addEventListener("click", () => {
-    void exportComposedFramePng();
-  });
-
-  $("[data-reset-button]")?.addEventListener("click", () => {
-    applySourceDefaultSnapshot(state.sourceDefaults);
-    state.playbackTimeSec = 0;
-    if (transparentBackgroundInput) {
-      transparentBackgroundInput.checked = state.exportSettings.transparentBackground;
-    }
-    if (overlayVisibilityInput) {
-      overlayVisibilityInput.checked = state.overlayVisible;
-    }
-    resizeRenderer();
-    buildOutputProfileOptions();
-    buildPresetTabs();
-    buildConfigEditor();
-    setSourceDefaultStatus("Reset to source default.");
-    void renderStage();
-  });
-
-  writeSourceDefaultButton?.addEventListener("click", () => {
-    void (async () => {
-      writeSourceDefaultButton.disabled = true;
-      setSourceDefaultStatus("Saving source default...");
-
-      try {
-        await writeCurrentAsSourceDefault();
-        setSourceDefaultStatus("Source default saved.", "success");
-      } catch {
-        setSourceDefaultStatus("Source default save failed.", "error");
-      } finally {
-        writeSourceDefaultButton.disabled = false;
-      }
-    })();
-  });
-
-  $("[data-preset-save]")?.addEventListener("click", () => {
-    saveCurrentAsPreset();
-    buildPresetTabs();
-  });
-
-  $("[data-preset-update]")?.addEventListener("click", () => {
-    updateActivePreset();
-    buildPresetTabs();
-  });
-
-  $("[data-preset-export]")?.addEventListener("click", () => {
-    const activePreset = getActivePreset();
-    if (activePreset) {
-      exportPreset(activePreset);
-    }
-  });
-
-  $("[data-preset-import]")?.addEventListener("click", () => {
-    presetImportInput?.click();
-  });
-
-  presetImportInput?.addEventListener("change", async () => {
-    await importPresetsFromFiles(presetImportInput.files);
-    presetImportInput.value = "";
-    buildOutputProfileOptions();
-    buildPresetTabs();
-    buildConfigEditor();
-    resizeRenderer();
-    void renderStage();
-  });
-
-  $("[data-preset-delete]")?.addEventListener("click", () => {
-    if (state.activePresetId) {
-      deletePreset(state.activePresetId);
-      buildPresetTabs();
-    }
-  });
+  // All button event listeners are now created inline by
+  // buildPlaybackExportSection, buildOutputFormatSection,
+  // and buildPresetsSection inside buildConfigEditor().
+  // This stub remains for call-site compatibility.
 }
 
 // ─── Window resize ───────────────────────────────────────────────────
@@ -3116,8 +3219,6 @@ async function init() {
   updateStageAspectRatio();
   initHaloRenderer();
 
-  buildOutputProfileOptions();
-  buildPresetTabs();
   buildConfigEditor();
 
   setupDrawerToggle();
