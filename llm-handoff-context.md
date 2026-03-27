@@ -64,7 +64,7 @@ All scoped under `@brand-layout-ops/`.
 ### C. Remaining parity (see `docs/rebuild-plan.md` gap audit)
 
 - [x] Guide toggle 3-state cycle (already implemented: off → composition → baseline, `W`/`G` keys)
-- [ ] Export pipeline (PNG, sequence, MP4)
+- [x] Export pipeline — single PNG ✅, PNG sequence with modal ✅ (MP4 needs server-side FFmpeg — deferred)
 - [x] Logo intrinsic aspect ratio (loads via `Image`, uses `naturalWidth`/`naturalHeight`)
 - [ ] Full Ubuntu Summit animation as one coarse scene-family operator
 - [ ] Mascot composition (face SVG, halo SVG, blink, head turn)
