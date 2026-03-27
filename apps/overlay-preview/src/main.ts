@@ -250,9 +250,37 @@ let renderToken = 0;
 let haloRendererInstance: HaloRenderer | null = null;
 let playbackFrameHandle: number | null = null;
 let lastPlaybackFrameMs: number | null = null;
+let logoIntrinsicWidth = 0;
+let logoIntrinsicHeight = 0;
 
 // Sync halo config to the initial profile
 syncHaloConfigToProfile(state.outputProfileKey);
+
+// ─── Logo intrinsic dimension loading ─────────────────────────────────
+
+function loadLogoIntrinsicDimensions(assetPath: string): Promise<void> {
+  return new Promise<void>((resolve) => {
+    if (!assetPath) {
+      logoIntrinsicWidth = 0;
+      logoIntrinsicHeight = 0;
+      resolve();
+      return;
+    }
+    const img = new Image();
+    img.decoding = "async";
+    img.addEventListener("load", () => {
+      logoIntrinsicWidth = img.naturalWidth;
+      logoIntrinsicHeight = img.naturalHeight;
+      resolve();
+    });
+    img.addEventListener("error", () => {
+      logoIntrinsicWidth = 0;
+      logoIntrinsicHeight = 0;
+      resolve();
+    });
+    img.src = assetPath;
+  });
+}
 
 // Persistent authoring DOM elements (created once)
 let authoringHoverBox: HTMLElement | null = null;
@@ -647,6 +675,11 @@ function updateLogo(updater: (l: LogoPlacementSpec) => LogoPlacementSpec) {
 }
 
 function getCurrentLogoAspectRatio(): number {
+  // Prefer intrinsic dimensions from the loaded image
+  if (logoIntrinsicWidth > 0 && logoIntrinsicHeight > 0) {
+    return logoIntrinsicWidth / logoIntrinsicHeight;
+  }
+
   const logo = state.params.logo;
   if (!logo || logo.heightPx <= 0 || logo.widthPx <= 0) {
     return 63 / 108;
@@ -3218,6 +3251,12 @@ async function init() {
   state.playbackTimeSec = 0;
   updateStageAspectRatio();
   initHaloRenderer();
+
+  // Load logo intrinsic dimensions for aspect-ratio-preserving scaling
+  const logoPath = state.params.logo?.assetPath;
+  if (logoPath) {
+    await loadLogoIntrinsicDimensions(logoPath);
+  }
 
   buildConfigEditor();
 

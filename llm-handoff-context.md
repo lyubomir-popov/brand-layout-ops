@@ -63,9 +63,9 @@ All scoped under `@brand-layout-ops/`.
 
 ### C. Remaining parity (see `docs/rebuild-plan.md` gap audit)
 
-- [ ] Guide toggle 3-state cycle
+- [x] Guide toggle 3-state cycle (already implemented: off → composition → baseline, `W`/`G` keys)
 - [ ] Export pipeline (PNG, sequence, MP4)
-- [ ] Logo intrinsic aspect ratio
+- [x] Logo intrinsic aspect ratio (loads via `Image`, uses `naturalWidth`/`naturalHeight`)
 - [ ] Full Ubuntu Summit animation as one coarse scene-family operator
 - [ ] Mascot composition (face SVG, halo SVG, blink, head turn)
 
@@ -105,6 +105,7 @@ Continue parity work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\U
 ## Important reference docs in this repo
 
 - `README.md`
+- `vanilla-typescale-audit.md`
 - `docs/architecture.md`
 - `docs/future-backends.md`
 - `docs/rebuild-plan.md`
