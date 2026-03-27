@@ -37,10 +37,14 @@ All scoped under `@brand-layout-ops/`.
 - Working Three.js halo-field renderer with 3-phase animation (dot intro → finale sweep → screensaver loop)
 - Text overlay with baseline grid layout, CSV/inline content, selection, drag, resize
 - Per-profile halo config factory (`createHaloFieldConfigForProfile`) with deep merge
-- Fold-seam spoke fade, echo marker shapes (8 variants), slider UI controls
+- Fold-seam spoke fade, echo marker shapes (8 variants), full echo detail controls
 - Center derived from global `getOutputProfileMetrics`, not hardcoded per profile
-- Preset save/load/delete/import/export via localStorage
+- Preset save/load/delete/import/export via localStorage with editable name field
 - Shortcut parity: `W` guide toggle, `Ctrl+S` writeback, `Space`/`P` playback
+- PNG sequence export with frame-range modal dialog
+- Logo intrinsic aspect ratio loading via `Image.naturalWidth/naturalHeight`
+- Column gutter, safe area override inputs, release label and screensaver pulse controls
+- Per-profile defaults: safe area, grid, font sizes, halo center Y offset
 
 ## Current sprint TODO (do in order)
 
@@ -68,6 +72,17 @@ All scoped under `@brand-layout-ops/`.
 - [x] Logo intrinsic aspect ratio (loads via `Image`, uses `naturalWidth`/`naturalHeight`)
 - [ ] Full Ubuntu Summit animation as one coarse scene-family operator
 - [ ] Mascot composition (face SVG, halo SVG, blink, head turn)
+
+### D. UI parity quick wins (done)
+
+- [x] Column gutter control in grid section
+- [x] Safe area override inputs (conditional on Fit Within Safe Area)
+- [x] Preset name input field
+- [x] Halo echo detail controls (stroke, scale, sparse boost, seed, mix %, ripple, fade)
+- [x] Phase end width control
+- [x] Screensaver pulse orbit/spoke checkboxes
+- [x] Release label controls (enable, font size, radial position)
+- [x] Debug overlay checkboxes (reference halo, debug masks)
 
 ## Key file map
 
