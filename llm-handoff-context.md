@@ -83,7 +83,7 @@ All scoped under `@brand-layout-ops/`.
 - [x] `scripts/export-headless.ts` — Playwright headless PNG sequence export (rewrites old DOM-manipulation approach)
 - [x] `scripts/encode-mp4.ts` — FFmpeg PNG→MP4 encoder (libx264, CRF 10/14, yuv444p/yuv420p, slow preset, -tune animation, bt709)
 - [x] PNG sequence export via File System Access API (`showDirectoryPicker`, fallback to download links)
-- [ ] Verify end-to-end: `npm run export:headless` → `npm run export:encode-mp4` → MP4
+- [x] Verify end-to-end: `npm run export:headless` → `npm run export:encode-mp4` → MP4 (single-frame verified, 218KB PNG at 1080x1350)
 
 ### F. Bug fixes from user notes
 
