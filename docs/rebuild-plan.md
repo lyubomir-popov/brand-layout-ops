@@ -101,11 +101,12 @@ Port the current interaction model into `overlay-interaction` and `parameter-ui`
 - [x] Resize handles for text fields with snapping to grid field widths and baselines.
 - [ ] CSV draft editing and source writeback staging at parity quality.
 - [x] Baseline guide showing at first baseline of text field, to aid alignment across columns.
+- [x] Text-box inset parity: text fields now clamp their first baseline to an ascent-aware minimum offset so the first line stays visibly inside the field bounds while remaining baseline-grid aligned.
 - [ ] Output-profile parity: named screen sizes, seeded safe areas, and reference frame-rate defaults.
 - [ ] Overlay content-format parity: `generic_social` and `speaker_highlight` field buckets with alias-based CSV matching.
 - [ ] Selected-element authoring parity: add text blocks, style assignment, and richer selected-item controls.
-- [ ] Preset workflow parity: save, update, delete, import, and export presets.
-- [ ] Shortcut parity: `W` guide toggle, `Ctrl`/`Cmd+S` source-default writeback, `Space` or `P` playback toggle, and inline-editor commit semantics.
+- [x] Preset workflow parity: save, update, delete, import, and export presets.
+- [x] Shortcut parity: `W` guide toggle, `Ctrl`/`Cmd+S` source-default writeback, `Space` or `P` playback toggle, and inline-editor commit semantics.
 
 ### Phase 5. Port the animation background as coarse operators
 
@@ -207,12 +208,12 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	Missing: add text blocks, change style assignment (b_head ↔ paragraph), per-style property tabs (font size, line height, weight), richer selected-item controls panel. The current repo has selection + drag + resize + inline editing, but no style controls.
 	Reference files: `editor-constants.js` (`OVERLAY_TEXT_STYLE_TAB_SPECS`, `OVERLAY_LOGO_CONTROL_ROWS`, `OVERLAY_GRID_CONTROL_ROWS`), `index.js` (editor panel architecture).
 
-8. **Preset workflow (MISSING).**
-	Save, update, delete presets in localStorage. Import/export as JSON files with auto-versioned naming. Directory Picker API for organized export folders. Active preset tab UI. Presets normalized against `default_config` to exclude unchanged values.
+8. **Preset workflow (PARTIAL).**
+	Save, update, delete presets in localStorage. Import/export as JSON files with auto-versioned naming. Active preset dirty-state now exists and payloads are normalized against generated defaults instead of always writing full snapshots.
 	Reference files: `index.js` (save_preset, delete_active_preset, export_current_preset, import_presets_from_file, apply_preset_by_id).
 
-9. **Source-default writeback (MISSING).**
-	`Ctrl+S` saves current config back to `default-config-source.js` via `/__authoring/source-default-config` POST. Allows persisting tuned configurations as the repo's default state.
+9. **Source-default writeback (PARTIAL).**
+	The preview shell now loads a source-default snapshot on startup, resets back to that authored snapshot, exposes a Write Source Default button, and writes the current snapshot to `/__authoring/source-default-config` via `Ctrl/Cmd+S` or the button.
 	Reference files: `index.js` (write_source_default_snapshot, read_source_default_snapshot).
 
 10. **Export pipeline (MISSING).**
@@ -224,7 +225,8 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	Reference files: `index.js` (keyboard handler, `layout_grid.show_baseline_grid` / `show_composition_grid`).
 
 12. **Keyboard shortcuts (PARTIAL).**
-	Missing: `Ctrl/Cmd+S` (source writeback), `P` as play/pause alias, `Escape` to close inline editor and drawer. Shortcuts should be blocked on input/textarea/select focus and during export modal.
+	`Ctrl/Cmd+S` now writes source defaults, `Escape` closes the inline editor and drawer, and `P` or `Space` now toggles the preview motion loop.
+	Remaining gap: shortcuts should still be blocked during any future export modal.
 	Reference files: `index.js` (keydown handler).
 
 ### Medium — needed for visual fidelity on the animation layer
@@ -261,25 +263,31 @@ It reflects the current repo after the overlay-preview rebuild, reference-doc re
 
 ### What is no longer fully missing
 
-1. **Output profiles are now scaffolded, but not yet authoritative.**
+1. **Output profiles are now scaffolded, and the preview now keeps per-profile overlay buckets.**
 	`core-types` now defines the 5 reference profile keys plus dimensions, safe areas, and default frame rates.
-	Remaining gap: profile switching still does not drive a full per-profile document snapshot the way the reference app does.
+	The preview shell now preserves overlay params per output profile instead of mutating one shared document when the profile changes.
+	Remaining gap: profile ownership still does not extend to source-default persistence, export state, or profile-owned motion and mascot defaults the way the reference app does.
 
-2. **Content-format structure exists, but full reference behavior does not.**
+2. **Content-format structure exists, and the preview now keeps per-format buckets inside each profile.**
 	`core-types` now defines `generic_social` and `speaker_highlight` field specs, aliases, and legacy-slot mapping.
-	Remaining gap: the preview shell still lacks full reference-style bucket sync, source-default persistence, and complete field-layout/state switching per output profile.
+	The preview shell now preserves format-specific field layouts, inline text, and CSV draft state per profile rather than rebuilding formats from scratch on each switch.
+	Remaining gap: source-default persistence, reference-style bucket writeback, and fully canonical renderer/layout ownership are still missing.
 
 3. **Text-style parity is closer than the earlier audit suggested.**
 	The current repo now has `title`, `b_head`, and `paragraph` styles with the expected Ubuntu Sans weight pattern.
-	Remaining gap: the richer selected-item editor and style-aware authoring panel from the reference app are still not ported.
+	The preview shell now also uses style-aware labels for selected items and authoring boxes, including ordinal labels for repeated paragraph-style fields, and the selected-item panel can add or delete text blocks within the active format bucket.
+	The shared text-layout path now also applies an ascent-aware first-baseline inset so a field aligned to a grid row keeps its first line visibly inside the field bounds instead of letting the ascender protrude above the box.
+	Remaining gap: the richer selected-item editor and per-style authoring controls from the reference app are still not ported.
 
 4. **Linked title sizing exists only as a preview-side helper.**
 	There is now a helper that updates the title font size when logo height is edited in the preview shell.
 	Remaining gap: the reference rule is config-driven and renderer/layout aware, including intrinsic logo aspect ratio handling. The current helper is not yet the canonical kernel rule.
 
 5. **Preset workflow is partially scaffolded.**
-	Local preset save/load helpers exist.
-	Remaining gap: no reference-grade preset tabs, import/export flow, normalization against defaults, or source-default writeback.
+	The preview toolbar now supports browser-local preset save, update, import, and export, these payloads capture the per-profile/per-format overlay bucket state, and saved or exported preset payloads are now normalized against the generated profile or format defaults instead of always writing full snapshots.
+	The active preset row also now reflects dirty state in the preview shell.
+	The preview shell also now supports source-default snapshot loading and writeback through the dev authoring route.
+	Remaining gap: there is still no reference-grade tabbed workflow or directory-picker export path.
 
 ### Highest-priority remaining parity gaps after the late audit
 
@@ -288,21 +296,19 @@ It reflects the current repo after the overlay-preview rebuild, reference-doc re
 	Architectural rule: keep this as one coarse operator boundary for now, with rendering/orientation details still handled in adapters.
 
 1. **Animation timeline state is still fundamentally missing.**
-	The current preview still renders the halo field at static time in the Three adapter.
+	The current preview now has a coarse time-driven post-finale screensaver loop in the Three adapter, but not the full reference sequence.
 	What is missing from the reference behavior:
 	- intro dot/orbit splash timing
 	- finale halo shrink timing
-	- post-finale screensaver breathing or pulse timing
 	- blink/sneeze cadence and head-turn-linked timing state
 
-2. **Ubuntu release labels still render with the wrong orientation.**
-	The current repo contains the release-label data and draws the pills, but keeps them horizontal.
-	The reference renderer rotates each label to the spoke angle, flips alignment when needed, and treats that as 2D adapter work layered over the field state.
+2. **Ubuntu release labels are now rotated in the adapter, but still need reference-grade finesse.**
+	The preview now rotates each label pill to the spoke angle and flips it upright on the far side of the halo.
+	Remaining gap: spacing, exact anchor placement, and any reference-specific collision tuning still need refinement in the adapter.
 
 3. **The halo-field system is still adapter-scaffold parity, not behavioral parity.**
 	The current repo has a strong coarse visual approximation, but not the reference state machine:
 	- no real intro-to-finale-to-screensaver handoff
-	- no dynamic post-finale field rebuild driven by cycle timing
 	- no phase-boundary transition timing for spoke count/width changes
 	- no full mascot-linked reveal choreography
 
@@ -356,6 +362,8 @@ These matter, but they are not approved active work until we discuss placement, 
 	Working assumption: keep the current `operator-spokes` coarse for parity, then later split toward a wave operator that can run in cartesian and polar coordinates, separate mask operators, and a polar field or radial layout operator for instanced shapes and text.
 - [ ] Move beyond a strict background or overlay abstraction toward a proper layer stack with blend modes.
 	Working assumption: do not widen the abstraction until parity is proven, but keep the future compositor layer in mind.
+- [ ] Operator-registered accordion panels for the config editor UI.
+	Working assumption: each operator package self-registers an accordion tab+panel instead of the preview app hard-coding per-section builders. This keeps the UI organized as the control surface grows. Fits naturally into Stage 3 (operator surfaces) and the non-negotiable rule that parameter UI reads operator manifests.
 
 ### Splits to not get bogged down with
 

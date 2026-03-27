@@ -4,7 +4,7 @@
 
 This product is a browser-native operator graph for branded editorial and motion output.
 
-It should behave like a simplified Houdini for design systems work:
+It should behave like a simplified Houdini for brand work:
 
 - reusable operators
 - inspectable intermediate data

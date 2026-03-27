@@ -31,12 +31,24 @@ The long-term rule is simple:
 
 ## Start Here
 
-If you are resuming work in a fresh chat, read these first:
+If you are resuming work in a fresh chat, read this first:
 
-1. `docs/rebuild-plan.md`
-2. `docs/product-roadmap.md`
-3. `llm-handoff-context.md`
-4. `docs/next-step-fuzzy-boids.md`
+1. `llm-handoff-context.md` — cold-start handoff with current state and sprint TODO
+
+For deeper context:
+
+2. `docs/rebuild-plan.md` — architecture, parity audit, phase checklist
+3. `docs/product-roadmap.md` — long-term vision
+
+Agent behavior rules are in `AGENTS.md` (auto-loaded by Copilot).
+
+If the task is parity-related, inspect these comparison sources next:
+
+- Reference app behavior and presets: `c:\Users\lyubo\work\repos\racoon-anim\src\app\config-schema.js`, `default-config-source.js`, `editor-constants.js`, `index.js`
+- Reference motion and halo-field rendering: `c:\Users\lyubo\work\repos\racoon-anim\src\app\rendering.js`, `halo-field.js`
+- Reference content and assets: `c:\Users\lyubo\work\repos\racoon-anim\assets\content.csv`, `content-speaker-highlight.csv`, `UbuntuTagLogo.svg`, `racoon-mascot-face.svg`, `racoon-mascot-halo.svg`
+- Current preview implementation: `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/sample-document.ts`, `apps/overlay-preview/src/sample-motion.ts`
+- Current layout and motion kernels: `packages/operator-overlay-layout/src/index.ts`, `packages/layout-engine/src/index.ts`, `packages/operator-orbits/src/index.ts`, `packages/operator-spokes/src/index.ts`
 
 ## Local Preview
 
@@ -45,6 +57,7 @@ There is now a browser preview shell for parity work.
 Run:
 
 ```bash
+npm run dev
 npm run preview:dev
 ```
 
@@ -78,6 +91,7 @@ npm run demo:spokes
 - `@brand-layout-ops/operator-orbits`: coarse orbit-ring point-field generator for motion-side rebuild work
 - `@brand-layout-ops/operator-phyllotaxis`: golden-angle point-field generation matching the current Houdini phyllotaxis HDA logic
 - `@brand-layout-ops/operator-spokes`: coarse spoke-band point-field generator for motion-side rebuild work
+- `@brand-layout-ops/operator-ubuntu-summit-animation`: coarse scene-family operator boundary for the full non-reusable Ubuntu Summit parity port, including mascot and full animation timeline state
 - `@brand-layout-ops/overlay-interaction`: snapped text/logo drag math for operator-facing overlay editing
 - `@brand-layout-ops/parameter-ui`: small DOM helpers for operator-facing control surfaces in preview apps
 
@@ -98,13 +112,13 @@ Implemented so far:
 - copy-to-points instancing path
 - coarse orbits and spokes operators with runnable demos
 
-Parity for the current rebuild pass is complete at the coarse preview level.
+Parity is not closed yet. A full March 27 audit against the reference repo reopened the remaining checklist around output profiles, presets and exports, source-backed content formats, style-aware authoring, logo asset semantics, and the halo-field renderer stack.
 
-The next work should move back to feature breadth deliberately, not under the label of unfinished parity:
+The next work should stay parity-first:
 
-1. start the next field operator work such as fuzzy boids
-2. continue later motion operatorization only if reuse pressure justifies it
-3. keep export backends as backend work, not preview-kernel coupling
+1. close the unchecked items in `docs/rebuild-plan.md`
+2. validate against the reference app visually and with geometry checks
+3. keep broader feature work such as fuzzy boids deferred until the reopened parity checklist is materially closed
 
 ## Later additions
 
@@ -116,3 +130,30 @@ The next work should move back to feature breadth deliberately, not under the la
 - CMYK intent and mapping pipeline
 
 See `docs/architecture.md` and `docs/future-backends.md`.
+
+## Documentation & Agent Workflow
+
+This repo uses a lightweight 3-file documentation system designed for AI-assisted development with long-running chat sessions. The rules are codified in `AGENTS.md` (auto-loaded by GitHub Copilot agents).
+
+### The 3 canonical files
+
+| File | Purpose | When to update |
+|------|---------|----------------|
+| `llm-handoff-context.md` | Cold-start handoff for a new chat. Repo orientation + current sprint TODO. | Every session |
+| `docs/rebuild-plan.md` | Architecture decisions, parity audit, phase checklist | When phases/gaps change |
+| `docs/product-roadmap.md` | Long-term 5-stage vision | Rarely |
+
+### Recommended workflow
+
+1. **Start a new chat** → paste or point the agent at `llm-handoff-context.md`. It has everything needed to resume.
+2. **During work** → make code changes, run `npm run typecheck` to verify.
+3. **After completing a task** → update `llm-handoff-context.md` (check off TODOs, update current state). Update `docs/rebuild-plan.md` if a phase item or gap closed.
+4. **Commit** with area prefix: `halo: add fold seam alpha`, `ui: accordion sections`, `docs: update sprint TODO`.
+5. **End of session** → verify `llm-handoff-context.md` reflects where you stopped. The next chat (or human) picks up from there.
+
+### Copying to another project
+
+1. Copy `AGENTS.md` to the new repo root.
+2. Create `llm-handoff-context.md` with: repo orientation, current state, sprint TODO, key file map.
+3. Optionally create `docs/<plan>.md` and `docs/<roadmap>.md`.
+4. That's it — no other status/TODO files needed.
