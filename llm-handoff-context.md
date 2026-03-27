@@ -53,6 +53,7 @@ All scoped under `@brand-layout-ops/`.
 - CSV content resolution now matches overlay fields by format aliases and legacy slots, not only exact field IDs
 - Pending CSV drafts now survive output-profile and content-format switches instead of being discarded globally
 - Selected text controls now expose direct style assignment plus font size, line height, and weight editing for the active style
+- Export settings now persist per output profile inside the preview state and source-default snapshot path instead of resetting on every profile switch
 
 ## Current sprint TODO (do in order)
 

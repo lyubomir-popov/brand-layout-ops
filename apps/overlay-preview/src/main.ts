@@ -116,6 +116,7 @@ interface PreviewState {
   presets: Preset[];
   activePresetId: string | null;
   exportSettings: ExportSettings;
+  exportSettingsByProfile: Record<string, ExportSettings>;
   haloConfig: HaloFieldConfig;
   sourceDefaults: SourceDefaultSnapshot;
   isPlaying: boolean;
@@ -127,6 +128,7 @@ interface SourceDefaultSnapshot {
   contentFormatKey: string;
   profileFormatBuckets: ProfileFormatBuckets;
   exportSettings: ExportSettings;
+  exportSettingsByProfile: Record<string, ExportSettings>;
   haloConfig: HaloFieldConfig;
   guideMode: GuideMode;
 }
@@ -143,6 +145,12 @@ const previewTextMeasurer = createApproximateTextMeasurer();
 
 function cloneSourceDefaultSnapshot(snapshot: SourceDefaultSnapshot): SourceDefaultSnapshot {
   return JSON.parse(JSON.stringify(snapshot));
+}
+
+function cloneExportSettingsByProfile(
+  exportSettingsByProfile: Record<string, ExportSettings>
+): Record<string, ExportSettings> {
+  return JSON.parse(JSON.stringify(exportSettingsByProfile));
 }
 
 function createDebugHaloFieldConfig(baseConfig: HaloFieldConfig = createDefaultHaloFieldConfig()): HaloFieldConfig {
@@ -203,6 +211,7 @@ function mergeHaloConfigWithDefaults(rawHaloConfig: unknown): HaloFieldConfig {
 }
 
 function createBuiltInSourceDefaultSnapshot(): SourceDefaultSnapshot {
+  const exportSettings = createDefaultExportSettings(INITIAL_PROFILE_KEY);
   return {
     outputProfileKey: INITIAL_PROFILE_KEY,
     contentFormatKey: INITIAL_FORMAT_KEY,
@@ -211,7 +220,10 @@ function createBuiltInSourceDefaultSnapshot(): SourceDefaultSnapshot {
         [INITIAL_FORMAT_KEY]: cloneOverlayParams(INITIAL_PARAMS)
       }
     },
-    exportSettings: createDefaultExportSettings(INITIAL_PROFILE_KEY),
+    exportSettings,
+    exportSettingsByProfile: {
+      [INITIAL_PROFILE_KEY]: exportSettings
+    },
     haloConfig: createDebugHaloFieldConfig(),
     guideMode: "composition"
   };
@@ -235,6 +247,9 @@ const state: PreviewState = {
   presets: loadPresets(),
   activePresetId: loadActivePresetId(),
   exportSettings: createDefaultExportSettings(_startProfileKey),
+  exportSettingsByProfile: {
+    [_startProfileKey]: createDefaultExportSettings(_startProfileKey)
+  },
   haloConfig: createHaloFieldConfigForProfile(_startProfileKey),
   sourceDefaults: cloneSourceDefaultSnapshot(INITIAL_SOURCE_DEFAULTS),
   isPlaying: true,
@@ -392,6 +407,23 @@ function getProfileFormatBucket(profileKey: string): Record<string, OverlayLayou
   }
 
   return state.profileFormatBuckets[profileKey];
+}
+
+function getOrCreateExportSettingsForProfile(profileKey: string): ExportSettings {
+  if (!state.exportSettingsByProfile[profileKey]) {
+    state.exportSettingsByProfile[profileKey] = createDefaultExportSettings(profileKey);
+  }
+
+  return JSON.parse(JSON.stringify(state.exportSettingsByProfile[profileKey])) as ExportSettings;
+}
+
+function persistActiveExportSettings(): void {
+  state.exportSettingsByProfile[state.outputProfileKey] = JSON.parse(JSON.stringify(state.exportSettings)) as ExportSettings;
+}
+
+function updateExportSettings(updater: (settings: ExportSettings) => ExportSettings): void {
+  state.exportSettings = updater(state.exportSettings);
+  persistActiveExportSettings();
 }
 
 function getMainHeadingField(params: OverlayLayoutOperatorParams): TextFieldPlacementSpec | undefined {
@@ -767,13 +799,13 @@ function switchOutputProfile(profileKey: string) {
   if (profileKey === state.outputProfileKey) return;
 
   persistActiveProfileBuckets();
+  persistActiveExportSettings();
   state.outputProfileKey = profileKey;
-  const profile = getOutputProfile(profileKey);
   state.params = normalizeParamsTextFieldOffsets(
     cloneOverlayParams(getOrCreateProfileFormatParams(profileKey, state.contentFormatKey))
   );
+  state.exportSettings = getOrCreateExportSettingsForProfile(profileKey);
   normalizeSelection();
-  state.exportSettings = { ...state.exportSettings, frameRate: profile.defaultFrameRate };
   syncHaloConfigToProfile(state.outputProfileKey);
   resizeRenderer();
   saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
@@ -961,6 +993,10 @@ function loadPreset(preset: Preset) {
   ));
   state.activePresetId = preset.id;
   state.pendingCsvDraftsByBucket = {};
+  state.exportSettingsByProfile = {
+    [state.outputProfileKey]: createDefaultExportSettings(state.outputProfileKey)
+  };
+  state.exportSettings = getOrCreateExportSettingsForProfile(state.outputProfileKey);
   normalizeSelection();
   syncHaloConfigToProfile(state.outputProfileKey);
   saveActivePresetId(preset.id);
@@ -1007,12 +1043,26 @@ function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnaps
   const activeProfileBucket = profileFormatBuckets[outputProfileKey] ??= {};
   activeProfileBucket[contentFormatKey] ??= createDefaultOverlayParams(outputProfileKey, contentFormatKey);
 
+  const exportSettingsByProfile: Record<string, ExportSettings> = {};
+  if (isRecord(rawSnapshot.exportSettingsByProfile)) {
+    for (const [profileKey, rawExportSettings] of Object.entries(rawSnapshot.exportSettingsByProfile)) {
+      exportSettingsByProfile[profileKey] = isRecord(rawExportSettings)
+        ? {
+          ...createDefaultExportSettings(profileKey),
+          ...rawExportSettings
+        }
+        : createDefaultExportSettings(profileKey);
+    }
+  }
+
   const exportSettings = isRecord(rawSnapshot.exportSettings)
     ? {
       ...createDefaultExportSettings(outputProfileKey),
       ...rawSnapshot.exportSettings
     }
-    : createDefaultExportSettings(outputProfileKey);
+    : exportSettingsByProfile[outputProfileKey] ?? createDefaultExportSettings(outputProfileKey);
+
+  exportSettingsByProfile[outputProfileKey] ??= JSON.parse(JSON.stringify(exportSettings)) as ExportSettings;
   const haloConfig = mergeHaloConfigWithDefaults(rawSnapshot.haloConfig);
   const guideMode = rawSnapshot.guideMode === "off" || rawSnapshot.guideMode === "baseline"
     ? rawSnapshot.guideMode
@@ -1023,6 +1073,7 @@ function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnaps
     contentFormatKey,
     profileFormatBuckets,
     exportSettings,
+    exportSettingsByProfile,
     haloConfig,
     guideMode
   };
@@ -1030,11 +1081,13 @@ function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnaps
 
 function createCurrentSourceDefaultSnapshot(): SourceDefaultSnapshot {
   persistActiveProfileBuckets();
+  persistActiveExportSettings();
   return {
     outputProfileKey: state.outputProfileKey,
     contentFormatKey: state.contentFormatKey,
     profileFormatBuckets: cloneProfileFormatBuckets(state.profileFormatBuckets),
     exportSettings: JSON.parse(JSON.stringify(state.exportSettings)) as ExportSettings,
+    exportSettingsByProfile: cloneExportSettingsByProfile(state.exportSettingsByProfile),
     haloConfig: JSON.parse(JSON.stringify(state.haloConfig)) as HaloFieldConfig,
     guideMode: state.guideMode
   };
@@ -1048,7 +1101,10 @@ function applySourceDefaultSnapshot(snapshot: SourceDefaultSnapshot) {
   state.params = normalizeParamsTextFieldOffsets(cloneOverlayParams(
     getOrCreateProfileFormatParams(state.outputProfileKey, state.contentFormatKey)
   ));
-  state.exportSettings = JSON.parse(JSON.stringify(snapshot.exportSettings)) as ExportSettings;
+  state.exportSettingsByProfile = cloneExportSettingsByProfile(snapshot.exportSettingsByProfile);
+  state.exportSettings = JSON.parse(JSON.stringify(
+    state.exportSettingsByProfile[state.outputProfileKey] ?? snapshot.exportSettings
+  )) as ExportSettings;
   state.haloConfig = JSON.parse(JSON.stringify(snapshot.haloConfig)) as HaloFieldConfig;
   state.guideMode = snapshot.guideMode;
   state.overlayVisible = false;
@@ -1631,7 +1687,7 @@ function buildPlaybackExportSection(): HTMLElement {
   transparentInput.setAttribute("data-export-transparent-background", "");
   transparentInput.checked = state.exportSettings.transparentBackground;
   transparentInput.addEventListener("change", () => {
-    state.exportSettings = { ...state.exportSettings, transparentBackground: transparentInput.checked };
+    updateExportSettings((settings) => ({ ...settings, transparentBackground: transparentInput.checked }));
   });
   transparentCtrl.append(transparentInput);
   transparentGroup.append(transparentLabel, transparentCtrl);
@@ -3805,11 +3861,13 @@ async function applyAutomationSnapshot(payload: Record<string, unknown> = {}) {
   }
 
   if (typeof payload.transparent_background === "boolean") {
-    state.exportSettings = { ...state.exportSettings, transparentBackground: payload.transparent_background };
+    const transparentBackground = payload.transparent_background;
+    updateExportSettings((settings) => ({ ...settings, transparentBackground }));
   }
 
   if (typeof payload.frame_rate === "number" && Number.isFinite(payload.frame_rate)) {
-    state.exportSettings = { ...state.exportSettings, frameRate: Math.max(1, Math.round(payload.frame_rate)) };
+    const frameRate = payload.frame_rate;
+    updateExportSettings((settings) => ({ ...settings, frameRate: Math.max(1, Math.round(frameRate)) }));
   }
 
   const playbackTimeSec = typeof payload.playback_time_sec === "number" && Number.isFinite(payload.playback_time_sec)

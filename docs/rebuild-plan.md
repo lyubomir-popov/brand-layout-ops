@@ -175,10 +175,10 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 
 ### Critical — must land before any visual comparison is meaningful
 
-1. **Output profiles (MISSING).**
+1. **Output profiles (PARTIAL).**
 	Reference has 5 named profiles with per-profile center, scale, safe area, frame rate, grid, text, logo, motion, and mascot configs. Global shared paths (colors, title, logo asset, content format) propagate across profiles.
 	Profiles: `landscape_1280x720`, `instagram_1080x1350`, `story_1080x1920` (default), `screen_3840x2160`, `tablet_2560x1600`.
-	Current repo hard-codes a single 1280×720 frame. The sample-document.ts intentionally uses landscape defaults for comparison, but the profile switching infrastructure is absent.
+	Current repo now has profile switching, per-profile overlay buckets, per-profile export settings in preview state and source-default snapshots, and seeded frame-rate defaults, but it still lacks full profile-owned motion, halo, mascot, and source-default scene trees matching the reference app.
 	Reference files: `config-schema.js` (`OUTPUT_PROFILES`, `get_output_profile_metrics`), `default-config-source.js` (per-profile full configs), `index.js` (profile architecture init, profile tab UI).
 
 2. **Content format system (PARTIAL).**
