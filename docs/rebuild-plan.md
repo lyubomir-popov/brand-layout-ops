@@ -215,7 +215,8 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 
 10. **Export pipeline (PARTIAL).**
 	Single frame PNG ✔, PNG sequence with frame-range modal + File System Access directory picker ✔, headless Playwright PNG exporter (`scripts/export-headless.ts`) ✔, FFmpeg MP4 encoder (`scripts/encode-mp4.ts`) ✔ (libx264, CRF 10/14, yuv444p/yuv420p, slow preset, -tune animation, bt709). `window.__layoutOpsAutomation` API matches reference `__mascotAutomation` pattern. Transparent background option ✔.
-	Remaining: end-to-end verification of headless export → MP4 pipeline, fade-in/fade-out integration, `output/{dimensions}/` folder organization.
+	End-to-end verification now confirmed with a 48-frame, 2-second headless export at 1080x1350 followed by MP4 encode on Windows using a local FFmpeg install.
+	Remaining: fade-in/fade-out integration and any final `output/{dimensions}/` workflow polish.
 	Reference files: `index.js` (export_current_frame_png, export_png_sequence, export_current_mp4).
 
 11. **Guide toggle 3-state cycle (DONE).**
@@ -361,6 +362,8 @@ These matter, but they are not approved active work until we discuss placement, 
 	Working assumption: do not widen the abstraction until parity is proven, but keep the future compositor layer in mind.
 - [ ] Operator-registered accordion panels for the config editor UI.
 	Working assumption: each operator package self-registers an accordion tab+panel instead of the preview app hard-coding per-section builders. This keeps the UI organized as the control surface grows. Fits naturally into Stage 3 (operator surfaces) and the non-negotiable rule that parameter UI reads operator manifests.
+- [ ] Incremental control-surface swap from Vanilla to the sibling `portable-vertical-rhythm` package after the current parity backlog is cleared.
+	Working assumption: treat this as a post-parity UI-surface migration, use the package as a local dependency rather than copied source, and avoid coupling the migration to the remaining export/content/profile parity work.
 
 ### Splits to not get bogged down with
 

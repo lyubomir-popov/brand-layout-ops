@@ -49,6 +49,7 @@ All scoped under `@brand-layout-ops/`.
 - Per-profile defaults: safe area, grid, font sizes, halo center Y offset
 - Canvas scale-to-fit with `--stage-aspect-ratio` CSS variable (supports portrait/landscape)
 - Accordion mutual exclusion (one open section at a time)
+- Text north-corner resize now snaps vertically on the baseline grid instead of discarding vertical drag
 
 ## Current sprint TODO (do in order)
 
@@ -83,14 +84,20 @@ All scoped under `@brand-layout-ops/`.
 - [x] `scripts/export-headless.ts` — Playwright headless PNG sequence export (rewrites old DOM-manipulation approach)
 - [x] `scripts/encode-mp4.ts` — FFmpeg PNG→MP4 encoder (libx264, CRF 10/14, yuv444p/yuv420p, slow preset, -tune animation, bt709)
 - [x] PNG sequence export via File System Access API (`showDirectoryPicker`, fallback to download links)
-- [x] Verify end-to-end: `npm run export:headless` → `npm run export:encode-mp4` → MP4 (single-frame verified, 218KB PNG at 1080x1350)
+- [x] Verify end-to-end: `npm run export:headless` → `npm run export:encode-mp4` → MP4 (48-frame, 2-second headless export verified at 1080x1350; local FFmpeg install required on Windows)
 
 ### F. Bug fixes from user notes
 
 - [x] Canvas not true to size / not scrollable — scale to fit via `--stage-aspect-ratio` CSS variable
 - [x] Accordion shouldn't change when clicking inside — mutual exclusion on open, no close-on-content-click
 - [x] Show overlay checkbox in wrong place — moved to grid accordion section
-- [ ] Text resize bug — top edge of text frame goes to top of safe area *(needs interactive debugging, could not reproduce from code reading)*
+- [x] Text resize bug — north-corner text resize now preserves vertical snapping instead of collapsing the top edge toward the safe area
+
+### G. After current parity priorities
+
+- [ ] Incrementally switch the preview control surface from Vanilla to the local `portable-vertical-rhythm` micro-framework once the active parity task list above is complete
+  - Use the sibling repo package as a local dependency, not copied source
+  - Keep this behind the current parity work; do not let the UI-library swap displace export, content, profile, or authoring parity
 
 ### D. UI parity quick wins (done)
 
