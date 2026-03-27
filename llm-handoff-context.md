@@ -71,7 +71,22 @@ All scoped under `@brand-layout-ops/`.
 - [x] Export pipeline — single PNG ✅, PNG sequence with modal ✅ (MP4 needs server-side FFmpeg — deferred)
 - [x] Logo intrinsic aspect ratio (loads via `Image`, uses `naturalWidth`/`naturalHeight`)
 - [ ] Full Ubuntu Summit animation as one coarse scene-family operator
-- [ ] Mascot composition (face SVG, halo SVG, blink, head turn)
+- [ ] Mascot composition (face SVG, halo SVG, blink, head turn) — **deprioritized**
+
+### E. Export pipeline & headless Playwright (priority)
+
+- [ ] `window.__layoutOpsAutomation` API for headless frame export (matches reference `__mascotAutomation` pattern)
+- [ ] `scripts/export_frames.py` — Playwright headless PNG sequence export
+- [ ] `scripts/encode_mp4.py` — FFmpeg PNG→MP4 encoder (libx264, CRF 10, yuv444p master / delivery mode)
+- [ ] PNG sequence export via File System Access API (write to folder instead of individual downloads)
+- [ ] Verify end-to-end: PNG sequence → encode_mp4.py → MP4
+
+### F. Bug fixes from user notes
+
+- [ ] Canvas not true to size / not scrollable — scale to fit (match reference approach)
+- [ ] Accordion shouldn't change when clicking inside — only manually or when another opens
+- [ ] Show overlay checkbox in wrong place — move to grid accordion section
+- [ ] Text resize bug — top edge of text frame goes to top of safe area
 
 ### D. UI parity quick wins (done)
 
@@ -116,6 +131,10 @@ Continue parity work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\U
 
 - Should the new repo eventually bring back an explicit content-format abstraction like the old app had, or should it stay with document-authored `contentFieldId` mappings plus operator schemas unless reuse pressure becomes concrete?
 - Should logo intrinsic aspect-ratio loading and title-linked logo scaling stay outside the kernel as document or adapter preprocessing, or do we eventually want a coarse operator-side logo source model for that too?
+- Presets in browser localStorage is not a great feature — need to save them locally. Presets are essentially alternative designs for same document sizes like instagram stories.
+- Add/delete document sizes in the output panel — new feature.
+- Add/delete paragraph styles — new feature.
+- Draggable text doesn't need input fields any more (user does this manually); some things that are tuned work better with sliders; simple things like grid rows and columns don't.
 
 ## Important reference docs in this repo
 

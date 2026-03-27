@@ -1141,6 +1141,7 @@ function updateStageAspectRatio() {
   if (!stage) return;
   const { widthPx, heightPx } = state.params.frame;
   stage.style.aspectRatio = `${widthPx} / ${heightPx}`;
+  stage.style.setProperty("--stage-aspect-ratio", String(widthPx / heightPx));
 }
 
 function renderHaloFrame() {
@@ -1604,25 +1605,6 @@ function buildPlaybackExportSection(): HTMLElement {
   transparentGroup.append(transparentLabel, transparentCtrl);
   body.append(transparentGroup);
 
-  const overlayGroup = document.createElement("div");
-  overlayGroup.className = "p-form__group";
-  const overlayLabel = document.createElement("label");
-  overlayLabel.className = "p-form__label u-no-margin--bottom";
-  overlayLabel.textContent = "Show overlay";
-  const overlayCtrl = document.createElement("div");
-  overlayCtrl.className = "p-form__control";
-  const overlayInput = document.createElement("input");
-  overlayInput.type = "checkbox";
-  overlayInput.setAttribute("data-overlay-visibility", "");
-  overlayInput.checked = state.overlayVisible;
-  overlayInput.addEventListener("change", () => {
-    setOverlayVisible(overlayInput.checked);
-    void renderStage();
-  });
-  overlayCtrl.append(overlayInput);
-  overlayGroup.append(overlayLabel, overlayCtrl);
-  body.append(overlayGroup);
-
   return root;
 }
 
@@ -1904,6 +1886,19 @@ function setupAccordion(accordionContainer: HTMLElement) {
     if (!panel) return;
 
     const isOpen = target.getAttribute("aria-expanded") === "true";
+
+    // Mutual exclusion: close all other sections when opening one
+    if (!isOpen) {
+      accordionContainer.querySelectorAll<HTMLElement>(".p-accordion__tab").forEach((tab) => {
+        if (tab !== target) {
+          const otherPanelId = tab.getAttribute("aria-controls");
+          const otherPanel = otherPanelId ? document.getElementById(otherPanelId) : null;
+          tab.setAttribute("aria-expanded", "false");
+          otherPanel?.setAttribute("aria-hidden", "true");
+        }
+      });
+    }
+
     target.setAttribute("aria-expanded", String(!isOpen));
     panel.setAttribute("aria-hidden", String(isOpen));
   });
@@ -2209,6 +2204,15 @@ function buildParagraphStylesSection(): HTMLElement {
 function buildGridSection(): HTMLElement {
   const { root, body } = buildSectionEl("Layout Grid");
   const grid = state.params.grid;
+
+  body.append(createFormGroup("Show overlay", (() => {
+    const cb = createCheckboxInput(state.overlayVisible, v => {
+      setOverlayVisible(v);
+      void renderStage();
+    });
+    cb.setAttribute("data-overlay-visibility", "");
+    return cb;
+  })()));
 
   const fields = document.createElement("div");
   fields.className = "overlay-control-grid grid-row";
