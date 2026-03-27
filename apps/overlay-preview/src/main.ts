@@ -3559,6 +3559,17 @@ async function exportPngSequence() {
   const opts = await promptForExportOptions();
   if (!opts) return;
 
+  // Prompt for output directory via File System Access API (Chromium)
+  let dirHandle: FileSystemDirectoryHandle | undefined;
+  if ("showDirectoryPicker" in window) {
+    try {
+      dirHandle = await (window as any).showDirectoryPicker({ mode: "readwrite" });
+    } catch {
+      // User cancelled the picker
+      return;
+    }
+  }
+
   const wasPlaying = state.isPlaying;
   setPlaybackPlaying(false);
 
@@ -3580,13 +3591,22 @@ async function exportPngSequence() {
     );
     if (!blob) break;
 
-    const frameNum = String(f).padStart(padLen, "0");
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${baseName}_${profileKey}_${frameNum}.png`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    const fileName = `${baseName}_${profileKey}_${String(f).padStart(padLen, "0")}.png`;
+
+    if (dirHandle) {
+      const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+    } else {
+      // Fallback: individual browser downloads
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    }
 
     const exported = f - startFrame + 1;
     // Update progress periodically — every 12 frames or at start/end
