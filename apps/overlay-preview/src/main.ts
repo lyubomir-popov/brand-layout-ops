@@ -3222,6 +3222,215 @@ async function exportComposedFramePng() {
   }, "image/png");
 }
 
+// ─── Export modal + sequence export ───────────────────────────────────
+
+interface ExportOptions {
+  startFrame: number;
+  endFrame: number;
+  frameRate: number;
+}
+
+let exportModalResolve: ((opts: ExportOptions | null) => void) | null = null;
+
+function getDefaultExportEndFrame(): number {
+  // Default 10 seconds of animation for the sequence
+  return Math.max(1, Math.floor(10 * state.exportSettings.frameRate));
+}
+
+function promptForExportOptions(): Promise<ExportOptions | null> {
+  return new Promise((resolve) => {
+    exportModalResolve = resolve;
+
+    let modal = document.getElementById("export-options-modal") as HTMLDialogElement | null;
+    if (!modal) {
+      modal = buildExportModal();
+      document.body.append(modal);
+    }
+
+    // Populate defaults
+    const startInput = modal.querySelector<HTMLInputElement>("[data-export-start-frame]");
+    const endInput = modal.querySelector<HTMLInputElement>("[data-export-end-frame]");
+    const summaryEl = modal.querySelector<HTMLElement>("[data-export-summary]");
+    if (startInput) startInput.value = "1";
+    if (endInput) endInput.value = String(getDefaultExportEndFrame());
+    updateExportSummary(summaryEl, startInput, endInput);
+
+    modal.showModal();
+  });
+}
+
+function updateExportSummary(
+  summaryEl: HTMLElement | null | undefined,
+  startInput: HTMLInputElement | null | undefined,
+  endInput: HTMLInputElement | null | undefined
+) {
+  if (!summaryEl || !startInput || !endInput) return;
+  const start = parseInt(startInput.value, 10) || 1;
+  const end = parseInt(endInput.value, 10) || 1;
+  const count = Math.max(0, end - start + 1);
+  const fps = state.exportSettings.frameRate;
+  const durationSec = count > 0 ? (count / fps).toFixed(2) : "0";
+  summaryEl.textContent = `${count} frames at ${fps} fps (${durationSec}s)`;
+}
+
+function buildExportModal(): HTMLDialogElement {
+  const dialog = document.createElement("dialog");
+  dialog.id = "export-options-modal";
+  dialog.className = "p-modal";
+
+  dialog.innerHTML = `
+    <div class="p-modal__dialog" role="dialog" aria-labelledby="export-modal-title">
+      <header class="p-modal__header">
+        <h2 class="p-modal__title" id="export-modal-title">Export PNG Sequence</h2>
+        <button class="p-modal__close" data-export-cancel type="button">Close</button>
+      </header>
+      <div class="p-modal__body">
+        <div class="p-form__group">
+          <label class="p-form__label">Start Frame</label>
+          <div class="p-form__control">
+            <input type="number" class="p-form-validation__input" data-export-start-frame min="1" step="1" value="1">
+          </div>
+        </div>
+        <div class="p-form__group">
+          <label class="p-form__label">End Frame</label>
+          <div class="p-form__control">
+            <input type="number" class="p-form-validation__input" data-export-end-frame min="1" step="1" value="240">
+          </div>
+        </div>
+        <p class="p-form-help-text" data-export-summary></p>
+      </div>
+      <footer class="p-modal__footer">
+        <button class="p-button--base" type="button" data-export-cancel>Cancel</button>
+        <button class="p-button--positive" type="button" data-export-submit>Export</button>
+      </footer>
+    </div>
+  `;
+
+  const startInput = dialog.querySelector<HTMLInputElement>("[data-export-start-frame]");
+  const endInput = dialog.querySelector<HTMLInputElement>("[data-export-end-frame]");
+  const summaryEl = dialog.querySelector<HTMLElement>("[data-export-summary]");
+
+  const updateSummary = () => updateExportSummary(summaryEl, startInput, endInput);
+  startInput?.addEventListener("input", updateSummary);
+  endInput?.addEventListener("input", updateSummary);
+
+  dialog.querySelectorAll("[data-export-cancel]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      dialog.close();
+      exportModalResolve?.(null);
+      exportModalResolve = null;
+    });
+  });
+
+  dialog.querySelector("[data-export-submit]")?.addEventListener("click", () => {
+    const start = Math.max(1, parseInt(startInput?.value ?? "1", 10) || 1);
+    const end = Math.max(start, parseInt(endInput?.value ?? "1", 10) || 1);
+    dialog.close();
+    exportModalResolve?.({ startFrame: start, endFrame: end, frameRate: state.exportSettings.frameRate });
+    exportModalResolve = null;
+  });
+
+  dialog.addEventListener("close", () => {
+    if (exportModalResolve) {
+      exportModalResolve(null);
+      exportModalResolve = null;
+    }
+  });
+
+  return dialog;
+}
+
+async function composeFrameToCanvas(timeSec: number): Promise<HTMLCanvasElement | null> {
+  const stageCanvas = getCanvasEl();
+  const textCanvas = getTextOverlayCanvas();
+  if (!stageCanvas || !textCanvas) return null;
+
+  // Set time and render the halo frame
+  state.playbackTimeSec = timeSec;
+  renderHaloFrame();
+  await renderStage();
+
+  const { widthPx, heightPx } = state.params.frame;
+  const composedCanvas = document.createElement("canvas");
+  composedCanvas.width = widthPx;
+  composedCanvas.height = heightPx;
+
+  const ctx = composedCanvas.getContext("2d");
+  if (!ctx) return null;
+
+  if (!state.exportSettings.transparentBackground) {
+    ctx.fillStyle = state.haloConfig.composition.background_color || "#202020";
+    ctx.fillRect(0, 0, widthPx, heightPx);
+  } else {
+    ctx.clearRect(0, 0, widthPx, heightPx);
+  }
+
+  ctx.drawImage(stageCanvas, 0, 0, widthPx, heightPx);
+  ctx.drawImage(textCanvas, 0, 0, widthPx, heightPx);
+
+  const svgMarkup = serializeExportSvgMarkup(state.exportSettings.transparentBackground);
+  if (svgMarkup) {
+    const svgBlob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
+    const svgUrl = URL.createObjectURL(svgBlob);
+    try {
+      const svgImage = await loadImage(svgUrl);
+      ctx.drawImage(svgImage, 0, 0, widthPx, heightPx);
+    } finally {
+      URL.revokeObjectURL(svgUrl);
+    }
+  }
+
+  return composedCanvas;
+}
+
+async function exportPngSequence() {
+  const opts = await promptForExportOptions();
+  if (!opts) return;
+
+  const wasPlaying = state.isPlaying;
+  setPlaybackPlaying(false);
+
+  const { startFrame, endFrame, frameRate } = opts;
+  const frameCount = endFrame - startFrame + 1;
+  const baseName = state.exportSettings.exportName ?? "frame";
+  const profileKey = state.outputProfileKey;
+  const padLen = String(endFrame).length;
+
+  setSourceDefaultStatus(`Exporting PNG sequence: 0/${frameCount}...`);
+
+  for (let f = startFrame; f <= endFrame; f++) {
+    const timeSec = (f - 1) / frameRate;
+    const composed = await composeFrameToCanvas(timeSec);
+    if (!composed) break;
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      composed.toBlob((b) => resolve(b), "image/png")
+    );
+    if (!blob) break;
+
+    const frameNum = String(f).padStart(padLen, "0");
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${baseName}_${profileKey}_${frameNum}.png`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+
+    const exported = f - startFrame + 1;
+    // Update progress periodically — every 12 frames or at start/end
+    if (exported === 1 || exported === frameCount || exported % 12 === 0) {
+      setSourceDefaultStatus(`Exporting PNG sequence: ${exported}/${frameCount}...`);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    }
+  }
+
+  setSourceDefaultStatus(`PNG sequence exported (${frameCount} frames).`, "success");
+
+  if (wasPlaying) {
+    setPlaybackPlaying(true);
+  }
+}
+
 function setupButtons() {
   // All button event listeners are now created inline by
   // buildPlaybackExportSection, buildOutputFormatSection,
