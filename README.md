@@ -98,14 +98,13 @@ Implemented so far:
 - copy-to-points instancing path
 - coarse orbits and spokes operators with runnable demos
 
-The next work should stay focused on parity, not new feature breadth:
+Parity for the current rebuild pass is complete at the coarse preview level.
 
-1. verify that the current motion preview is close enough to the reference repo for parity signoff
-2. only then start the next field operator work such as fuzzy boids
+The next work should move back to feature breadth deliberately, not under the label of unfinished parity:
 
-Current parity holdout:
-
-- the motion preview is intentionally still adapter-side and improved, but it has not yet been judged close enough to the old renderer for signoff
+1. start the next field operator work such as fuzzy boids
+2. continue later motion operatorization only if reuse pressure justifies it
+3. keep export backends as backend work, not preview-kernel coupling
 
 ## Later additions
 

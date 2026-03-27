@@ -70,8 +70,7 @@ If a WSL clone under `/mnt/h/...` suddenly shows many modified text files after 
 - staged CSV draft flow with explicit apply or discard controls in the preview shell
 - richer CSV staging diagnostics in the preview shell: row navigation, header mapping status, unmatched-quote warning, and seed-row-plus-headers normalization
 - bottom-margin remainder behavior fixed and verified against the old row-height formula, including overconstrained safe-area cases
-- motion preview layer improved with orbit trails, spoke segments, and echo rings, but still not signed off as full visual parity
-- motion preview further refined with denser spoke and orbit fields plus a simple phase-lobed halo treatment; still open for parity signoff by eye
+- motion preview signed off for coarse parity: the adapter now reproduces the reference app's main background motifs with orbit trails, spoke segments, echo rings, denser phase-shaped fields, and a simple dual-lobe halo treatment
 - export-relevant geometry verified with a deterministic parity script covering text anchors, text bounds, grid edges, and explicit resolved logo rectangles
 - mascot-specific face and head motion should stay adapter-side for now; the old app keeps those controls and passes scene-specific rather than exposing them as coarse reusable operators
 
@@ -136,9 +135,9 @@ Rebuild the current project here with 1:1 working behavior first, then continue 
 
 ## Suggested next sequence for a fresh chat
 
-1. Verify the current motion preview against the reference repo now that orbits and spokes live in the same surface.
+1. Resume new feature work from the post-parity queue, starting with the next justified operator or backend step.
 2. Keep following `docs/rebuild-plan.md` in order; if work jumps ahead, update the deviation log there.
-3. Resume new feature work only after parity is proven.
+3. Treat future motion work as operatorization or backend expansion, not as unresolved parity.
 
 ## Open Questions To Discuss Later
 

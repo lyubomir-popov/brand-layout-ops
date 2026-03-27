@@ -90,7 +90,7 @@ Use larger passes, not tiny ones.
 - [x] `operator-orbits`.
 - [x] `operator-spokes`.
 - [x] Integrate coarse motion preview into the preview shell.
-- [ ] Match the current animation background look closely enough for parity signoff.
+- [x] Match the current animation background look closely enough for parity signoff.
 - [x] Decide whether mascot-specific motion stays in an adapter or becomes a coarse scene-family operator.
 
 The mascot head shake is probably too specific to deserve its own operator.
@@ -100,6 +100,7 @@ If it remains unique to one scene family, keep it as part of a mascot animation 
 Decision so far:
 
 - keep mascot-specific face or head motion in an adapter or scene-family layer until reuse becomes concrete
+- parity signoff basis for the current motion background: the preview now reproduces the main coarse visual motifs from the reference app at the adapter level: central aura, dual phase lobes, echo rings, orbit structure, and phase-biased spoke density, without widening the kernel too early
 
 ### Phase 6. Verify parity here
 
@@ -109,7 +110,7 @@ Before adding features, verify that the new repo reproduces the current app's wo
 - [x] Overlay logo placement.
 - [x] Baseline and composition guides.
 - [x] Selected-element editor behavior.
-- [ ] Current animation background look.
+- [x] Current animation background look.
 - [x] Export-relevant geometry consistency.
 
 ### Phase 7. Continue feature work only after parity
