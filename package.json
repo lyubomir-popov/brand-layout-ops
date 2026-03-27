@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "verify:export-geometry": "tsx examples/export-geometry-parity.ts",
     "demo:overlay-layout": "tsx examples/overlay-layout-demo.ts",
     "demo:copy-to-points": "tsx examples/copy-to-points-demo.ts",
     "demo:orbits": "tsx examples/orbits-demo.ts",

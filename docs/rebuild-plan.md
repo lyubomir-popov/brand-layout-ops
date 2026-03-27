@@ -106,7 +106,7 @@ Before adding features, verify that the new repo reproduces the current app's wo
 - [x] Baseline and composition guides.
 - [x] Selected-element editor behavior.
 - [ ] Current animation background look.
-- [ ] Export-relevant geometry consistency.
+- [x] Export-relevant geometry consistency.
 
 ### Phase 7. Continue feature work only after parity
 

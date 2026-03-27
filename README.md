@@ -93,14 +93,14 @@ Implemented so far:
 - richer motion preview layering with orbit trails, spoke segments, and echo rings, still kept adapter-side for parity work
 - schema-driven operator parameter controls for frame, safe area, grid, and content source
 - selected-text baseline guide, snapped resize handles, and staged CSV flow with row diagnostics, header mapping status, and seed/apply/discard controls in the preview shell
+- deterministic export-geometry parity script for text anchors, bounds, grid edges, and resolved logo rectangles
 - copy-to-points instancing path
 - coarse orbits and spokes operators with runnable demos
 
 The next work should stay focused on parity, not new feature breadth:
 
 1. verify that the current motion preview is close enough to the reference repo for parity signoff
-2. verify export-relevant geometry consistency
-3. only then start the next field operator work such as fuzzy boids
+2. only then start the next field operator work such as fuzzy boids
 
 ## Later additions
 

@@ -71,6 +71,7 @@ If a WSL clone under `/mnt/h/...` suddenly shows many modified text files after 
 - richer CSV staging diagnostics in the preview shell: row navigation, header mapping status, unmatched-quote warning, and seed-row-plus-headers normalization
 - bottom-margin remainder behavior fixed and verified against the old row-height formula, including overconstrained safe-area cases
 - motion preview layer improved with orbit trails, spoke segments, and echo rings, but still not signed off as full visual parity
+- export-relevant geometry verified with a deterministic parity script covering text anchors, text bounds, grid edges, and explicit resolved logo rectangles
 
 ## Immediate goal
 
@@ -134,13 +135,13 @@ Rebuild the current project here with 1:1 working behavior first, then continue 
 ## Suggested next sequence for a fresh chat
 
 1. Verify the current motion preview against the reference repo now that orbits and spokes live in the same surface.
-2. Verify export-relevant geometry consistency.
-3. Keep following `docs/rebuild-plan.md` in order; if work jumps ahead, update the deviation log there.
-4. Resume new feature work only after parity is proven.
+2. Keep following `docs/rebuild-plan.md` in order; if work jumps ahead, update the deviation log there.
+3. Resume new feature work only after parity is proven.
 
 ## Open Questions To Discuss Later
 
 - Should the new repo eventually bring back an explicit content-format abstraction like the old app had, or should it stay with document-authored `contentFieldId` mappings plus operator schemas unless reuse pressure becomes concrete?
+- Should logo intrinsic aspect-ratio loading and title-linked logo scaling stay outside the kernel as document or adapter preprocessing, or do we eventually want a coarse operator-side logo source model for that too?
 
 ## Important reference docs in this repo
 
