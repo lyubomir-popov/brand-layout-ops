@@ -17,7 +17,8 @@
     "demo:spokes": "tsx examples/spokes-demo.ts",
     "preview:dev": "vite --config apps/overlay-preview/vite.config.ts --host 127.0.0.1",
     "preview:build": "vite build --config apps/overlay-preview/vite.config.ts",
-    "export:headless": "tsx scripts/export-headless.ts"
+    "export:headless": "tsx scripts/export-headless.ts",
+    "export:encode-mp4": "tsx scripts/encode-mp4.ts"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
