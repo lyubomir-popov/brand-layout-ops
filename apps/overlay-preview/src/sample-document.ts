@@ -1,4 +1,4 @@
-import type { LogoPlacementSpec, TextFieldPlacementSpec, TextStyleSpec } from "@brand-layout-ops/core-types";
+import type { GridSettings, LogoPlacementSpec, TextFieldPlacementSpec, TextStyleSpec } from "@brand-layout-ops/core-types";
 import {
   DEFAULT_OUTPUT_PROFILE_KEY,
   getOutputProfile,
@@ -8,6 +8,123 @@ import {
   type OverlayContentFormatSpec
 } from "@brand-layout-ops/core-types";
 import type { OverlayLayoutOperatorParams } from "@brand-layout-ops/operator-overlay-layout";
+
+// ---------------------------------------------------------------------------
+// Per-profile grid defaults (reference: default-config-source.js)
+// ---------------------------------------------------------------------------
+
+const PROFILE_GRID_DEFAULTS: Record<string, GridSettings> = {
+  landscape_1280x720: {
+    baselineStepPx: 8,
+    rowCount: 4,
+    columnCount: 4,
+    marginTopBaselines: 4,
+    marginBottomBaselines: 4,
+    marginLeftBaselines: 5,
+    marginRightBaselines: 5,
+    rowGutterBaselines: 4,
+    columnGutterBaselines: 0,
+    fitWithinSafeArea: true
+  },
+  instagram_1080x1350: {
+    baselineStepPx: 8,
+    rowCount: 8,
+    columnCount: 4,
+    marginTopBaselines: 5,
+    marginBottomBaselines: 6,
+    marginLeftBaselines: 6,
+    marginRightBaselines: 6,
+    rowGutterBaselines: 0,
+    columnGutterBaselines: 0,
+    fitWithinSafeArea: true
+  },
+  story_1080x1920: {
+    baselineStepPx: 8,
+    rowCount: 4,
+    columnCount: 4,
+    marginTopBaselines: 6,
+    marginBottomBaselines: 9,
+    marginLeftBaselines: 0,
+    marginRightBaselines: 0,
+    rowGutterBaselines: 0,
+    columnGutterBaselines: 0,
+    fitWithinSafeArea: true
+  },
+  screen_3840x2160: {
+    baselineStepPx: 24,
+    rowCount: 4,
+    columnCount: 8,
+    marginTopBaselines: 4,
+    marginBottomBaselines: 4,
+    marginLeftBaselines: 4,
+    marginRightBaselines: 4,
+    rowGutterBaselines: 0,
+    columnGutterBaselines: 0,
+    fitWithinSafeArea: false
+  },
+  tablet_2560x1600: {
+    baselineStepPx: 8,
+    rowCount: 4,
+    columnCount: 4,
+    marginTopBaselines: 0,
+    marginBottomBaselines: 9,
+    marginLeftBaselines: 0,
+    marginRightBaselines: 0,
+    rowGutterBaselines: 4,
+    columnGutterBaselines: 4,
+    fitWithinSafeArea: true
+  }
+};
+
+function getDefaultGridForProfile(profileKey: string): GridSettings {
+  return { ...(PROFILE_GRID_DEFAULTS[profileKey] ?? PROFILE_GRID_DEFAULTS.landscape_1280x720) };
+}
+
+// ---------------------------------------------------------------------------
+// Per-profile text style overrides (reference: default-config-source.js)
+// ---------------------------------------------------------------------------
+
+interface TextStyleOverrides {
+  title: { fontSizePx: number; lineHeightPx: number };
+  b_head: { fontSizePx: number; lineHeightPx: number };
+  paragraph: { fontSizePx: number; lineHeightPx: number };
+}
+
+const PROFILE_TEXT_STYLE_OVERRIDES: Record<string, TextStyleOverrides> = {
+  landscape_1280x720: {
+    title: { fontSizePx: 42, lineHeightPx: 48 },
+    b_head: { fontSizePx: 24, lineHeightPx: 32 },
+    paragraph: { fontSizePx: 24, lineHeightPx: 32 }
+  },
+  instagram_1080x1350: {
+    title: { fontSizePx: 63, lineHeightPx: 64 },
+    b_head: { fontSizePx: 32, lineHeightPx: 36 },
+    paragraph: { fontSizePx: 32, lineHeightPx: 36 }
+  },
+  story_1080x1920: {
+    title: { fontSizePx: 63, lineHeightPx: 64 },
+    b_head: { fontSizePx: 32, lineHeightPx: 36 },
+    paragraph: { fontSizePx: 32, lineHeightPx: 36 }
+  },
+  screen_3840x2160: {
+    title: { fontSizePx: 110, lineHeightPx: 112 },
+    b_head: { fontSizePx: 55, lineHeightPx: 72 },
+    paragraph: { fontSizePx: 32, lineHeightPx: 36 }
+  },
+  tablet_2560x1600: {
+    title: { fontSizePx: 63, lineHeightPx: 64 },
+    b_head: { fontSizePx: 32, lineHeightPx: 36 },
+    paragraph: { fontSizePx: 32, lineHeightPx: 36 }
+  }
+};
+
+function getTextStylesForProfile(profileKey: string): TextStyleSpec[] {
+  const overrides = PROFILE_TEXT_STYLE_OVERRIDES[profileKey] ?? PROFILE_TEXT_STYLE_OVERRIDES.landscape_1280x720;
+  return DEFAULT_TEXT_STYLES.map((s) => {
+    const ov = overrides[s.key as keyof TextStyleOverrides];
+    return ov ? { ...s, fontSizePx: ov.fontSizePx, lineHeightPx: ov.lineHeightPx } : { ...s };
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Text styles — title (A Head), b_head (B Head), paragraph (P)
@@ -617,19 +734,8 @@ export function createDefaultOverlayParams(
       heightPx: profile.heightPx
     },
     safeArea: { ...profile.safeArea },
-    grid: {
-      baselineStepPx: 8,
-      rowCount: 4,
-      columnCount: 4,
-      marginTopBaselines: 4,
-      marginBottomBaselines: 4,
-      marginLeftBaselines: 5,
-      marginRightBaselines: 5,
-      rowGutterBaselines: 4,
-      columnGutterBaselines: 0,
-      fitWithinSafeArea: true
-    },
-    textStyles: DEFAULT_TEXT_STYLES.map((s) => ({ ...s })),
+    grid: getDefaultGridForProfile(profileKey),
+    textStyles: getTextStylesForProfile(profileKey),
     textFields: textFields.map((f) => ({ ...f })),
     logo: { ...DEFAULT_LOGO },
     contentSource: "inline",

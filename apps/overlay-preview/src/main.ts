@@ -442,7 +442,7 @@ function syncHaloConfigToProfile(profileKey: string) {
   const cfg = createHaloFieldConfigForProfile(profileKey);
   const metrics = getOutputProfileMetrics(profileKey);
   cfg.composition.center_x_px = metrics.centerXPx;
-  cfg.composition.center_y_px = metrics.centerYPx;
+  cfg.composition.center_y_px = metrics.centerYPx + (cfg.composition.center_offset_y_px ?? 0);
   state.haloConfig = cfg;
 }
 

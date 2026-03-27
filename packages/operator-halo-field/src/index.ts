@@ -57,6 +57,7 @@ export interface HaloFieldConfig {
   composition: {
     center_x_px: number;
     center_y_px: number;
+    center_offset_y_px: number;
     scale: number;
     radial_scale: number;
     global_rotation_deg: number;
@@ -844,6 +845,7 @@ export function createDefaultHaloFieldConfig(): HaloFieldConfig {
     composition: {
       center_x_px: 640,
       center_y_px: 334,
+      center_offset_y_px: -26,
       scale: 0.5,
       radial_scale: 1,
       global_rotation_deg: 0,
@@ -953,24 +955,24 @@ type HaloProfileOverride = {
 
 const HALO_PROFILE_OVERRIDES: Record<string, HaloProfileOverride> = {
   landscape_1280x720: {
-    // baseline — no overrides
+    composition: { center_offset_y_px: -26 }
   },
   instagram_1080x1350: {
-    composition: { scale: 0.67 },
+    composition: { scale: 0.67, center_offset_y_px: -121 },
     spoke_text: { font_size_px: 14 },
     vignette: { shape_fade_start: 0.24, shape_fade_end: 0.88 }
   },
   story_1080x1920: {
-    composition: { scale: 0.75 },
+    composition: { scale: 0.75, center_offset_y_px: -156 },
     spoke_text: { font_size_px: 14 },
     vignette: { shape_fade_start: 0.23, shape_fade_end: 0.79 }
   },
   screen_3840x2160: {
-    composition: { scale: 0.75 },
+    composition: { scale: 0.75, center_offset_y_px: 82 },
     spoke_text: { font_size_px: 14 }
   },
   tablet_2560x1600: {
-    composition: { scale: 0.75, background_color: "#2b2b2b" },
+    composition: { scale: 0.75, background_color: "#2b2b2b", center_offset_y_px: 0 },
     spoke_text: { font_size_px: 14 }
   }
 };

@@ -72,7 +72,7 @@ export const OUTPUT_PROFILES: Readonly<Record<string, OutputProfile>> = {
     defaultFrameRate: 30,
     kind: "social_portrait",
     platforms: "Instagram",
-    safeArea: { top: 24, right: 24, bottom: 24, left: 24 }
+    safeArea: { top: 0, right: 0, bottom: 0, left: 0 }
   },
   story_1080x1920: {
     key: "story_1080x1920",
@@ -92,7 +92,7 @@ export const OUTPUT_PROFILES: Readonly<Record<string, OutputProfile>> = {
     defaultFrameRate: 24,
     kind: "screen",
     platforms: "Screen",
-    safeArea: { top: 0, right: 0, bottom: 0, left: 0 }
+    safeArea: { top: 24, right: 24, bottom: 24, left: 24 }
   },
   tablet_2560x1600: {
     key: "tablet_2560x1600",
@@ -102,7 +102,7 @@ export const OUTPUT_PROFILES: Readonly<Record<string, OutputProfile>> = {
     defaultFrameRate: 24,
     kind: "tablet",
     platforms: "Tablet",
-    safeArea: { top: 0, right: 0, bottom: 0, left: 0 }
+    safeArea: { top: 250, right: 65, bottom: 250, left: 65 }
   }
 };
 
