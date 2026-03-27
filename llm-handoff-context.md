@@ -4,11 +4,11 @@
 
 Primary working repo:
 
-- `h:\WSL_dev_projects\brand-layout-ops`
+- `c:\Users\lyubo\work\repos\brand-layout-ops`
 
 Reference implementation only:
 
-- `h:\HOUDINI PROJECTS\RacoonTail\mascot-animation-clean-port`
+- `c:\Users\lyubo\work\repos\racoon-anim`
 
 Do not continue product-architecture work in the old repo unless explicitly asked.
 
@@ -37,6 +37,7 @@ This new repo already contains:
 
 ## Verified runnable paths
 
+- `npm run dev`
 - `npm run typecheck`
 - `npm run preview:dev`
 - `npm run demo:overlay-layout`
@@ -73,10 +74,19 @@ If a WSL clone under `/mnt/h/...` suddenly shows many modified text files after 
 - motion preview signed off for coarse parity: the adapter now reproduces the reference app's main background motifs with orbit trails, spoke segments, echo rings, denser phase-shaped fields, and a simple dual-lobe halo treatment
 - export-relevant geometry verified with a deterministic parity script covering text anchors, text bounds, grid edges, and explicit resolved logo rectangles
 - mascot-specific face and head motion should stay adapter-side for now; the old app keeps those controls and passes scene-specific rather than exposing them as coarse reusable operators
+- reference-repo audit on 2026-03-27 reopened parity work: the current repo still trails on output-profile presets, preset import or export and source-default writeback, content-format switching with alias-based CSV mapping, style-aware selected-item authoring, asset-driven logo sizing, and the halo-field renderer stack
+- the preview sample now uses the reference landscape defaults and Ubuntu copy so stage and export-area comparisons can be made against the old app without hand-translating values each time
 
 ## Immediate goal
 
 Rebuild the current project here with 1:1 working behavior first, then continue feature development in this architecture.
+
+Latest user decision:
+
+- parity should now prioritize a wholesale port of the entire Ubuntu Summit mascot animation as one coarse scene-family operator, not as a set of preview-local patches
+- this operator should intentionally preserve the old app's one-off behavior: mascot, head shake, blink, dot splash, spokes, radio lines, Ubuntu release labels, construction lines, finale, and screensaver loop
+- reuse is not the immediate goal for this operator; principled architectural placement is
+- logo-to-heading lock is a core coupled feature and must become canonical behavior, not two separate controls; A Head sizing should drive logo scale across screen sizes while preserving the locked ratio
 
 ## High-priority behaviors to port
 
@@ -98,15 +108,19 @@ Rebuild the current project here with 1:1 working behavior first, then continue 
 - Shift-drag axis locking
 - double-click inline editing
 - staged CSV edits and writeback path
-- guide toggle shortcut
+- guide toggle shortcut parity on `W`
 - style-driven labels in the editor
 - first-baseline alignment guide for the selected text field
+- output-profile presets, preset persistence, and source-default writeback
+- actual export workflow: still, sequence, and video
 
 ### Motion scene
 
 - coarse orbits operator
 - coarse spokes operator
 - current visual parity before adding more packages
+- halo-field phase masks, width transitions, and mascot composition remain parity gaps
+- full Ubuntu Summit animation should now be treated as the next parity-first port via one coarse scene-family operator boundary
 
 ## Operator split decisions
 
@@ -126,6 +140,12 @@ Rebuild the current project here with 1:1 working behavior first, then continue 
 - mascot head shake as a standalone operator unless reuse becomes obvious
 - tiny operator packages for every reveal or mask stage
 
+### New coarse scene-family decision
+
+- add one coarse `operator-ubuntu-summit-animation` package as the home for the full reference animation port
+- keep release-label orientation, Three.js drawing details, and other renderer-specific concerns in adapters consuming that scene descriptor
+- revisit decomposition only after 1:1 parity is achieved
+
 ## Preview and export rules
 
 - live preview can use Canvas, WebGL, or Three adapters
@@ -135,9 +155,54 @@ Rebuild the current project here with 1:1 working behavior first, then continue 
 
 ## Suggested next sequence for a fresh chat
 
-1. Resume new feature work from the post-parity queue, starting with the next justified operator or backend step.
-2. Keep following `docs/rebuild-plan.md` in order; if work jumps ahead, update the deviation log there.
-3. Treat future motion work as operatorization or backend expansion, not as unresolved parity.
+1. Pick up from the parity gap audit in `docs/rebuild-plan.md` (section "Parity Gap Audit — 2026-03-27"). Gaps are numbered 1–18 by priority.
+2. Start with critical items 1–5 (output profiles, content format system, text style parity, linked title sizing, logo aspect ratio) since everything else depends on having the right frame size and field structure.
+3. Then move to high items 6–12 (editor labels, authoring surface, presets, writeback, export, guide cycle, shortcuts).
+4. Keep validating against the reference app visually and through exported geometry instead of relying on coarse parity notes.
+5. Treat fuzzy boids and broader feature work as post-parity again until the gap list is materially closed.
+
+## Where to inspect parity gaps
+
+Read these in order before changing code:
+
+1. `docs/rebuild-plan.md`
+2. `llm-handoff-context.md`
+3. `README.md`
+
+Use these reference-repo files to find the real gap, not just the symptom:
+
+- Output profiles, presets, source-default writeback, and content formats:
+	- `c:\Users\lyubo\work\repos\racoon-anim\src\app\config-schema.js`
+	- `c:\Users\lyubo\work\repos\racoon-anim\src\app\default-config-source.js`
+	- `c:\Users\lyubo\work\repos\racoon-anim\src\app\editor-constants.js`
+	- `c:\Users\lyubo\work\repos\racoon-anim\src\app\index.js`
+- Halo-field rendering, spokes, orbit timing, mask guides, and mascot composition:
+	- `c:\Users\lyubo\work\repos\racoon-anim\src\app\rendering.js`
+	- `c:\Users\lyubo\work\repos\racoon-anim\src\app\halo-field.js`
+- Real seed content and assets:
+	- `c:\Users\lyubo\work\repos\racoon-anim\assets\content.csv`
+	- `c:\Users\lyubo\work\repos\racoon-anim\assets\content-speaker-highlight.csv`
+	- `c:\Users\lyubo\work\repos\racoon-anim\assets\UbuntuTagLogo.svg`
+	- `c:\Users\lyubo\work\repos\racoon-anim\assets\racoon-mascot-face.svg`
+	- `c:\Users\lyubo\work\repos\racoon-anim\assets\racoon-mascot-halo.svg`
+
+Compare those against these current-repo files:
+
+- `apps/overlay-preview/src/main.ts`
+- `apps/overlay-preview/src/sample-document.ts`
+- `apps/overlay-preview/src/sample-motion.ts`
+- `packages/operator-overlay-layout/src/index.ts`
+- `packages/layout-engine/src/index.ts`
+- `packages/operator-orbits/src/index.ts`
+- `packages/operator-spokes/src/index.ts`
+
+If the gap is visual, run both apps and compare screenshots before changing code.
+
+## Fresh chat prompt
+
+Use this to resume work in a new chat:
+
+Continue parity work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\lyubo\work\repos\racoon-anim` as the reference app. Read `docs/rebuild-plan.md`, `llm-handoff-context.md`, and `README.md` first. Then inspect the real parity-gap sources in the reference repo: `src/app/config-schema.js`, `default-config-source.js`, `editor-constants.js`, `index.js`, `rendering.js`, `halo-field.js`, plus `assets/content.csv`, `assets/content-speaker-highlight.csv`, `assets/UbuntuTagLogo.svg`, `assets/racoon-mascot-face.svg`, and `assets/racoon-mascot-halo.svg`. Compare those against `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/sample-document.ts`, `apps/overlay-preview/src/sample-motion.ts`, `packages/operator-overlay-layout/src/index.ts`, `packages/layout-engine/src/index.ts`, `packages/operator-orbits/src/index.ts`, and `packages/operator-spokes/src/index.ts`. Use `docs/rebuild-plan.md` as the source of truth, update it as you work, keep docs in sync, and stay parity-first instead of starting new features.
 
 ## Open Questions To Discuss Later
 

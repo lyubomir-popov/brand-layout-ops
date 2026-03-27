@@ -1,415 +1,174 @@
-import "./styles.css";
+/**
+ * main.ts — Overlay-preview application entry point.
+ *
+ * Architecture:
+ * 1. Three.js WebGL canvas renders the halo field animation (bottom layer)
+ * 2. 2D canvas renders release labels (middle layer)
+ * 3. SVG overlay renders text, logo, and composition guides (top layer)
+ * 4. DOM authoring layer provides inline text editing
+ * 5. Vanilla-framework aside panel provides all controls
+ */
+import "./styles.scss";
 
-import type { ColorRgba, LayerScene, LayoutGridMetrics, LogoPlacementSpec, OperatorGraph, OperatorParameterFieldSchema, OperatorParameterSchema, PointField, ResolvedTextPlacement, TextFieldPlacementSpec, TextStyleSpec } from "@brand-layout-ops/core-types";
+import type {
+  LayerScene,
+  LayoutGridMetrics,
+  LogoPlacementSpec,
+  OperatorGraph,
+  ResolvedTextPlacement,
+  TextFieldPlacementSpec,
+  TextStyleSpec
+} from "@brand-layout-ops/core-types";
+import {
+  DEFAULT_OUTPUT_PROFILE_KEY,
+  getOutputProfile,
+  OUTPUT_PROFILE_ORDER,
+  OUTPUT_PROFILES,
+  OVERLAY_CONTENT_FORMAT_ORDER,
+  OVERLAY_CONTENT_FORMATS
+} from "@brand-layout-ops/core-types";
 import { OperatorRegistry, evaluateGraph } from "@brand-layout-ops/graph-runtime";
 import { getColumnSpanWidthPx, getKeylineXPx } from "@brand-layout-ops/layout-grid";
 import type { DragAxisLock } from "@brand-layout-ops/overlay-interaction";
 import { moveLogo, moveTextField } from "@brand-layout-ops/overlay-interaction";
 import {
   createOverlayLayoutOperator,
-  getOverlayFieldContentKey,
-  inspectOverlayCsvDraft,
   OVERLAY_LAYOUT_OPERATOR_KEY,
-  resolveOverlayTextFields,
   resolveOverlayTextValue,
-  setOverlayTextValue,
   type OverlayContentSource,
   type OverlayLayoutOperatorParams
 } from "@brand-layout-ops/operator-overlay-layout";
-import { resolveOrbitField } from "@brand-layout-ops/operator-orbits";
-import { resolveSpokeField } from "@brand-layout-ops/operator-spokes";
-import { createCheckboxField, createNumberField, createReadoutField, createSection, createSelectField, createTextAreaField } from "@brand-layout-ops/parameter-ui";
+import {
+  createDefaultHaloFieldConfig,
+  type HaloFieldConfig,
+  type MascotBox
+} from "@brand-layout-ops/operator-halo-field";
 
-import { createDefaultOverlayParams } from "./sample-document.js";
-import { buildPreviewOrbitParams, buildPreviewSpokesParams, createDefaultMotionState, getPreviewMotionCenter, type MotionLayerMode, type PreviewMotionState } from "./sample-motion.js";
+import { createHaloRenderer, type HaloRenderer } from "./halo-renderer.js";
+import {
+  buildTextFieldsForFormat,
+  createDefaultExportSettings,
+  createDefaultOverlayParams,
+  createPresetId,
+  getLinkedLogoDimensionsPx,
+  getLinkedTitleFontSizePx,
+  getNextPresetName,
+  loadActivePresetId,
+  loadPresets,
+  saveActivePresetId,
+  savePresets,
+  TEXT_STYLE_DISPLAY_LABELS,
+  type ExportSettings,
+  type Preset
+} from "./sample-document.js";
+
+// ─── Types ────────────────────────────────────────────────────────────
 
 type Selection =
   | { kind: "text"; id: string }
   | { kind: "logo"; id: string };
 
-interface PreviewState {
-  params: OverlayLayoutOperatorParams;
-  selected: Selection | null;
-  showGuides: boolean;
-  motion: PreviewMotionState;
-  stagedCsvDraft: string | null;
-}
+type GuideMode = "off" | "composition" | "baseline";
+const GUIDE_MODES: readonly GuideMode[] = ["off", "composition", "baseline"];
+
+type DragMode = "move" | "resize";
+type ResizeEdge = "e" | "w" | "nw" | "ne" | "sw" | "se";
 
 interface DragState {
   selection: Selection;
   metrics: LayoutGridMetrics;
   startClientX: number;
   startClientY: number;
-  mode: "move" | "resize-text";
-  resizeHandle?: "left" | "right";
-  initialField?: TextFieldPlacementSpec;
-  initialLogo?: LogoPlacementSpec;
+  mode: DragMode;
+  resizeEdge?: ResizeEdge | undefined;
+  initialField?: TextFieldPlacementSpec | undefined;
+  initialLogo?: LogoPlacementSpec | undefined;
 }
+
+// ─── Operator registry ────────────────────────────────────────────────
 
 const PREVIEW_NODE_ID = "overlay-preview";
 const registry = new OperatorRegistry();
 registry.register(createOverlayLayoutOperator());
 
+// ─── State ────────────────────────────────────────────────────────────
+
+interface PreviewState {
+  params: OverlayLayoutOperatorParams;
+  selected: Selection | null;
+  guideMode: GuideMode;
+  stagedCsvDraft: string | null;
+  outputProfileKey: string;
+  contentFormatKey: string;
+  presets: Preset[];
+  activePresetId: string | null;
+  exportSettings: ExportSettings;
+  haloConfig: HaloFieldConfig;
+}
+
 const state: PreviewState = {
   params: createDefaultOverlayParams(),
-  selected: { kind: "text", id: "headline" },
-  showGuides: true,
-  motion: createDefaultMotionState(),
-  stagedCsvDraft: null
+  selected: { kind: "text", id: "main_heading" },
+  guideMode: "composition",
+  stagedCsvDraft: null,
+  outputProfileKey: DEFAULT_OUTPUT_PROFILE_KEY,
+  contentFormatKey: "generic_social",
+  presets: loadPresets(),
+  activePresetId: loadActivePresetId(),
+  exportSettings: createDefaultExportSettings(),
+  haloConfig: createDefaultHaloFieldConfig()
 };
 
 let currentScene: LayerScene | null = null;
 let currentDrag: DragState | null = null;
-let currentTextEditor: HTMLTextAreaElement | null = null;
+let hoverId: string | null = null;
+let hoverHandle: ResizeEdge | null = null;
+let editSession: { id: string; element: HTMLTextAreaElement } | null = null;
 let renderToken = 0;
-let motionAnimationFrameId: number | null = null;
-let previousMotionTimestampMs: number | null = null;
+let haloRendererInstance: HaloRenderer | null = null;
 
-function escapeXml(value: string): string {
-  return String(value)
+// Persistent authoring DOM elements (created once)
+let authoringHoverBox: HTMLElement | null = null;
+let authoringHoverLabel: HTMLElement | null = null;
+let authoringSelectedBox: HTMLElement | null = null;
+let authoringSelectedLabel: HTMLElement | null = null;
+let authoringBaselineGuide: HTMLElement | null = null;
+let authoringHandles: Map<ResizeEdge, HTMLElement> = new Map();
+
+// ─── DOM references ───────────────────────────────────────────────────
+
+const $ = <T extends Element>(sel: string): T | null => document.querySelector<T>(sel);
+
+function getStageEl(): HTMLElement | null { return $("[data-stage]"); }
+function getCanvasEl(): HTMLCanvasElement | null { return $("[data-stage-canvas]"); }
+function getTextOverlayCanvas(): HTMLCanvasElement | null { return $("[data-text-overlay]"); }
+function getSvgOverlay(): SVGSVGElement | null { return $("[data-svg-overlay]"); }
+function getConfigEditor(): HTMLElement | null { return $("[data-config-editor]"); }
+function getOutputProfileOptions(): HTMLElement | null { return $("[data-output-profile-options]"); }
+function getPresetTabs(): HTMLElement | null { return $("[data-preset-tabs]"); }
+
+// ─── Helper utilities ─────────────────────────────────────────────────
+
+function escapeXml(s: string): string {
+  return String(s)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
 
-function getAxisLock(deltaXPx: number, deltaYPx: number, shiftKey: boolean): DragAxisLock {
-  if (!shiftKey) {
-    return "free";
-  }
-
-  return Math.abs(deltaXPx) >= Math.abs(deltaYPx) ? "x" : "y";
-}
+// ─── Operator graph evaluation ────────────────────────────────────────
 
 function buildGraph(params: OverlayLayoutOperatorParams): OperatorGraph {
   return {
-    nodes: [
-      {
-        id: PREVIEW_NODE_ID,
-        operatorKey: OVERLAY_LAYOUT_OPERATOR_KEY,
-        params
-      }
-    ],
+    nodes: [{ id: PREVIEW_NODE_ID, operatorKey: OVERLAY_LAYOUT_OPERATOR_KEY, params }],
     edges: []
   };
 }
 
-function getOverlayParameterSchema(): OperatorParameterSchema | undefined {
-  return registry.get(OVERLAY_LAYOUT_OPERATOR_KEY).parameterSchema;
-}
-
-function getPathSegments(path: string): string[] {
-  return path.split(".").filter(Boolean);
-}
-
-function getValueAtPath(target: unknown, path: string): unknown {
-  let current: unknown = target;
-  for (const segment of getPathSegments(path)) {
-    if (!current || typeof current !== "object") {
-      return undefined;
-    }
-    current = (current as Record<string, unknown>)[segment];
-  }
-  return current;
-}
-
-function setValueAtPath<TValue>(target: TValue, path: string, value: unknown): TValue {
-  const segments = getPathSegments(path);
-  if (segments.length === 0) {
-    return target;
-  }
-
-  const root = Array.isArray(target) ? [...target] as unknown[] : { ...(target as Record<string, unknown>) };
-  let current: Record<string, unknown> | unknown[] = root as Record<string, unknown>;
-
-  for (let index = 0; index < segments.length - 1; index += 1) {
-    const segment = segments[index];
-    const nextValue = current[segment as keyof typeof current];
-    const clonedNextValue = Array.isArray(nextValue)
-      ? [...nextValue]
-      : { ...((nextValue as Record<string, unknown> | undefined) ?? {}) };
-    current[segment as keyof typeof current] = clonedNextValue as never;
-    current = clonedNextValue as Record<string, unknown> | unknown[];
-  }
-
-  const finalSegment = segments[segments.length - 1];
-  current[finalSegment as keyof typeof current] = value as never;
-  return root as TValue;
-}
-
-function updateParamAtPath(path: string, value: unknown): void {
-  state.params = setValueAtPath(state.params, path, value);
-}
-
-function createSchemaFieldControl(field: OperatorParameterFieldSchema): HTMLElement | null {
-  if (field.path === "csvContent.rowIndex" && getContentSource() !== "csv") {
-    return null;
-  }
-
-  const currentValue = getValueAtPath(state.params, field.path);
-  switch (field.kind) {
-    case "number": {
-      const nextValue = typeof currentValue === "number" ? currentValue : Number(currentValue ?? 0);
-      return createNumberField({
-        label: field.label,
-        value: Number.isFinite(nextValue) ? nextValue : 0,
-        ...(field.hint ? { hint: field.hint } : {}),
-        ...(field.min !== undefined ? { min: field.min } : {}),
-        ...(field.max !== undefined ? { max: field.max } : {}),
-        ...(field.step !== undefined ? { step: field.step } : {}),
-        onInput(value) {
-          updateParamAtPath(field.path, field.min === undefined && field.max === undefined
-            ? value
-            : clamp(value, field.min ?? Number.NEGATIVE_INFINITY, field.max ?? Number.POSITIVE_INFINITY));
-          if (field.path === "csvContent.rowIndex") {
-            renderDocumentControls();
-            renderSelectionPanel();
-          }
-          void renderStage();
-        }
-      }).root;
-    }
-
-    case "boolean":
-      return createCheckboxField({
-        label: field.label,
-        ...(field.hint ? { hint: field.hint } : {}),
-        checked: Boolean(currentValue),
-        onInput(checked) {
-          updateParamAtPath(field.path, checked);
-          if (field.path === "grid.fitWithinSafeArea") {
-            renderCurrentStage();
-          } else {
-            void renderStage();
-          }
-        }
-      }).root;
-
-    case "select":
-      return createSelectField({
-        label: field.label,
-        ...(field.hint ? { hint: field.hint } : {}),
-        value: typeof currentValue === "string" ? currentValue : String(currentValue ?? field.options[0]?.value ?? ""),
-        options: field.options,
-        onInput(value) {
-          updateParamAtPath(field.path, value);
-          renderDocumentControls();
-          renderSelectionPanel();
-          void renderStage();
-        }
-      }).root;
-
-    default:
-      return null;
-  }
-}
-
-function createSchemaDrivenSections(): HTMLElement[] {
-  const schema = getOverlayParameterSchema();
-  if (!schema) {
-    return [];
-  }
-
-  return schema.sections.map((sectionSchema) => {
-    const section = createSection(sectionSchema.title, sectionSchema.description);
-    const sectionGrid = document.createElement("div");
-    sectionGrid.className = "parameter-grid";
-
-    const sectionFields = schema.fields.filter((field) => field.sectionKey === sectionSchema.key);
-    for (const field of sectionFields) {
-      const control = createSchemaFieldControl(field);
-      if (control) {
-        sectionGrid.append(control);
-      }
-    }
-
-    if (sectionGrid.childElementCount > 0) {
-      section.body.append(sectionGrid);
-    }
-
-    if (sectionSchema.key === "content" && getContentSource() === "csv") {
-      const csvSummary = getCsvDraftSummary();
-      const csvStatusRow = document.createElement("div");
-      csvStatusRow.className = "selection-chip-row";
-      csvStatusRow.append(
-        createReadoutField({ label: "Headers", value: String(csvSummary.headers.length) }),
-        createReadoutField({ label: "Rows", value: String(csvSummary.rowCount) }),
-        createReadoutField({ label: "Editing", value: `row ${csvSummary.selectedRowIndex}` }),
-        createReadoutField({ label: "Stage", value: hasStagedCsvDraft() ? "pending" : "clean" })
-      );
-      section.body.append(csvStatusRow);
-
-      const csvFieldStatusRow = document.createElement("div");
-      csvFieldStatusRow.className = "selection-chip-row";
-      for (const field of state.params.textFields) {
-        const contentKey = getOverlayFieldContentKey(field);
-        const isMissingFieldKey = csvSummary.missingFieldKeys.includes(contentKey);
-        const chipElement = document.createElement("span");
-        chipElement.className = `selection-chip${isMissingFieldKey ? " selection-chip--warning" : ""}`;
-        chipElement.textContent = `${contentKey}: ${isMissingFieldKey ? "missing" : "mapped"}`;
-        csvFieldStatusRow.append(chipElement);
-      }
-      section.body.append(csvFieldStatusRow);
-
-      const csvRowActionRow = document.createElement("div");
-      csvRowActionRow.className = "parameter-action-row";
-
-      const previousRowButton = document.createElement("button");
-      previousRowButton.type = "button";
-      previousRowButton.textContent = "Previous row";
-      previousRowButton.disabled = csvSummary.selectedRowIndex <= 1;
-      previousRowButton.addEventListener("click", () => {
-        setCsvRowIndex(csvSummary.selectedRowIndex - 1);
-        renderDocumentControls();
-        renderSelectionPanel();
-        void renderStage();
-      });
-
-      const nextRowButton = document.createElement("button");
-      nextRowButton.type = "button";
-      nextRowButton.textContent = csvSummary.selectedRowExists ? "Next row" : "Stay on new row";
-      nextRowButton.disabled = !csvSummary.selectedRowExists;
-      nextRowButton.addEventListener("click", () => {
-        setCsvRowIndex(csvSummary.selectedRowIndex + 1);
-        renderDocumentControls();
-        renderSelectionPanel();
-        void renderStage();
-      });
-
-      const normalizeButton = document.createElement("button");
-      normalizeButton.type = "button";
-      normalizeButton.textContent = "Seed row + headers";
-      normalizeButton.disabled = csvSummary.selectedRowExists && csvSummary.missingFieldKeys.length === 0;
-      normalizeButton.addEventListener("click", () => {
-        normalizeCsvDraftForCurrentFields();
-        renderDocumentControls();
-        renderSelectionPanel();
-        void renderStage();
-      });
-
-      csvRowActionRow.append(previousRowButton, nextRowButton, normalizeButton);
-      section.body.append(csvRowActionRow);
-
-      if (csvSummary.headers.length > 0) {
-        const headersNote = document.createElement("p");
-        headersNote.className = "parameter-note";
-        headersNote.textContent = `Headers: ${csvSummary.headers.join(", ")}`;
-        section.body.append(headersNote);
-      }
-
-      if (!csvSummary.selectedRowExists) {
-        const rowNote = document.createElement("p");
-        rowNote.className = "parameter-note parameter-note--warning";
-        rowNote.textContent = `Row ${csvSummary.selectedRowIndex} does not exist yet. Field edits stay live in the preview and will create that row when you seed or apply the staged CSV.`;
-        section.body.append(rowNote);
-      }
-
-      if (csvSummary.missingFieldKeys.length > 0) {
-        const missingColumnsNote = document.createElement("p");
-        missingColumnsNote.className = "parameter-note parameter-note--warning";
-        missingColumnsNote.textContent = `Missing CSV columns for current field mapping: ${csvSummary.missingFieldKeys.join(", ")}.`;
-        section.body.append(missingColumnsNote);
-      }
-
-      if (csvSummary.hasUnterminatedQuote) {
-        const quoteWarning = document.createElement("p");
-        quoteWarning.className = "parameter-note parameter-note--warning";
-        quoteWarning.textContent = "The staged CSV draft has an unmatched quote. Preview rendering may fall back to inline values until the draft is valid again.";
-        section.body.append(quoteWarning);
-      }
-
-      section.body.append(
-        createTextAreaField({
-          label: "CSV draft",
-          value: getEffectiveCsvDraft(),
-          rows: 8,
-          placeholder: "eyebrow,headline,body",
-          hint: "Headers map to each field's content id. The selection editor stages edits into the current row until you apply them.",
-          onInput(value) {
-            stageCsvDraft(value);
-            renderDocumentControls();
-            renderSelectionPanel();
-            void renderStage();
-          }
-        }).root
-      );
-
-      const csvActionRow = document.createElement("div");
-      csvActionRow.className = "parameter-action-row";
-
-      const applyButton = document.createElement("button");
-      applyButton.type = "button";
-      applyButton.textContent = "Apply staged CSV";
-      applyButton.disabled = !hasStagedCsvDraft();
-      applyButton.addEventListener("click", () => {
-        applyStagedCsvDraft();
-        renderDocumentControls();
-        renderSelectionPanel();
-        void renderStage();
-      });
-
-      const discardButton = document.createElement("button");
-      discardButton.type = "button";
-      discardButton.textContent = "Discard staged CSV";
-      discardButton.disabled = !hasStagedCsvDraft();
-      discardButton.addEventListener("click", () => {
-        discardStagedCsvDraft();
-        renderDocumentControls();
-        renderSelectionPanel();
-        void renderStage();
-      });
-
-      csvActionRow.append(applyButton, discardButton);
-      section.body.append(csvActionRow);
-    }
-
-    return section.root;
-  }).filter((sectionRoot) => sectionRoot.querySelector(".parameter-section__body")?.childElementCount);
-}
-
-function getStyleByKey(textStyles: TextStyleSpec[]): Map<string, TextStyleSpec> {
-  return new Map(textStyles.map((style) => [style.key, style]));
-}
-
-function getSelectedTextField(): TextFieldPlacementSpec | null {
-  const selected = state.selected;
-  if (selected?.kind !== "text") {
-    return null;
-  }
-
-  return state.params.textFields.find((field) => field.id === selected.id) ?? null;
-}
-
-function getSelectedLogo(): LogoPlacementSpec | null {
-  if (state.selected?.kind !== "logo" || !state.params.logo) {
-    return null;
-  }
-
-  return state.params.logo.id === state.selected.id ? state.params.logo : null;
-}
-
-function getContentSource(): OverlayContentSource {
-  return state.params.contentSource === "csv" ? "csv" : "inline";
-}
-
-function getEffectiveCsvDraft(): string {
-  return state.stagedCsvDraft ?? state.params.csvContent?.draft ?? "";
-}
-
-function getCsvDraftSummary() {
-  return inspectOverlayCsvDraft(getEffectiveParams());
-}
-
-function hasStagedCsvDraft(): boolean {
-  return state.stagedCsvDraft !== null && state.stagedCsvDraft !== (state.params.csvContent?.draft ?? "");
-}
-
 function getEffectiveParams(): OverlayLayoutOperatorParams {
-  if (getContentSource() !== "csv" || state.stagedCsvDraft === null) {
-    return state.params;
-  }
-
+  if (getContentSource() !== "csv" || state.stagedCsvDraft === null) return state.params;
   return {
     ...state.params,
     csvContent: {
@@ -417,31 +176,81 @@ function getEffectiveParams(): OverlayLayoutOperatorParams {
       rowIndex: state.params.csvContent?.rowIndex ?? 1
     }
   };
+}
+
+// ─── Content source accessors ─────────────────────────────────────────
+
+function getContentSource(): OverlayContentSource {
+  return state.params.contentSource === "csv" ? "csv" : "inline";
 }
 
 function getResolvedTextFieldText(field: TextFieldPlacementSpec): string {
   return resolveOverlayTextValue(getEffectiveParams(), field);
 }
 
-function setCsvRowIndex(rowIndex: number): void {
+function hasStagedCsvDraft(): boolean {
+  return state.stagedCsvDraft !== null &&
+    state.stagedCsvDraft !== (state.params.csvContent?.draft ?? "");
+}
+
+// ─── State mutators ───────────────────────────────────────────────────
+
+function updateTextField(
+  id: string,
+  updater: (f: TextFieldPlacementSpec) => TextFieldPlacementSpec
+) {
   state.params = {
     ...state.params,
-    csvContent: {
-      draft: state.params.csvContent?.draft ?? "",
-      rowIndex: Math.max(1, Math.round(rowIndex))
-    }
+    textFields: state.params.textFields.map(f => (f.id === id ? updater(f) : f))
   };
 }
 
-function stageCsvDraft(draft: string): void {
-  state.stagedCsvDraft = draft;
+function updateTextStyle(key: string, updater: (s: TextStyleSpec) => TextStyleSpec) {
+  state.params = {
+    ...state.params,
+    textStyles: state.params.textStyles.map(s => (s.key === key ? updater(s) : s))
+  };
 }
 
-function applyStagedCsvDraft(): void {
-  if (state.stagedCsvDraft === null) {
-    return;
+function updateLogo(updater: (l: LogoPlacementSpec) => LogoPlacementSpec) {
+  if (!state.params.logo) return;
+  state.params = { ...state.params, logo: updater(state.params.logo) };
+}
+
+function getCurrentLogoAspectRatio(): number {
+  const logo = state.params.logo;
+  if (!logo || logo.heightPx <= 0 || logo.widthPx <= 0) {
+    return 63 / 108;
   }
 
+  return logo.widthPx / logo.heightPx;
+}
+
+function syncLogoToTitleFontSize(titleFontSizePx: number) {
+  const aspectRatio = getCurrentLogoAspectRatio();
+  const linkedDimensions = getLinkedLogoDimensionsPx(titleFontSizePx, aspectRatio);
+  updateLogo(logo => ({
+    ...logo,
+    widthPx: linkedDimensions.widthPx,
+    heightPx: linkedDimensions.heightPx
+  }));
+}
+
+function syncTitleToLogoHeight(logoHeightPx: number) {
+  const linkedFontSize = getLinkedTitleFontSizePx(logoHeightPx);
+  updateTextStyle("title", style => ({ ...style, fontSizePx: linkedFontSize }));
+  syncLogoToTitleFontSize(linkedFontSize);
+}
+
+function select(sel: Selection | null) {
+  state.selected = sel;
+  closeInlineEditor();
+  buildConfigEditor();
+  renderAuthoringUI();
+}
+
+function applyStagedCsvDraft() {
+  if (state.stagedCsvDraft === null) return;
   state.params = {
     ...state.params,
     csvContent: {
@@ -452,1120 +261,1581 @@ function applyStagedCsvDraft(): void {
   state.stagedCsvDraft = null;
 }
 
-function discardStagedCsvDraft(): void {
+function discardStagedCsvDraft() {
   state.stagedCsvDraft = null;
 }
 
-function normalizeCsvDraftForCurrentFields(): void {
-  let nextParams = getEffectiveParams();
-  for (const field of state.params.textFields) {
-    nextParams = setOverlayTextValue(nextParams, field.id, resolveOverlayTextValue(nextParams, field));
-  }
+// ─── Profile / format / preset ────────────────────────────────────────
 
-  stageCsvDraft(nextParams.csvContent?.draft ?? "");
-}
-
-function updateTextField(textFieldId: string, updater: (field: TextFieldPlacementSpec) => TextFieldPlacementSpec): void {
+function switchOutputProfile(profileKey: string) {
+  state.outputProfileKey = profileKey;
+  const profile = getOutputProfile(profileKey);
   state.params = {
     ...state.params,
-    textFields: state.params.textFields.map((field) => (
-      field.id === textFieldId ? updater(field) : field
-    ))
+    frame: { widthPx: profile.widthPx, heightPx: profile.heightPx },
+    safeArea: { ...profile.safeArea }
+  };
+  state.exportSettings = { ...state.exportSettings, frameRate: profile.defaultFrameRate };
+
+  state.haloConfig = {
+    ...state.haloConfig,
+    composition: {
+      ...state.haloConfig.composition,
+      center_x_px: profile.widthPx * 0.5,
+      center_y_px: profile.heightPx * 0.464
+    }
+  };
+
+  resizeRenderer();
+}
+
+function switchContentFormat(formatKey: string) {
+  state.contentFormatKey = formatKey;
+  const mainHeading = state.params.textFields.find(f => f.id === "main_heading");
+  state.params = {
+    ...state.params,
+    textFields: buildTextFieldsForFormat(formatKey, undefined, mainHeading)
   };
 }
 
-function updateTextStyle(styleKey: string, updater: (style: TextStyleSpec) => TextStyleSpec): void {
-  state.params = {
-    ...state.params,
-    textStyles: state.params.textStyles.map((style) => (
-      style.key === styleKey ? updater(style) : style
-    ))
+function saveCurrentAsPreset() {
+  const preset: Preset = {
+    id: createPresetId(),
+    name: getNextPresetName(state.presets),
+    config: JSON.parse(JSON.stringify(state.params)),
+    outputProfileKey: state.outputProfileKey,
+    contentFormatKey: state.contentFormatKey
   };
+  state.presets = [...state.presets, preset];
+  state.activePresetId = preset.id;
+  savePresets(state.presets);
+  saveActivePresetId(preset.id);
 }
 
-function updateLogo(updater: (logo: LogoPlacementSpec) => LogoPlacementSpec): void {
-  if (!state.params.logo) {
-    return;
-  }
-
-  state.params = {
-    ...state.params,
-    logo: updater(state.params.logo)
-  };
+function loadPreset(preset: Preset) {
+  state.params = JSON.parse(JSON.stringify(preset.config));
+  state.outputProfileKey = preset.outputProfileKey ?? DEFAULT_OUTPUT_PROFILE_KEY;
+  state.contentFormatKey = preset.contentFormatKey ?? "generic_social";
+  state.activePresetId = preset.id;
+  state.stagedCsvDraft = null;
+  saveActivePresetId(preset.id);
 }
 
-function select(selection: Selection | null): void {
-  state.selected = selection;
-  renderSelectionPanel();
+function deletePreset(presetId: string) {
+  state.presets = state.presets.filter(p => p.id !== presetId);
+  if (state.activePresetId === presetId) state.activePresetId = null;
+  savePresets(state.presets);
+  saveActivePresetId(state.activePresetId);
 }
 
-function setTextSelection(textFieldId: string, focusTextEditor = false): void {
-  select({ kind: "text", id: textFieldId });
-  if (focusTextEditor) {
-    queueMicrotask(() => {
-      currentTextEditor?.focus();
-      currentTextEditor?.select();
-    });
-  }
-}
+// ─── Mascot box from composition scale ────────────────────────────────
 
-function getStageSvg(): SVGSVGElement | null {
-  return document.querySelector("[data-preview-stage]");
-}
-
-function getFrameDeltaFromPointer(clientX: number, clientY: number): { deltaXPx: number; deltaYPx: number } {
-  const stageSvg = getStageSvg();
-  if (!stageSvg || !currentDrag) {
-    return { deltaXPx: 0, deltaYPx: 0 };
-  }
-
-  const rect = stageSvg.getBoundingClientRect();
-  if (rect.width <= 0 || rect.height <= 0) {
-    return { deltaXPx: 0, deltaYPx: 0 };
-  }
-
+function getMascotBox(): MascotBox | null {
+  const scale = state.haloConfig.composition.scale;
+  if (scale <= 0) return null;
   return {
-    deltaXPx: (clientX - currentDrag.startClientX) * (state.params.frame.widthPx / rect.width),
-    deltaYPx: (clientY - currentDrag.startClientY) * (state.params.frame.heightPx / rect.height)
+    center_x_px: state.haloConfig.composition.center_x_px,
+    center_y_px: state.haloConfig.composition.center_y_px,
+    draw_size_px: 600 * scale
   };
 }
 
-function formatSelectionChip(label: string, value: string): string {
-  return `${label}: ${value}`;
+// ─── Halo field rendering (Three.js) ──────────────────────────────────
+
+function initHaloRenderer() {
+  const canvas = getCanvasEl();
+  const textCanvas = getTextOverlayCanvas();
+  if (!canvas || !textCanvas) return;
+
+  const { widthPx, heightPx } = state.params.frame;
+  haloRendererInstance = createHaloRenderer({
+    canvas,
+    textOverlayCanvas: textCanvas,
+    widthPx,
+    heightPx
+  });
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
+function resizeRenderer() {
+  if (!haloRendererInstance) return;
+  const { widthPx, heightPx } = state.params.frame;
+  haloRendererInstance.resize(widthPx, heightPx);
+  updateStageAspectRatio();
 }
 
-function isColorRgba(value: unknown): value is ColorRgba {
-  if (!value || typeof value !== "object") {
-    return false;
+function updateStageAspectRatio() {
+  const stage = getStageEl();
+  if (!stage) return;
+  const { widthPx, heightPx } = state.params.frame;
+  stage.style.aspectRatio = `${widthPx} / ${heightPx}`;
+}
+
+function renderHaloFrame() {
+  if (!haloRendererInstance) return;
+  haloRendererInstance.renderFrame(state.haloConfig, getMascotBox(), 0);
+}
+
+// ─── SVG overlay rendering (text, logo, guides) ──────────────────────
+
+function renderSvgOverlay(scene: LayerScene) {
+  const svg = getSvgOverlay();
+  if (!svg) return;
+
+  const { widthPx, heightPx } = state.params.frame;
+  svg.setAttribute("viewBox", `0 0 ${widthPx} ${heightPx}`);
+
+  const styleByKey = new Map(state.params.textStyles.map(s => [s.key, s]));
+  const parts: string[] = [];
+
+  if (state.guideMode !== "off") {
+    parts.push(createGuideMarkup(scene.grid));
   }
 
-  const candidate = value as Partial<ColorRgba>;
-  return [candidate.r, candidate.g, candidate.b].every((channel) => typeof channel === "number" && Number.isFinite(channel));
-}
+  parts.push(createSafeAreaMarkup());
 
-function formatRgbaColor(color: ColorRgba, alphaMultiplier = 1): string {
-  const alpha = clamp((color.a ?? 1) * alphaMultiplier, 0, 1);
-  const red = clamp(Math.round(color.r * 255), 0, 255);
-  const green = clamp(Math.round(color.g * 255), 0, 255);
-  const blue = clamp(Math.round(color.b * 255), 0, 255);
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
-}
-
-function getMotionLayerMode(): MotionLayerMode {
-  return state.motion.mode;
-}
-
-function hasMotionLayer(mode: MotionLayerMode, layer: Exclude<MotionLayerMode, "none" | "both">): boolean {
-  return mode === "both" || mode === layer;
-}
-
-function getMotionBackdropRadiusPx(): number {
-  return Math.min(state.params.frame.widthPx, state.params.frame.heightPx) * 0.36;
-}
-
-function createBackdropMarkup(): string {
-  return `<rect x="0" y="0" width="${state.params.frame.widthPx}" height="${state.params.frame.heightPx}" fill="#f9f4ed" />`;
-}
-
-function createGuideMarkup(metrics: LayoutGridMetrics): string {
-  if (!state.showGuides) {
-    return "";
+  for (const text of scene.texts) {
+    const style = styleByKey.get(text.styleKey);
+    if (style) parts.push(createTextMarkup(text, style));
   }
 
-  const baselineLines: string[] = [];
-  for (let yPx = metrics.contentTopPx; yPx <= metrics.contentBottomPx; yPx += metrics.baselineStepPx) {
-    baselineLines.push(
-      `<line x1="${metrics.contentLeftPx}" y1="${yPx}" x2="${metrics.contentRightPx}" y2="${yPx}" stroke="rgba(153, 135, 115, 0.18)" stroke-width="1" />`
-    );
-  }
+  parts.push(createLogoMarkup());
 
-  const keylines = metrics.columnKeylinePositionsPx.map((xPx, index) => (
-    `<g>
-      <line x1="${xPx}" y1="${metrics.contentTopPx}" x2="${xPx}" y2="${metrics.contentBottomPx}" stroke="rgba(232, 116, 0, 0.26)" stroke-width="2" stroke-dasharray="8 10" />
-      <text x="${xPx + 8}" y="${Math.max(20, metrics.contentTopPx - 10)}" fill="rgba(84, 61, 43, 0.85)" font-size="14" font-family="IBM Plex Mono, monospace">K${index + 1}</text>
-    </g>`
-  ));
-
-  return `
-    <g data-guides>
-      <rect x="${metrics.layoutLeftPx}" y="${metrics.layoutTopPx}" width="${metrics.layoutRightPx - metrics.layoutLeftPx}" height="${metrics.layoutBottomPx - metrics.layoutTopPx}" fill="none" stroke="rgba(232, 116, 0, 0.24)" stroke-width="2" />
-      <rect x="${metrics.contentLeftPx}" y="${metrics.contentTopPx}" width="${metrics.contentRightPx - metrics.contentLeftPx}" height="${metrics.contentBottomPx - metrics.contentTopPx}" fill="rgba(232, 116, 0, 0.04)" stroke="rgba(232, 116, 0, 0.14)" stroke-width="2" />
-      ${baselineLines.join("")}
-      ${keylines.join("")}
-    </g>
-  `;
+  svg.innerHTML = parts.join("");
 }
 
-function createMotionPointMarkup(pointField: PointField, fallbackColor: ColorRgba, className: string): string {
-  return pointField.points.map((point) => {
-    const pointColor = isColorRgba(point.attributes.color) ? point.attributes.color : fallbackColor;
-    const pscaleValue = Number(point.attributes.pscale ?? 1);
-    const phaseOpacityMultiplier = getPointPhaseOpacityMultiplier(point);
-    const radius = clamp(1.6 + pscaleValue * 3.6, 1.4, 9.2);
-    const glowRadius = radius * 1.9;
+function createSafeAreaMarkup(): string {
+  const { widthPx, heightPx } = state.params.frame;
+  const sa = state.params.safeArea;
+  if (!sa) return "";
 
-    return `
-      <g class="${className}">
-        <circle cx="${point.position.x}" cy="${point.position.y}" r="${glowRadius}" fill="${formatRgbaColor(pointColor, state.motion.opacity * 0.08 * phaseOpacityMultiplier)}" />
-        <circle cx="${point.position.x}" cy="${point.position.y}" r="${radius}" fill="${formatRgbaColor(pointColor, state.motion.opacity * phaseOpacityMultiplier)}" />
-      </g>
-    `;
-  }).join("");
+  const top = sa.top ?? 0;
+  const right = sa.right ?? 0;
+  const bottom = sa.bottom ?? 0;
+  const left = sa.left ?? 0;
+
+  if (top <= 0 && right <= 0 && bottom <= 0 && left <= 0) return "";
+
+  const bgColor = state.haloConfig.composition.background_color || "#202020";
+  const bars: string[] = [];
+
+  if (top > 0) bars.push(`<rect x="0" y="0" width="${widthPx}" height="${top}" fill="${bgColor}" opacity="0.85"/>`);
+  if (bottom > 0) bars.push(`<rect x="0" y="${heightPx - bottom}" width="${widthPx}" height="${bottom}" fill="${bgColor}" opacity="0.85"/>`);
+  if (left > 0) bars.push(`<rect x="0" y="${top}" width="${left}" height="${heightPx - top - bottom}" fill="${bgColor}" opacity="0.85"/>`);
+  if (right > 0) bars.push(`<rect x="${widthPx - right}" y="${top}" width="${right}" height="${heightPx - top - bottom}" fill="${bgColor}" opacity="0.85"/>`);
+
+  return `<g class="safe-area-fill">${bars.join("")}</g>`;
 }
 
-function getNumericPointAttribute(point: PointField["points"][number], key: string): number | null {
-  const value = Number(point.attributes[key]);
-  return Number.isFinite(value) ? value : null;
-}
+function createGuideMarkup(grid: LayoutGridMetrics): string {
+  if (state.guideMode === "off") return "";
 
-function getPhaseFillFromAngleDegrees(angleDeg: number): number {
-  const normalized = ((angleDeg % 360) + 360) % 360;
-  const displayU = normalized / 360;
-  if (displayU > 0 && displayU <= 0.5) {
-    return displayU / 0.5;
+  const { widthPx, heightPx } = state.params.frame;
+  const lines: string[] = [];
+  const guideColor = "rgba(255,255,255,0.12)";
+  const accentColor = "rgba(255,255,255,0.22)";
+  const labelColor = "rgba(255,255,255,0.35)";
+  const marginColor = "rgba(235,180,65,0.06)";
+  const columnFillColor = "rgba(100,160,255,0.04)";
+  const boundaryColor = "rgba(255,255,255,0.18)";
+
+  // Content area boundary
+  const cW = grid.contentRightPx - grid.contentLeftPx;
+  const cH = grid.contentBottomPx - grid.contentTopPx;
+  if (cW > 0 && cH > 0) {
+    lines.push(`<rect x="${grid.contentLeftPx}" y="${grid.contentTopPx}" width="${cW}" height="${cH}" fill="none" stroke="${boundaryColor}" stroke-width="0.5" stroke-dasharray="6 4"/>`);
   }
 
-  if (displayU > 0.5) {
-    return (displayU - 0.5) / 0.5;
+  // Margin zones (tinted overlays)
+  if (grid.topMarginPx > 0) {
+    lines.push(`<rect x="${grid.layoutLeftPx}" y="${grid.layoutTopPx}" width="${grid.layoutRightPx - grid.layoutLeftPx}" height="${grid.topMarginPx}" fill="${marginColor}"/>`);
+    lines.push(`<text x="${grid.contentLeftPx + 4}" y="${grid.layoutTopPx + grid.topMarginPx - 4}" fill="${labelColor}" font-size="9" font-family="monospace" opacity="0.6">margin-top</text>`);
+  }
+  if (grid.bottomMarginPx > 0) {
+    lines.push(`<rect x="${grid.layoutLeftPx}" y="${grid.contentBottomPx}" width="${grid.layoutRightPx - grid.layoutLeftPx}" height="${grid.bottomMarginPx}" fill="${marginColor}"/>`);
+  }
+  if (grid.leftMarginPx > 0) {
+    lines.push(`<rect x="${grid.layoutLeftPx}" y="${grid.contentTopPx}" width="${grid.leftMarginPx}" height="${cH}" fill="${marginColor}"/>`);
+  }
+  if (grid.rightMarginPx > 0) {
+    lines.push(`<rect x="${grid.contentRightPx}" y="${grid.contentTopPx}" width="${grid.rightMarginPx}" height="${cH}" fill="${marginColor}"/>`);
   }
 
-  return 1;
-}
+  // Column fills and keylines
+  for (let ki = 1; ki <= grid.columnCount; ki++) {
+    const x = getKeylineXPx(grid, ki);
+    const spanW = getColumnSpanWidthPx(grid, ki, 1);
 
-function getPointPhaseOpacityMultiplier(point: PointField["points"][number]): number {
-  const spokeAngleDeg = getNumericPointAttribute(point, "spoke_angle_deg");
-  if (spokeAngleDeg !== null) {
-    return 0.24 + getPhaseFillFromAngleDegrees(spokeAngleDeg) * 0.9;
-  }
-
-  const orbitAngleDeg = getNumericPointAttribute(point, "orbit_angle_deg");
-  if (orbitAngleDeg !== null) {
-    return 0.55 + getPhaseFillFromAngleDegrees(orbitAngleDeg) * 0.3;
-  }
-
-  return 1;
-}
-
-function createOrbitTrailMarkup(pointField: PointField, center: { x: number; y: number }, fallbackColor: ColorRgba): string {
-  const rings = new Map<number, PointField["points"]>();
-
-  for (const point of pointField.points) {
-    const orbitIndex = getNumericPointAttribute(point, "orbit_index");
-    if (orbitIndex === null) {
-      continue;
+    // Column fill
+    if (spanW > 0) {
+      lines.push(`<rect x="${x}" y="${grid.contentTopPx}" width="${spanW}" height="${cH}" fill="${columnFillColor}"/>`);
     }
 
-    const ringPoints = rings.get(orbitIndex) ?? [];
-    ringPoints.push(point);
-    rings.set(orbitIndex, ringPoints);
-  }
+    // Keyline (left edge of column)
+    lines.push(`<line x1="${x}" y1="${grid.contentTopPx}" x2="${x}" y2="${grid.contentBottomPx}" stroke="${accentColor}" stroke-width="1"/>`);
+    lines.push(`<text x="${x + 4}" y="${grid.contentTopPx + 12}" fill="${labelColor}" font-size="10" font-family="monospace">K${ki}</text>`);
 
-  return Array.from(rings.entries()).map(([ringIndex, ringPoints]) => {
-    const sortedPoints = [...ringPoints].sort((left, right) => {
-      return (getNumericPointAttribute(left, "orbit_point_index") ?? 0) - (getNumericPointAttribute(right, "orbit_point_index") ?? 0);
-    });
-
-    const ringColor = isColorRgba(sortedPoints[0]?.attributes.color) ? sortedPoints[0].attributes.color : fallbackColor;
-    const radiusPx = Math.max(0, getNumericPointAttribute(sortedPoints[0], "orbit_radius_px") ?? 0);
-    const ringOutline = radiusPx > 0
-      ? `<circle cx="${center.x}" cy="${center.y}" r="${radiusPx}" fill="none" stroke="${formatRgbaColor(ringColor, state.motion.opacity * 0.12)}" stroke-width="1.2" />`
-      : "";
-
-    const ringSegments = sortedPoints.map((point, index) => {
-      const nextPoint = sortedPoints[(index + 1) % sortedPoints.length];
-      if (!nextPoint) {
-        return "";
-      }
-
-      return `<line x1="${point.position.x}" y1="${point.position.y}" x2="${nextPoint.position.x}" y2="${nextPoint.position.y}" stroke="${formatRgbaColor(ringColor, state.motion.opacity * 0.16)}" stroke-width="1.4" stroke-linecap="round" />`;
-    }).join("");
-
-    return `<g class="motion-layer motion-layer--orbit-trail" data-ring-index="${ringIndex}">${ringOutline}${ringSegments}</g>`;
-  }).join("");
-}
-
-function createSpokeTrailMarkup(pointField: PointField, center: { x: number; y: number }, fallbackColor: ColorRgba): string {
-  const spokeGroups = new Map<string, PointField["points"]>();
-
-  for (const point of pointField.points) {
-    const bandIndex = getNumericPointAttribute(point, "spoke_band_index");
-    const spokeIndex = getNumericPointAttribute(point, "spoke_index");
-    if (bandIndex === null || spokeIndex === null) {
-      continue;
+    // Right edge of column (dashed)
+    const endX = x + spanW;
+    if (Math.abs(endX - x) > 2) {
+      lines.push(`<line x1="${endX}" y1="${grid.contentTopPx}" x2="${endX}" y2="${grid.contentBottomPx}" stroke="${guideColor}" stroke-width="0.5" stroke-dasharray="4 4"/>`);
     }
-
-    const groupKey = `${bandIndex}:${spokeIndex}`;
-    const spokePoints = spokeGroups.get(groupKey) ?? [];
-    spokePoints.push(point);
-    spokeGroups.set(groupKey, spokePoints);
   }
 
-  return Array.from(spokeGroups.values()).map((spokePoints) => {
-    const sortedPoints = [...spokePoints].sort((left, right) => {
-      return (getNumericPointAttribute(left, "spoke_point_index") ?? 0) - (getNumericPointAttribute(right, "spoke_point_index") ?? 0);
-    });
-    const spokeColor = isColorRgba(sortedPoints[0]?.attributes.color) ? sortedPoints[0].attributes.color : fallbackColor;
-
-    return sortedPoints.map((point, index) => {
-      const previousPoint = index === 0 ? null : sortedPoints[index - 1];
-      const startX = previousPoint?.position.x ?? center.x;
-      const startY = previousPoint?.position.y ?? center.y;
-      const phaseOpacityMultiplier = getPointPhaseOpacityMultiplier(point);
-      const alphaScale = (previousPoint ? 0.16 + index * 0.035 : 0.1) * phaseOpacityMultiplier;
-      const widthPx = previousPoint ? 1.4 : 1.1;
-
-      return `<line x1="${startX}" y1="${startY}" x2="${point.position.x}" y2="${point.position.y}" stroke="${formatRgbaColor(spokeColor, state.motion.opacity * alphaScale)}" stroke-width="${widthPx}" stroke-linecap="round" />`;
-    }).join("");
-  }).join("");
-}
-
-function createMotionPhaseLobeMarkup(center: { x: number; y: number }, backdropRadiusPx: number): string {
-  const lobeOffsetPx = backdropRadiusPx * 0.18;
-  const lobeRadiusPx = backdropRadiusPx * 0.54;
-
-  return `
-    <g data-motion-phase-lobes>
-      <circle cx="${center.x - lobeOffsetPx}" cy="${center.y}" r="${lobeRadiusPx}" fill="rgba(255, 245, 228, 0.1)" />
-      <circle cx="${center.x + lobeOffsetPx}" cy="${center.y}" r="${lobeRadiusPx}" fill="rgba(232, 244, 255, 0.08)" />
-    </g>
-  `;
-}
-
-function createMotionEchoMarkup(center: { x: number; y: number }, backdropRadiusPx: number): string {
-  const echoScales = [0.28, 0.46, 0.68];
-  return echoScales.map((scale, index) => {
-    const radiusPx = backdropRadiusPx * scale;
-    return `<circle cx="${center.x}" cy="${center.y}" r="${radiusPx}" fill="none" stroke="rgba(255, 248, 237, ${0.12 - index * 0.025})" stroke-width="${2 - index * 0.35}" stroke-dasharray="${index === 0 ? "none" : "10 16"}" />`;
-  }).join("");
-}
-
-function createMotionMarkup(): string {
-  const mode = getMotionLayerMode();
-  if (mode === "none") {
-    return "";
-  }
-
-  const motionLayers: string[] = [];
-  const spokeField = hasMotionLayer(mode, "spokes")
-    ? resolveSpokeField(buildPreviewSpokesParams(state.params.frame, state.motion.timeSeconds))
-    : null;
-  const orbitField = hasMotionLayer(mode, "orbits")
-    ? resolveOrbitField(buildPreviewOrbitParams(state.params.frame, state.motion.timeSeconds))
-    : null;
-
-  if (hasMotionLayer(mode, "spokes")) {
-    motionLayers.push(
-      createSpokeTrailMarkup(
-        spokeField!,
-        getPreviewMotionCenter(state.params.frame),
-        { r: 0.84, g: 0.92, b: 1, a: 0.45 }
-      ),
-      createMotionPointMarkup(
-        spokeField!,
-        { r: 0.84, g: 0.92, b: 1, a: 0.45 },
-        "motion-layer motion-layer--spokes"
-      )
-    );
-  }
-
-  if (hasMotionLayer(mode, "orbits")) {
-    motionLayers.push(
-      createOrbitTrailMarkup(
-        orbitField!,
-        getPreviewMotionCenter(state.params.frame),
-        { r: 1, g: 0.84, b: 0.58, a: 0.76 }
-      ),
-      createMotionPointMarkup(
-        orbitField!,
-        { r: 1, g: 0.84, b: 0.58, a: 0.76 },
-        "motion-layer motion-layer--orbits"
-      )
-    );
-  }
-
-  const center = getPreviewMotionCenter(state.params.frame);
-  const backdropRadiusPx = getMotionBackdropRadiusPx();
-
-  return `
-    <g data-motion aria-hidden="true" style="pointer-events: none;">
-      <defs>
-        <radialGradient id="motion-aura-gradient" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="#fff2dc" stop-opacity="0.75" />
-          <stop offset="55%" stop-color="#ffe0b6" stop-opacity="0.18" />
-          <stop offset="100%" stop-color="#ffe0b6" stop-opacity="0" />
-        </radialGradient>
-      </defs>
-      <circle cx="${center.x}" cy="${center.y}" r="${backdropRadiusPx}" fill="url(#motion-aura-gradient)" opacity="${clamp(state.motion.opacity, 0, 1)}" />
-      ${createMotionPhaseLobeMarkup(center, backdropRadiusPx)}
-      ${createMotionEchoMarkup(center, backdropRadiusPx)}
-      ${motionLayers.join("")}
-    </g>
-  `;
-}
-
-function createSelectedBaselineGuideMarkup(scene: LayerScene): string {
-  const selected = state.selected;
-  if (selected?.kind !== "text") {
-    return "";
-  }
-
-  const text = scene.texts.find((candidate) => candidate.id === selected.id);
-  if (!text) {
-    return "";
-  }
-
-  const baselineYPx = text.anchorBaselineYPx;
-  const baselineStartXPx = scene.grid.contentLeftPx;
-  const baselineEndXPx = scene.grid.contentRightPx;
-  const labelXPx = Math.min(baselineEndXPx - 110, text.anchorXPx + 12);
-  const labelYPx = Math.max(scene.grid.contentTopPx + 18, baselineYPx - 10);
-
-  return `
-    <g data-selected-baseline-guide aria-hidden="true" style="pointer-events: none;">
-      <line x1="${baselineStartXPx}" y1="${baselineYPx}" x2="${baselineEndXPx}" y2="${baselineYPx}" stroke="rgba(0, 122, 255, 0.72)" stroke-width="2" stroke-dasharray="10 8" />
-      <circle cx="${text.anchorXPx}" cy="${baselineYPx}" r="5" fill="rgba(0, 122, 255, 0.92)" />
-      <rect x="${labelXPx - 10}" y="${labelYPx - 18}" width="118" height="22" rx="11" fill="rgba(0, 122, 255, 0.12)" stroke="rgba(0, 122, 255, 0.28)" stroke-width="1" />
-      <text x="${labelXPx}" y="${labelYPx - 3}" fill="rgba(0, 72, 163, 0.95)" font-size="13" font-family="IBM Plex Mono, monospace">first baseline</text>
-    </g>
-  `;
-}
-
-function resolveTextFieldResize(
-  field: TextFieldPlacementSpec,
-  metrics: LayoutGridMetrics,
-  handle: "left" | "right",
-  deltaXPx: number
-): TextFieldPlacementSpec {
-  const safeStartKeyline = clamp(Math.round(field.keylineIndex), 1, Math.max(1, metrics.columnCount));
-  const safeEndKeyline = clamp(safeStartKeyline + Math.max(1, Math.round(field.columnSpan)) - 1, safeStartKeyline, Math.max(1, metrics.columnCount));
-
-  if (handle === "right") {
-    const anchorXPx = getKeylineXPx(metrics, safeStartKeyline);
-    const targetRightXPx = anchorXPx + getColumnSpanWidthPx(metrics, safeStartKeyline, safeEndKeyline - safeStartKeyline + 1) + deltaXPx;
-
-    let bestSpan = 1;
-    let bestDistance = Number.POSITIVE_INFINITY;
-    const maxAvailableSpan = Math.max(1, metrics.columnCount - safeStartKeyline + 1);
-    for (let span = 1; span <= maxAvailableSpan; span += 1) {
-      const candidateRightXPx = anchorXPx + getColumnSpanWidthPx(metrics, safeStartKeyline, span);
-      const distance = Math.abs(targetRightXPx - candidateRightXPx);
-      if (distance < bestDistance) {
-        bestSpan = span;
-        bestDistance = distance;
+  // Row bands
+  if (grid.rowCount > 0) {
+    const rowStepPx = grid.rowHeightPx + grid.rowGutterPx;
+    for (let ri = 0; ri < grid.rowCount; ri++) {
+      const y = grid.contentTopPx + ri * rowStepPx;
+      lines.push(`<rect x="${grid.contentLeftPx}" y="${y}" width="${cW}" height="${grid.rowHeightPx}" fill="rgba(255,255,255,0.03)" stroke="${guideColor}" stroke-width="0.5"/>`);
+      // Row gutter
+      if (ri < grid.rowCount - 1 && grid.rowGutterPx > 0) {
+        const gutterY = y + grid.rowHeightPx;
+        lines.push(`<rect x="${grid.contentLeftPx}" y="${gutterY}" width="${cW}" height="${grid.rowGutterPx}" fill="rgba(255,100,100,0.03)"/>`);
       }
     }
-
-    return {
-      ...field,
-      keylineIndex: safeStartKeyline,
-      columnSpan: bestSpan
-    };
   }
 
-  let bestStartKeyline = safeStartKeyline;
-  let bestDistance = Number.POSITIVE_INFINITY;
-  const targetLeftXPx = getKeylineXPx(metrics, safeStartKeyline) + deltaXPx;
-  for (let candidateStartKeyline = 1; candidateStartKeyline <= safeEndKeyline; candidateStartKeyline += 1) {
-    const candidateLeftXPx = getKeylineXPx(metrics, candidateStartKeyline);
-    const distance = Math.abs(targetLeftXPx - candidateLeftXPx);
-    if (distance < bestDistance) {
-      bestStartKeyline = candidateStartKeyline;
-      bestDistance = distance;
+  // Baseline grid
+  if (state.guideMode === "baseline" && grid.baselineStepPx > 0) {
+    for (let y = grid.contentTopPx; y < grid.contentBottomPx; y += grid.baselineStepPx) {
+      lines.push(`<line x1="${grid.contentLeftPx}" y1="${y}" x2="${grid.contentRightPx}" y2="${y}" stroke="rgba(255,79,79,0.15)" stroke-width="0.5"/>`);
     }
   }
 
-  return {
-    ...field,
-    keylineIndex: bestStartKeyline,
-    columnSpan: Math.max(1, safeEndKeyline - bestStartKeyline + 1)
-  };
-}
-
-function createTextResizeHandlesMarkup(text: ResolvedTextPlacement): string {
-  if (state.selected?.kind !== "text" || state.selected.id !== text.id) {
-    return "";
-  }
-
-  const centerYPx = text.bounds.top + text.bounds.height * 0.5;
-  const handleMarkup = (handle: "left" | "right", xPx: number) => `
-    <g data-kind="text-resize-handle" data-id="${escapeXml(text.id)}" data-handle="${handle}" style="cursor: ew-resize;">
-      <rect x="${xPx - 13}" y="${centerYPx - 17}" width="26" height="34" rx="13" fill="rgba(255,255,255,0.001)" />
-      <circle cx="${xPx}" cy="${centerYPx}" r="8" fill="rgba(255, 255, 255, 0.95)" stroke="rgba(232, 116, 0, 0.88)" stroke-width="3" />
-      <path d="M ${xPx - 3} ${centerYPx - 4} L ${xPx - 3} ${centerYPx + 4} M ${xPx + 3} ${centerYPx - 4} L ${xPx + 3} ${centerYPx + 4}" stroke="rgba(140, 77, 21, 0.95)" stroke-width="1.8" stroke-linecap="round" />
-    </g>
-  `;
-
-  return `
-    <g data-text-resize-handles aria-hidden="true">
-      ${handleMarkup("left", text.bounds.left)}
-      ${handleMarkup("right", text.bounds.right)}
-    </g>
-  `;
+  return `<g class="guides">${lines.join("")}</g>`;
 }
 
 function createTextMarkup(text: ResolvedTextPlacement, style: TextStyleSpec): string {
-  const isSelected = state.selected?.kind === "text" && state.selected.id === text.id;
-  const labelY = Math.max(18, text.bounds.top - 10);
-  const lineMarkup = text.wrappedLines.map((line, index) => (
-    `<tspan x="${text.anchorXPx}" y="${text.anchorBaselineYPx + index * style.lineHeightPx}">${escapeXml(line)}</tspan>`
-  )).join("");
+  const displayLines = text.wrappedLines;
+  const fontWeight = style.fontWeight ?? 400;
 
-  return `
-    <g data-kind="text" data-id="${escapeXml(text.id)}" style="cursor: move;">
-      <rect x="${text.bounds.left - 12}" y="${text.bounds.top - 10}" width="${text.bounds.width + 24}" height="${text.bounds.height + 20}" rx="18" fill="${isSelected ? "rgba(232, 116, 0, 0.12)" : "transparent"}" stroke="${isSelected ? "rgba(232, 116, 0, 0.82)" : "rgba(99, 79, 60, 0.24)"}" stroke-width="${isSelected ? 3 : 1.5}" stroke-dasharray="${isSelected ? "none" : "10 10"}" />
-      <text x="${text.bounds.left}" y="${labelY}" fill="rgba(84, 61, 43, 0.85)" font-size="14" font-family="IBM Plex Mono, monospace">${escapeXml(text.id)} / K${text.keylineIndex} / R${text.rowIndex} +${text.offsetBaselines}</text>
-      <text x="${text.anchorXPx}" y="${text.anchorBaselineYPx}" fill="#23160d" font-size="${style.fontSizePx}" font-weight="${style.fontWeight ?? 400}" font-family="IBM Plex Sans, Segoe UI, sans-serif">${lineMarkup}</text>
-    </g>
-    ${createTextResizeHandlesMarkup(text)}
-  `;
+  const tspans = displayLines.map((line, i) =>
+    `<tspan x="${text.anchorXPx}" dy="${i === 0 ? 0 : style.lineHeightPx}">${escapeXml(line)}</tspan>`
+  ).join("");
+
+  return `<g data-field-id="${escapeXml(text.id)}">
+    <text x="${text.anchorXPx}" y="${text.anchorBaselineYPx}" fill="#ffffff" font-size="${style.fontSizePx}" font-weight="${fontWeight}" font-family="'Ubuntu Sans', 'Ubuntu', sans-serif">
+      ${tspans}
+    </text>
+  </g>`;
 }
 
 function createLogoMarkup(): string {
-  if (!currentScene?.logo) {
-    return "";
+  const logo = state.params.logo;
+  if (!logo) return "";
+
+  const assetHref = logo.assetPath ?? "";
+  return `<g data-logo-id="${escapeXml(logo.id ?? "logo")}">
+    <image href="${escapeXml(assetHref)}" x="${logo.xPx}" y="${logo.yPx}" width="${logo.widthPx}" height="${logo.heightPx}"/>
+  </g>`;
+}
+
+// ─── Full render pipeline ─────────────────────────────────────────────
+
+async function renderStage() {
+  const myToken = ++renderToken;
+  const graph = buildGraph(getEffectiveParams());
+  const resultMap = await evaluateGraph(graph, registry);
+  if (renderToken !== myToken) return;
+
+  const nodeResult = resultMap.get(PREVIEW_NODE_ID) as { scene?: LayerScene } | undefined;
+  const scene = nodeResult?.scene;
+  if (!scene) return;
+  currentScene = scene;
+
+  renderHaloFrame();
+  renderSvgOverlay(scene);
+  renderAuthoringUI();
+}
+
+// ─── Aside panel: output profiles ─────────────────────────────────────
+
+function buildOutputProfileOptions() {
+  const container = getOutputProfileOptions();
+  if (!container) return;
+  container.innerHTML = "";
+
+  const list = document.createElement("div");
+  list.className = "preset-radio-list";
+
+  for (const key of OUTPUT_PROFILE_ORDER) {
+    const profile = OUTPUT_PROFILES[key];
+    const row = document.createElement("label");
+    row.className = "preset-radio-row";
+
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "output-profile";
+    radio.value = key;
+    radio.checked = key === state.outputProfileKey;
+    radio.addEventListener("change", () => {
+      switchOutputProfile(key);
+      buildOutputProfileOptions();
+      buildPresetTabs();
+      buildConfigEditor();
+      void renderStage();
+    });
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "preset-radio-name";
+    nameSpan.textContent = profile.label;
+
+    const metaSpan = document.createElement("span");
+    metaSpan.className = "preset-radio-status";
+    metaSpan.textContent = `${profile.widthPx}\u00D7${profile.heightPx}`;
+
+    row.append(radio, nameSpan, metaSpan);
+    list.append(row);
+  }
+
+  container.append(list);
+}
+
+// ─── Aside panel: preset tabs ─────────────────────────────────────────
+
+function buildPresetTabs() {
+  const container = getPresetTabs();
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (state.presets.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "p-form-help-text preset-empty";
+    empty.textContent = "No presets saved yet.";
+    container.append(empty);
+    return;
+  }
+
+  const list = document.createElement("div");
+  list.className = "preset-radio-list";
+
+  for (const preset of state.presets) {
+    const row = document.createElement("label");
+    row.className = "preset-radio-row";
+
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "preset";
+    radio.value = preset.id;
+    radio.checked = preset.id === state.activePresetId;
+    radio.addEventListener("change", () => {
+      loadPreset(preset);
+      buildOutputProfileOptions();
+      buildPresetTabs();
+      buildConfigEditor();
+      resizeRenderer();
+      void renderStage();
+    });
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "preset-radio-name";
+    nameSpan.textContent = preset.name;
+
+    const statusSpan = document.createElement("span");
+    statusSpan.className = "preset-radio-status";
+    statusSpan.textContent = preset.id === state.activePresetId ? "Active" : "";
+
+    row.append(radio, nameSpan, statusSpan);
+    list.append(row);
+  }
+
+  container.append(list);
+}
+
+// ─── Aside panel: config editor ───────────────────────────────────────
+
+function buildConfigEditor() {
+  const container = getConfigEditor();
+  if (!container) return;
+  container.innerHTML = "";
+
+  container.append(buildContentFormatSection());
+  container.append(buildOverlaySection());
+  container.append(buildTextStylesSection());
+  container.append(buildGridSection());
+  container.append(buildHaloConfigSection());
+}
+
+/* shared form helpers */
+
+function createFormGroup(label: string, control: HTMLElement): HTMLElement {
+  const group = document.createElement("div");
+  group.className = "p-form__group";
+
+  const lbl = document.createElement("label");
+  lbl.className = "p-form__label u-no-margin--bottom";
+  lbl.textContent = label;
+
+  const ctrl = document.createElement("div");
+  ctrl.className = "p-form__control";
+  ctrl.append(control);
+
+  group.append(lbl, ctrl);
+  return group;
+}
+
+function createNumberInput(
+  value: number,
+  opts: { min?: number; max?: number; step?: number },
+  onChange: (v: number) => void
+): HTMLInputElement {
+  const input = document.createElement("input");
+  input.type = "number";
+  input.className = "p-form-validation__input is-dense";
+  input.value = String(value);
+  if (opts.min !== undefined) input.min = String(opts.min);
+  if (opts.max !== undefined) input.max = String(opts.max);
+  if (opts.step !== undefined) input.step = String(opts.step);
+  input.addEventListener("change", () => {
+    const v = parseFloat(input.value);
+    if (Number.isFinite(v)) onChange(v);
+  });
+  return input;
+}
+
+function createSelectInput(
+  value: string,
+  options: Array<{ label: string; value: string }>,
+  onChange: (v: string) => void
+): HTMLSelectElement {
+  const sel = document.createElement("select");
+  sel.className = "p-form-validation__input is-dense";
+  for (const opt of options) {
+    const o = document.createElement("option");
+    o.value = opt.value;
+    o.textContent = opt.label;
+    o.selected = opt.value === value;
+    sel.append(o);
+  }
+  sel.addEventListener("change", () => onChange(sel.value));
+  return sel;
+}
+
+function createCheckboxInput(checked: boolean, onChange: (v: boolean) => void): HTMLInputElement {
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.checked = checked;
+  input.addEventListener("change", () => onChange(input.checked));
+  return input;
+}
+
+function buildSectionEl(title: string): { root: HTMLElement; body: HTMLElement } {
+  const root = document.createElement("div");
+  root.className = "config-section";
+
+  const heading = document.createElement("h2");
+  heading.className = "p-muted-heading u-no-margin--bottom";
+  heading.textContent = title;
+
+  const body = document.createElement("div");
+  body.className = "config-group";
+
+  root.append(heading, body);
+  return { root, body };
+}
+
+function wrapCol(span: number, el: HTMLElement): HTMLElement {
+  const wrapper = document.createElement("div");
+  wrapper.className = `col-${span}`;
+  wrapper.append(el);
+  return wrapper;
+}
+
+function createReadonlySpan(value: string): HTMLElement {
+  const span = document.createElement("span");
+  span.className = "p-form-help-text";
+  span.textContent = value;
+  return span;
+}
+
+// ── Content format section
+
+function buildContentFormatSection(): HTMLElement {
+  const { root, body } = buildSectionEl("Content Format");
+
+  body.append(createFormGroup("Format",
+    createSelectInput(
+      state.contentFormatKey,
+      OVERLAY_CONTENT_FORMAT_ORDER.map(k => ({
+        label: OVERLAY_CONTENT_FORMATS[k].label,
+        value: k
+      })),
+      (v) => {
+        switchContentFormat(v);
+        buildConfigEditor();
+        void renderStage();
+      }
+    )
+  ));
+
+  body.append(createFormGroup("Content Source",
+    createSelectInput(
+      getContentSource(),
+      [{ label: "Inline text", value: "inline" }, { label: "CSV", value: "csv" }],
+      (v) => {
+        state.params = { ...state.params, contentSource: v as OverlayContentSource };
+        buildConfigEditor();
+        void renderStage();
+      }
+    )
+  ));
+
+  if (getContentSource() === "csv") {
+    const textarea = document.createElement("textarea");
+    textarea.className = "p-form-validation__input is-dense control-inline-text";
+    textarea.rows = 5;
+    textarea.value = state.stagedCsvDraft ?? state.params.csvContent?.draft ?? "";
+    textarea.addEventListener("input", () => { state.stagedCsvDraft = textarea.value; });
+    body.append(createFormGroup("CSV Data", textarea));
+
+    const actions = document.createElement("div");
+    actions.style.cssText = "display:flex;gap:0.5rem;margin-top:0.25rem;";
+
+    const applyBtn = document.createElement("button");
+    applyBtn.className = "p-button is-dense";
+    applyBtn.textContent = "Apply CSV";
+    applyBtn.disabled = !hasStagedCsvDraft();
+    applyBtn.addEventListener("click", () => { applyStagedCsvDraft(); buildConfigEditor(); void renderStage(); });
+
+    const discardBtn = document.createElement("button");
+    discardBtn.className = "p-button--base is-dense";
+    discardBtn.textContent = "Discard";
+    discardBtn.disabled = !hasStagedCsvDraft();
+    discardBtn.addEventListener("click", () => { discardStagedCsvDraft(); buildConfigEditor(); void renderStage(); });
+
+    actions.append(applyBtn, discardBtn);
+    body.append(actions);
+
+    body.append(createFormGroup("CSV Row",
+      createNumberInput(
+        state.params.csvContent?.rowIndex ?? 1,
+        { min: 1, step: 1 },
+        (v) => {
+          state.params = {
+            ...state.params,
+            csvContent: { draft: state.params.csvContent?.draft ?? "", rowIndex: Math.max(1, Math.round(v)) }
+          };
+          void renderStage();
+        }
+      )
+    ));
+  }
+
+  return root;
+}
+
+// ── Selected overlay item
+
+function buildOverlaySection(): HTMLElement {
+  const { root, body } = buildSectionEl("Selected Overlay Item");
+
+  if (!state.selected) {
+    const p = document.createElement("p");
+    p.className = "p-form-help-text";
+    p.textContent = "Click a text block or logo in the stage to select it.";
+    body.append(p);
+    return root;
+  }
+
+  if (state.selected.kind === "text") {
+    const field = state.params.textFields.find(f => f.id === state.selected!.id);
+    if (!field) return root;
+
+    body.append(createFormGroup("ID", createReadonlySpan(field.id)));
+
+    body.append(createFormGroup("Style",
+      createSelectInput(
+        field.styleKey,
+        state.params.textStyles.map(s => ({
+          label: TEXT_STYLE_DISPLAY_LABELS[s.key] ?? s.key,
+          value: s.key
+        })),
+        (v) => { updateTextField(field.id, f => ({ ...f, styleKey: v })); void renderStage(); }
+      )
+    ));
+
+    if (getContentSource() === "inline") {
+      const textarea = document.createElement("textarea");
+      textarea.className = "p-form-validation__input is-dense control-inline-text";
+      textarea.rows = 3;
+      textarea.value = field.text ?? "";
+      textarea.addEventListener("input", () => {
+        updateTextField(field.id, f => ({ ...f, text: textarea.value }));
+        void renderStage();
+      });
+      body.append(createFormGroup("Text", textarea));
+    }
+
+    const grid = document.createElement("div");
+    grid.className = "overlay-control-grid grid-row";
+
+    grid.append(wrapCol(1, createFormGroup("Keyline",
+      createNumberInput(field.keylineIndex, { min: 1, max: 24, step: 1 }, v => {
+        updateTextField(field.id, f => ({ ...f, keylineIndex: v })); void renderStage();
+      })
+    )));
+
+    grid.append(wrapCol(1, createFormGroup("Row",
+      createNumberInput(field.rowIndex, { min: 1, max: 24, step: 1 }, v => {
+        updateTextField(field.id, f => ({ ...f, rowIndex: v })); void renderStage();
+      })
+    )));
+
+    grid.append(wrapCol(1, createFormGroup("Y Offset",
+      createNumberInput(field.offsetBaselines, { min: -200, max: 500, step: 1 }, v => {
+        updateTextField(field.id, f => ({ ...f, offsetBaselines: v })); void renderStage();
+      })
+    )));
+
+    grid.append(wrapCol(1, createFormGroup("Span",
+      createNumberInput(field.columnSpan, { min: 1, max: 24, step: 1 }, v => {
+        updateTextField(field.id, f => ({ ...f, columnSpan: v })); void renderStage();
+      })
+    )));
+
+    body.append(grid);
+  }
+
+  if (state.selected.kind === "logo") {
+    const logo = state.params.logo;
+    if (!logo) return root;
+
+    const grid = document.createElement("div");
+    grid.className = "overlay-control-grid grid-row";
+
+    grid.append(wrapCol(1, createFormGroup("X",
+      createNumberInput(logo.xPx, { step: 1 }, v => { updateLogo(l => ({ ...l, xPx: v })); void renderStage(); })
+    )));
+
+    grid.append(wrapCol(1, createFormGroup("Y",
+      createNumberInput(logo.yPx, { step: 1 }, v => { updateLogo(l => ({ ...l, yPx: v })); void renderStage(); })
+    )));
+
+    const widthInput = createNumberInput(logo.widthPx, { min: 1, step: 1 }, v => {
+      const aspectRatio = logo.widthPx > 0 && logo.heightPx > 0 ? logo.widthPx / logo.heightPx : getCurrentLogoAspectRatio();
+      const nextHeightPx = Math.max(1, Math.round(v / Math.max(0.0001, aspectRatio)));
+      syncTitleToLogoHeight(nextHeightPx);
+      void renderStage();
+    });
+    widthInput.title = "Derived from the locked A Head to logo scale.";
+
+    grid.append(wrapCol(1, createFormGroup("Width",
+      widthInput
+    )));
+
+    grid.append(wrapCol(1, createFormGroup("Height",
+      createNumberInput(logo.heightPx, { min: 1, step: 1 }, v => {
+        syncTitleToLogoHeight(v);
+        void renderStage();
+      })
+    )));
+
+    body.append(grid);
+  }
+
+  return root;
+}
+
+// ── Text styles
+
+function buildTextStylesSection(): HTMLElement {
+  const { root, body } = buildSectionEl("Text Styles");
+
+  for (const style of state.params.textStyles) {
+    const label = TEXT_STYLE_DISPLAY_LABELS[style.key] ?? style.key;
+    const sub = document.createElement("div");
+    sub.style.display = "grid";
+    sub.style.gap = "0.5rem";
+
+    const heading = document.createElement("strong");
+    heading.textContent = label;
+    sub.append(heading);
+
+    const grid = document.createElement("div");
+    grid.className = "overlay-control-grid grid-row";
+
+    grid.append(wrapCol(1, createFormGroup("Size (px)",
+      createNumberInput(style.fontSizePx, { min: 6, max: 200, step: 1 }, v => {
+        updateTextStyle(style.key, s => ({ ...s, fontSizePx: v }));
+        if (style.key === "title") {
+          syncLogoToTitleFontSize(v);
+        }
+        void renderStage();
+      })
+    )));
+
+    grid.append(wrapCol(1, createFormGroup("Line Height",
+      createNumberInput(style.lineHeightPx, { min: 6, max: 300, step: 1 }, v => {
+        updateTextStyle(style.key, s => ({ ...s, lineHeightPx: v })); void renderStage();
+      })
+    )));
+
+    grid.append(wrapCol(1, createFormGroup("Weight",
+      createNumberInput(style.fontWeight ?? 400, { min: 100, max: 900, step: 100 }, v => {
+        updateTextStyle(style.key, s => ({ ...s, fontWeight: v })); void renderStage();
+      })
+    )));
+
+    sub.append(grid);
+    body.append(sub);
+  }
+
+  return root;
+}
+
+// ── Grid settings
+
+function buildGridSection(): HTMLElement {
+  const { root, body } = buildSectionEl("Layout Grid");
+  const grid = state.params.grid;
+
+  const fields = document.createElement("div");
+  fields.className = "overlay-control-grid grid-row";
+
+  fields.append(wrapCol(1, createFormGroup("Baseline (px)",
+    createNumberInput(grid.baselineStepPx, { min: 1, max: 48, step: 1 }, v => {
+      state.params = { ...state.params, grid: { ...state.params.grid, baselineStepPx: v } }; void renderStage();
+    })
+  )));
+
+  fields.append(wrapCol(1, createFormGroup("Rows",
+    createNumberInput(grid.rowCount, { min: 1, max: 24, step: 1 }, v => {
+      state.params = { ...state.params, grid: { ...state.params.grid, rowCount: v } }; void renderStage();
+    })
+  )));
+
+  fields.append(wrapCol(1, createFormGroup("Columns",
+    createNumberInput(grid.columnCount, { min: 1, max: 24, step: 1 }, v => {
+      state.params = { ...state.params, grid: { ...state.params.grid, columnCount: v } }; void renderStage();
+    })
+  )));
+
+  fields.append(wrapCol(1, createFormGroup("Row Gutter",
+    createNumberInput(grid.rowGutterBaselines, { min: 0, max: 48, step: 1 }, v => {
+      state.params = { ...state.params, grid: { ...state.params.grid, rowGutterBaselines: v } }; void renderStage();
+    })
+  )));
+
+  body.append(fields);
+
+  const margins = document.createElement("div");
+  margins.className = "overlay-control-grid grid-row";
+
+  margins.append(wrapCol(1, createFormGroup("Top Margin",
+    createNumberInput(grid.marginTopBaselines, { min: 0, max: 48, step: 1 }, v => {
+      state.params = { ...state.params, grid: { ...state.params.grid, marginTopBaselines: v } }; void renderStage();
+    })
+  )));
+
+  margins.append(wrapCol(1, createFormGroup("Bottom Margin",
+    createNumberInput(grid.marginBottomBaselines, { min: 0, max: 48, step: 1 }, v => {
+      state.params = { ...state.params, grid: { ...state.params.grid, marginBottomBaselines: v } }; void renderStage();
+    })
+  )));
+
+  margins.append(wrapCol(1, createFormGroup("Left Margin",
+    createNumberInput(grid.marginLeftBaselines, { min: 0, max: 48, step: 1 }, v => {
+      state.params = { ...state.params, grid: { ...state.params.grid, marginLeftBaselines: v } }; void renderStage();
+    })
+  )));
+
+  margins.append(wrapCol(1, createFormGroup("Right Margin",
+    createNumberInput(grid.marginRightBaselines, { min: 0, max: 48, step: 1 }, v => {
+      state.params = { ...state.params, grid: { ...state.params.grid, marginRightBaselines: v } }; void renderStage();
+    })
+  )));
+
+  body.append(margins);
+
+  body.append(createFormGroup("Fit Within Safe Area",
+    createCheckboxInput(grid.fitWithinSafeArea ?? true, v => {
+      state.params = { ...state.params, grid: { ...state.params.grid, fitWithinSafeArea: v } }; void renderStage();
+    })
+  ));
+
+  body.append(createFormGroup("Guides",
+    createSelectInput(state.guideMode,
+      [{ label: "Off", value: "off" }, { label: "Composition Grid", value: "composition" }, { label: "Baseline Grid", value: "baseline" }],
+      (v) => { state.guideMode = v as GuideMode; void renderStage(); }
+    )
+  ));
+
+  return root;
+}
+
+// ── Halo field config
+
+function buildHaloConfigSection(): HTMLElement {
+  const { root, body } = buildSectionEl("Halo Field");
+  const hc = state.haloConfig;
+
+  const fields = document.createElement("div");
+  fields.className = "overlay-control-grid grid-row";
+
+  fields.append(wrapCol(1, createFormGroup("Scale",
+    createNumberInput(hc.composition.scale, { min: 0.1, max: 2, step: 0.01 }, v => {
+      state.haloConfig = { ...hc, composition: { ...hc.composition, scale: v } }; void renderStage();
+    })
+  )));
+
+  fields.append(wrapCol(1, createFormGroup("Spokes",
+    createNumberInput(hc.generator_wrangle.spoke_count, { min: 4, max: 120, step: 1 }, v => {
+      state.haloConfig = { ...hc, generator_wrangle: { ...hc.generator_wrangle, spoke_count: Math.round(v) } }; void renderStage();
+    })
+  )));
+
+  fields.append(wrapCol(1, createFormGroup("Orbits",
+    createNumberInput(hc.generator_wrangle.num_orbits, { min: 1, max: 16, step: 1 }, v => {
+      state.haloConfig = { ...hc, generator_wrangle: { ...hc.generator_wrangle, num_orbits: Math.round(v) } }; void renderStage();
+    })
+  )));
+
+  fields.append(wrapCol(1, createFormGroup("Phase Count",
+    createNumberInput(hc.generator_wrangle.phase_count, { min: 1, max: 6, step: 1 }, v => {
+      state.haloConfig = { ...hc, generator_wrangle: { ...hc.generator_wrangle, phase_count: Math.round(v) } }; void renderStage();
+    })
+  )));
+
+  body.append(fields);
+
+  /* colors row */
+  const colorFields = document.createElement("div");
+  colorFields.className = "overlay-control-grid grid-row";
+
+  for (const [label, getValue, setValue] of [
+    ["Background", () => hc.composition.background_color,
+      (v: string) => { state.haloConfig = { ...hc, composition: { ...hc.composition, background_color: v } }; }],
+    ["Dot Color", () => hc.point_style.color,
+      (v: string) => { state.haloConfig = { ...hc, point_style: { ...hc.point_style, color: v } }; }],
+    ["Spoke Color", () => hc.spoke_lines.color,
+      (v: string) => { state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, color: v } }; }],
+    ["Echo Color", () => hc.spoke_lines.echo_color,
+      (v: string) => { state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_color: v } }; }]
+  ] as const) {
+    const colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.className = "control-color";
+    colorInput.value = (getValue as () => string)();
+    colorInput.addEventListener("input", () => {
+      (setValue as (v: string) => void)(colorInput.value);
+      void renderStage();
+    });
+    colorFields.append(wrapCol(1, createFormGroup(label as string, colorInput)));
+  }
+
+  body.append(colorFields);
+
+  /* spoke details row */
+  const spokeDetails = document.createElement("div");
+  spokeDetails.className = "overlay-control-grid grid-row";
+
+  spokeDetails.append(wrapCol(1, createFormGroup("Spoke Width",
+    createNumberInput(hc.spoke_lines.width_px, { min: 0, max: 16, step: 0.5 }, v => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, width_px: v } }; void renderStage();
+    })
+  )));
+
+  spokeDetails.append(wrapCol(1, createFormGroup("Echo Count",
+    createNumberInput(hc.spoke_lines.echo_count, { min: 0, max: 32, step: 1 }, v => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_count: Math.round(v) } }; void renderStage();
+    })
+  )));
+
+  spokeDetails.append(wrapCol(1, createFormGroup("Echo Style",
+    createSelectInput(hc.spoke_lines.echo_style,
+      [{ label: "Mixed", value: "mixed" }, { label: "Dots", value: "dots" }, { label: "Plus", value: "plus" }, { label: "Triangles", value: "triangles" }],
+      (v) => { state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_style: v } }; void renderStage(); }
+    )
+  )));
+
+  spokeDetails.append(wrapCol(1, createFormGroup("Phase Width",
+    createNumberInput(hc.spoke_lines.phase_start_width_px, { min: 0, max: 32, step: 1 }, v => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, phase_start_width_px: v } }; void renderStage();
+    })
+  )));
+
+  body.append(spokeDetails);
+
+  return root;
+}
+
+// ─── DOM authoring layer ──────────────────────────────────────────────
+
+function createAuthoringBox(className: string): { box: HTMLElement; label: HTMLElement } {
+  const box = document.createElement("div");
+  box.className = className;
+  box.hidden = true;
+
+  const label = document.createElement("div");
+  label.className = "stage__authoring-box-label";
+  box.appendChild(label);
+
+  return { box, label };
+}
+
+function initAuthoringLayer() {
+  const layer = $<HTMLElement>("[data-authoring-layer]");
+  if (!layer) return;
+
+  const hover = createAuthoringBox("stage__authoring-box is-hover");
+  authoringHoverBox = hover.box;
+  authoringHoverLabel = hover.label;
+
+  const selected = createAuthoringBox("stage__authoring-box is-selected");
+  authoringSelectedBox = selected.box;
+  authoringSelectedLabel = selected.label;
+
+  // Resize handles on selected box
+  const edges: ResizeEdge[] = ["nw", "ne", "sw", "se", "e", "w"];
+  for (const edge of edges) {
+    const handle = document.createElement("div");
+    handle.className = `stage__authoring-handle stage__authoring-handle--${edge}`;
+    handle.dataset.resizeEdge = edge;
+    authoringSelectedBox.appendChild(handle);
+    authoringHandles.set(edge, handle);
+  }
+
+  authoringBaselineGuide = document.createElement("div");
+  authoringBaselineGuide.className = "stage__authoring-baseline-guide";
+  authoringBaselineGuide.hidden = true;
+
+  layer.append(authoringHoverBox, authoringSelectedBox, authoringBaselineGuide);
+}
+
+interface OverlayItemBounds {
+  id: string;
+  kind: "text" | "logo";
+  label: string;
+  leftPx: number;
+  topPx: number;
+  widthPx: number;
+  heightPx: number;
+  rightPx: number;
+  bottomPx: number;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  baselineYPx?: number | undefined;
+}
+
+function getOverlayItemBounds(): OverlayItemBounds[] {
+  if (!currentScene) return [];
+  const items: OverlayItemBounds[] = [];
+  const { widthPx, heightPx } = state.params.frame;
+
+  for (const text of currentScene.texts) {
+    const b = text.bounds;
+    const styleLabel = TEXT_STYLE_DISPLAY_LABELS[text.styleKey] ?? text.styleKey;
+    const authoringWidthPx = Math.max(text.maxWidthPx, b.width);
+    items.push({
+      id: text.id,
+      kind: "text",
+      label: `${styleLabel}: ${text.id}`,
+      leftPx: b.left,
+      topPx: b.top,
+      widthPx: authoringWidthPx,
+      heightPx: b.height,
+      rightPx: b.left + authoringWidthPx,
+      bottomPx: b.bottom,
+      left: b.left / widthPx * 100,
+      top: b.top / heightPx * 100,
+      width: authoringWidthPx / widthPx * 100,
+      height: b.height / heightPx * 100,
+      baselineYPx: text.anchorBaselineYPx
+    });
   }
 
   const logo = currentScene.logo;
-  const isSelected = state.selected?.kind === "logo" && state.selected.id === logo.id;
-
-  return `
-    <g data-kind="logo" data-id="${escapeXml(logo.id)}" style="cursor: move;">
-      <rect x="${logo.bounds.left}" y="${logo.bounds.top}" width="${logo.bounds.width}" height="${logo.bounds.height}" rx="14" fill="${isSelected ? "rgba(232, 116, 0, 0.16)" : "rgba(255, 255, 255, 0.4)"}" stroke="${isSelected ? "rgba(232, 116, 0, 0.88)" : "rgba(84, 61, 43, 0.55)"}" stroke-width="${isSelected ? 3 : 2}" />
-      <line x1="${logo.bounds.left}" y1="${logo.bounds.top}" x2="${logo.bounds.right}" y2="${logo.bounds.bottom}" stroke="rgba(84, 61, 43, 0.45)" stroke-width="2" />
-      <line x1="${logo.bounds.right}" y1="${logo.bounds.top}" x2="${logo.bounds.left}" y2="${logo.bounds.bottom}" stroke="rgba(84, 61, 43, 0.45)" stroke-width="2" />
-      <text x="${logo.bounds.left + 12}" y="${logo.bounds.top - 10}" fill="rgba(84, 61, 43, 0.85)" font-size="14" font-family="IBM Plex Mono, monospace">${escapeXml(logo.id)}</text>
-    </g>
-  `;
-}
-
-function renderStageMarkup(scene: LayerScene): string {
-  const styleByKey = getStyleByKey(state.params.textStyles);
-  const textMarkup = scene.texts.map((text) => {
-    const style = styleByKey.get(text.styleKey);
-    return style ? createTextMarkup(text, style) : "";
-  }).join("");
-
-  return `
-    <svg data-preview-stage viewBox="0 0 ${state.params.frame.widthPx} ${state.params.frame.heightPx}" role="img" aria-label="Overlay layout preview">
-      ${createBackdropMarkup()}
-      ${createMotionMarkup()}
-      ${createGuideMarkup(scene.grid)}
-      ${createSelectedBaselineGuideMarkup(scene)}
-      ${textMarkup}
-      ${createLogoMarkup()}
-    </svg>
-  `;
-}
-
-function renderDocumentControls(): void {
-  const documentPanel = document.querySelector("[data-document-panel]");
-  if (!(documentPanel instanceof HTMLElement)) {
-    return;
-  }
-
-  documentPanel.replaceChildren();
-
-  const motionSection = createSection("Motion", "This preview layer stays adapter-side. It uses the existing orbits and spokes operators without pulling motion semantics into the layout kernel.");
-  const motionGrid = document.createElement("div");
-  motionGrid.className = "parameter-grid";
-  motionGrid.append(
-    createSelectField({
-      label: "Layer",
-      value: getMotionLayerMode(),
-      options: [
-        { label: "Off", value: "none" },
-        { label: "Orbits", value: "orbits" },
-        { label: "Spokes", value: "spokes" },
-        { label: "Both", value: "both" }
-      ],
-      onInput(value) {
-        state.motion.mode = value === "none" || value === "orbits" || value === "spokes" || value === "both"
-          ? value
-          : "both";
-        renderCurrentStage();
-      }
-    }).root,
-    createCheckboxField({
-      label: "Animate",
-      checked: state.motion.animate,
-      onInput(checked) {
-        state.motion.animate = checked;
-        syncMotionAnimation();
-        renderCurrentStage();
-      }
-    }).root,
-    createNumberField({
-      label: "Speed",
-      value: state.motion.speed,
-      min: 0,
-      step: 0.1,
-      onInput(value) {
-        state.motion.speed = Math.max(0, value);
-      }
-    }).root,
-    createNumberField({
-      label: "Time",
-      value: state.motion.timeSeconds,
-      min: 0,
-      step: 0.1,
-      onInput(value) {
-        state.motion.timeSeconds = Math.max(0, value);
-        renderCurrentStage();
-      }
-    }).root,
-    createNumberField({
-      label: "Opacity",
-      value: state.motion.opacity,
-      min: 0,
-      max: 1,
-      step: 0.05,
-      onInput(value) {
-        state.motion.opacity = clamp(value, 0, 1);
-        renderCurrentStage();
-      }
-    }).root
-  );
-  motionSection.body.append(motionGrid);
-
-  const stylesSection = createSection("Text Styles");
-  for (const style of state.params.textStyles) {
-    const styleGrid = document.createElement("div");
-    styleGrid.className = "parameter-grid";
-    styleGrid.append(
-      createNumberField({
-        label: `${style.key} size`,
-        value: style.fontSizePx,
-        min: 1,
-        step: 1,
-        onInput(value) {
-          updateTextStyle(style.key, (currentStyle) => ({
-            ...currentStyle,
-            fontSizePx: Math.max(1, Math.round(value))
-          }));
-          void renderStage();
-        }
-      }).root,
-      createNumberField({
-        label: `${style.key} line height`,
-        value: style.lineHeightPx,
-        min: 1,
-        step: 1,
-        onInput(value) {
-          updateTextStyle(style.key, (currentStyle) => ({
-            ...currentStyle,
-            lineHeightPx: Math.max(1, Math.round(value))
-          }));
-          void renderStage();
-        }
-      }).root
-    );
-    stylesSection.body.append(styleGrid);
-  }
-
-  const schemaSectionRoots = createSchemaDrivenSections();
-
-  documentPanel.append(...schemaSectionRoots.slice(0, 1), motionSection.root, ...schemaSectionRoots.slice(1), stylesSection.root);
-}
-
-function renderSelectionPanel(): void {
-  const selectionPanel = document.querySelector("[data-selection-panel]");
-  if (!(selectionPanel instanceof HTMLElement)) {
-    return;
-  }
-
-  selectionPanel.replaceChildren();
-  currentTextEditor = null;
-
-  const section = createSection("Selection", "Use the stage to pick text or the logo. Drag on-canvas to snap text back to keylines and baselines.");
-  selectionPanel.append(section.root);
-
-  if (!state.selected) {
-    const empty = document.createElement("p");
-    empty.className = "selection-empty";
-    empty.textContent = "Nothing selected yet. Click a text block or the logo in the preview.";
-    section.body.append(empty);
-    return;
-  }
-
-  const chipRow = document.createElement("div");
-  chipRow.className = "selection-chip-row";
-  chipRow.append(
-    createReadoutField({ label: "Kind", value: state.selected.kind }),
-    createReadoutField({ label: "Id", value: state.selected.id })
-  );
-  section.body.append(chipRow);
-
-  if (state.selected.kind === "text") {
-    const field = getSelectedTextField();
-    if (!field) {
-      return;
-    }
-
-    const positionChipRow = document.createElement("div");
-    positionChipRow.className = "selection-chip-row";
-    for (const chip of [
-      formatSelectionChip("content", getContentSource()),
-      formatSelectionChip("keyline", String(field.keylineIndex)),
-      formatSelectionChip("row", String(field.rowIndex)),
-      formatSelectionChip("offset", String(field.offsetBaselines)),
-      formatSelectionChip("span", String(field.columnSpan))
-    ]) {
-      const chipElement = document.createElement("span");
-      chipElement.className = "selection-chip";
-      chipElement.textContent = chip;
-      positionChipRow.append(chipElement);
-    }
-    section.body.append(positionChipRow);
-
-    const contentFieldKey = getOverlayFieldContentKey(field);
-    const csvSummary = getContentSource() === "csv" ? getCsvDraftSummary() : null;
-    const textArea = createTextAreaField({
-      label: getContentSource() === "csv" ? `CSV value (${contentFieldKey})` : "Inline text",
-      value: getResolvedTextFieldText(field),
-      rows: 6,
-      onInput(value) {
-        if (getContentSource() === "csv") {
-          const nextParams = setOverlayTextValue(getEffectiveParams(), field.id, value);
-          stageCsvDraft(nextParams.csvContent?.draft ?? "");
-        } else {
-          state.params = setOverlayTextValue(state.params, field.id, value);
-        }
-        renderDocumentControls();
-        renderSelectionPanel();
-        void renderStage();
-      }
+  if (logo) {
+    items.push({
+      id: logo.id,
+      kind: "logo",
+      label: "Logo",
+      leftPx: logo.bounds.left,
+      topPx: logo.bounds.top,
+      widthPx: logo.bounds.width,
+      heightPx: logo.bounds.height,
+      rightPx: logo.bounds.right,
+      bottomPx: logo.bounds.bottom,
+      left: logo.bounds.left / widthPx * 100,
+      top: logo.bounds.top / heightPx * 100,
+      width: logo.bounds.width / widthPx * 100,
+      height: logo.bounds.height / heightPx * 100
     });
-    currentTextEditor = textArea.input;
-    section.body.append(textArea.root);
+  }
 
-    if (csvSummary) {
-      const isMissingColumn = csvSummary.missingFieldKeys.includes(contentFieldKey);
-      const stagedEditNote = document.createElement("p");
-      stagedEditNote.className = `parameter-note${isMissingColumn || !csvSummary.selectedRowExists ? " parameter-note--warning" : ""}`;
-      stagedEditNote.textContent = isMissingColumn || !csvSummary.selectedRowExists
-        ? `This field edit is staging row ${csvSummary.selectedRowIndex}. Apply it from the Content section to write back the row${isMissingColumn ? ` and add the ${contentFieldKey} column` : ""}.`
-        : `This field edit is staging row ${csvSummary.selectedRowIndex}. Apply it from the Content section when you want the CSV draft to become the live source.`;
-      section.body.append(stagedEditNote);
+  return items;
+}
+
+function positionBox(box: HTMLElement, label: HTMLElement, item: OverlayItemBounds) {
+  box.hidden = false;
+  box.style.left = `${item.left}%`;
+  box.style.top = `${item.top}%`;
+  box.style.width = `${item.width}%`;
+  box.style.height = `${item.height}%`;
+  label.textContent = item.label;
+}
+
+function getSelectedOverlayItemBounds(items: OverlayItemBounds[]): OverlayItemBounds | null {
+  if (!state.selected) return null;
+  return items.find(item => item.id === state.selected?.id) ?? null;
+}
+
+function getResizeCursor(edge: ResizeEdge): string {
+  switch (edge) {
+    case "e":
+    case "w":
+      return "ew-resize";
+    case "ne":
+    case "sw":
+      return "nesw-resize";
+    case "nw":
+    case "se":
+      return "nwse-resize";
+  }
+}
+
+function setDocumentSelectionSuppressed(suppressed: boolean) {
+  const value = suppressed ? "none" : "";
+  document.body.style.userSelect = value;
+  document.body.style.webkitUserSelect = value;
+}
+
+function renderAuthoringUI() {
+  const items = getOverlayItemBounds();
+  const { heightPx } = state.params.frame;
+
+  // Hover box
+  if (authoringHoverBox && authoringHoverLabel) {
+    const hoverItem = hoverId ? items.find(i => i.id === hoverId) : undefined;
+    const selectedId = state.selected ? (state.selected.kind === "text" ? state.selected.id : state.selected.id) : null;
+    if (hoverItem && hoverItem.id !== selectedId) {
+      positionBox(authoringHoverBox, authoringHoverLabel, hoverItem);
+    } else {
+      authoringHoverBox.hidden = true;
     }
-
-    const textGrid = document.createElement("div");
-    textGrid.className = "parameter-grid";
-    textGrid.append(
-      createNumberField({
-        label: "Keyline",
-        value: field.keylineIndex,
-        min: 1,
-        step: 1,
-        onInput(value) {
-          updateTextField(field.id, (currentField) => ({
-            ...currentField,
-            keylineIndex: Math.max(1, Math.round(value))
-          }));
-          void renderStage();
-          renderSelectionPanel();
-        }
-      }).root,
-      createNumberField({
-        label: "Row",
-        value: field.rowIndex,
-        min: 1,
-        step: 1,
-        onInput(value) {
-          updateTextField(field.id, (currentField) => ({
-            ...currentField,
-            rowIndex: Math.max(1, Math.round(value))
-          }));
-          void renderStage();
-          renderSelectionPanel();
-        }
-      }).root,
-      createNumberField({
-        label: "Offset baselines",
-        value: field.offsetBaselines,
-        step: 1,
-        onInput(value) {
-          updateTextField(field.id, (currentField) => ({
-            ...currentField,
-            offsetBaselines: Math.round(value)
-          }));
-          void renderStage();
-          renderSelectionPanel();
-        }
-      }).root,
-      createNumberField({
-        label: "Column span",
-        value: field.columnSpan,
-        min: 1,
-        step: 1,
-        onInput(value) {
-          updateTextField(field.id, (currentField) => ({
-            ...currentField,
-            columnSpan: Math.max(1, Math.round(value))
-          }));
-          void renderStage();
-          renderSelectionPanel();
-        }
-      }).root
-    );
-    section.body.append(textGrid);
-    return;
   }
 
-  const logo = getSelectedLogo();
-  if (!logo) {
-    return;
+  // Selected box
+  if (authoringSelectedBox && authoringSelectedLabel) {
+    const selId = state.selected ? state.selected.id : null;
+    const selItem = selId ? items.find(i => i.id === selId) : undefined;
+    if (selItem) {
+      positionBox(authoringSelectedBox, authoringSelectedLabel, selItem);
+    } else {
+      authoringSelectedBox.hidden = true;
+    }
   }
 
-  const logoGrid = document.createElement("div");
-  logoGrid.className = "parameter-grid";
-  const logoFieldSpecs: Array<{ label: string; key: keyof LogoPlacementSpec; min?: number }> = [
-    { label: "X", key: "xPx" },
-    { label: "Y", key: "yPx" },
-    { label: "Width", key: "widthPx", min: 1 },
-    { label: "Height", key: "heightPx", min: 1 }
-  ];
-  for (const spec of logoFieldSpecs) {
-    const numberFieldOptions = {
-      label: spec.label,
-      value: Number(logo[spec.key]),
-      step: 1,
-      ...(typeof spec.min === "number" ? { min: spec.min } : {}),
-      onInput(value: number) {
-        updateLogo((currentLogo) => ({
-          ...currentLogo,
-          [spec.key]: spec.min ? Math.max(spec.min, Math.round(value)) : Math.round(value)
-        }));
-        void renderStage();
+  // Baseline guide (only during drag of text)
+  if (authoringBaselineGuide) {
+    if (currentDrag && currentDrag.selection.kind === "text") {
+      const draggedItem = items.find(i => i.id === currentDrag!.selection.id);
+      if (draggedItem?.baselineYPx !== undefined) {
+        authoringBaselineGuide.hidden = false;
+        authoringBaselineGuide.style.top = `${(draggedItem.baselineYPx / heightPx) * 100}%`;
+      } else {
+        authoringBaselineGuide.hidden = true;
       }
-    };
-    logoGrid.append(
-      createNumberField(numberFieldOptions).root
-    );
-  }
-  section.body.append(logoGrid);
-}
-
-async function renderStage(): Promise<void> {
-  const token = ++renderToken;
-  const effectiveParams = getEffectiveParams();
-  const outputs = await evaluateGraph(buildGraph(effectiveParams), registry);
-  if (token !== renderToken) {
-    return;
-  }
-
-  const scene = outputs.get(PREVIEW_NODE_ID)?.scene;
-  if (!scene || typeof scene !== "object") {
-    throw new Error("Overlay preview graph did not produce a scene output.");
-  }
-
-  currentScene = scene as LayerScene;
-  renderCurrentStage();
-}
-
-function renderCurrentStage(): void {
-  const stageMount = document.querySelector("[data-stage-mount]");
-  const stageMeta = document.querySelector("[data-stage-meta]");
-  if (!(stageMount instanceof HTMLElement) || !(stageMeta instanceof HTMLElement)) {
-    return;
-  }
-
-  if (!currentScene) {
-    stageMount.innerHTML = "";
-    stageMeta.textContent = "";
-    return;
-  }
-  stageMount.innerHTML = renderStageMarkup(currentScene);
-  const csvSummary = getContentSource() === "csv" ? getCsvDraftSummary() : null;
-  const motionLabel = getMotionLayerMode() === "none"
-    ? "motion off"
-    : `${getMotionLayerMode()} ${state.motion.animate ? `@ ${state.motion.timeSeconds.toFixed(1)}s` : "paused"}`;
-  stageMeta.textContent = `${state.params.frame.widthPx} x ${state.params.frame.heightPx} frame | ${currentScene.texts.length} text blocks | ${motionLabel} | ${getContentSource()} content${csvSummary ? ` row ${csvSummary.selectedRowIndex}/${Math.max(csvSummary.rowCount, csvSummary.selectedRowIndex)}${hasStagedCsvDraft() ? " staged" : ""}` : ""} | ${state.showGuides ? "guides on" : "guides off"}`;
-}
-
-function stopMotionAnimation(): void {
-  if (motionAnimationFrameId !== null) {
-    window.cancelAnimationFrame(motionAnimationFrameId);
-    motionAnimationFrameId = null;
-  }
-  previousMotionTimestampMs = null;
-}
-
-function tickMotion(timestampMs: number): void {
-  if (!state.motion.animate) {
-    stopMotionAnimation();
-    return;
-  }
-
-  if (previousMotionTimestampMs === null) {
-    previousMotionTimestampMs = timestampMs;
-  }
-
-  const deltaSeconds = clamp((timestampMs - previousMotionTimestampMs) / 1000, 0, 0.05);
-  previousMotionTimestampMs = timestampMs;
-  state.motion.timeSeconds = Math.max(0, state.motion.timeSeconds + deltaSeconds * state.motion.speed);
-  renderCurrentStage();
-  motionAnimationFrameId = window.requestAnimationFrame(tickMotion);
-}
-
-function syncMotionAnimation(): void {
-  if (state.motion.animate) {
-    if (motionAnimationFrameId === null) {
-      motionAnimationFrameId = window.requestAnimationFrame(tickMotion);
+    } else {
+      authoringBaselineGuide.hidden = true;
     }
-    return;
   }
 
-  stopMotionAnimation();
-}
-
-function syncGuideButton(): void {
-  const guideButton = document.querySelector("[data-action='toggle-guides']");
-  if (guideButton instanceof HTMLButtonElement) {
-    guideButton.textContent = state.showGuides ? "Hide guides" : "Show guides";
+  // Cursor
+  const stage = getStageEl();
+  if (stage) {
+    if (currentDrag?.mode === "resize" && currentDrag.resizeEdge) {
+      stage.style.cursor = getResizeCursor(currentDrag.resizeEdge);
+    } else if (currentDrag) {
+      stage.style.cursor = "grabbing";
+    } else if (hoverHandle) {
+      stage.style.cursor = getResizeCursor(hoverHandle);
+    } else if (hoverId) {
+      stage.style.cursor = "grab";
+    } else {
+      stage.style.cursor = "";
+    }
   }
 }
 
-function resetPreview(): void {
-  state.params = createDefaultOverlayParams();
-  state.selected = { kind: "text", id: "headline" };
-  state.showGuides = true;
-  state.motion = createDefaultMotionState();
-  state.stagedCsvDraft = null;
-  currentDrag = null;
-  renderDocumentControls();
-  renderSelectionPanel();
-  syncGuideButton();
-  syncMotionAnimation();
-  void renderStage();
-}
+// ─── Inline editor ────────────────────────────────────────────────────
 
-function buildAppShell(): void {
-  const app = document.querySelector("#app");
-  if (!(app instanceof HTMLElement)) {
-    throw new Error("Overlay preview root element is missing.");
-  }
+function openInlineEditor(fieldId: string) {
+  closeInlineEditor();
 
-  app.innerHTML = `
-    <div class="preview-shell">
-      <main class="preview-stage-pane">
-        <section class="panel panel--stage">
-          <div class="hero">
-            <div>
-              <p class="hero__eyebrow">Brand Layout Ops / Preview Shell</p>
-              <h1 class="hero__title">Overlay parity now has a browser surface inside the extracted repo.</h1>
-              <p class="hero__copy">This shell stays intentionally narrow: it runs the overlay operator graph, layers the coarse motion operators behind it, and lets you validate text or logo interaction without pulling layout semantics back into a renderer-specific app.</p>
-            </div>
-            <div class="hero__actions">
-              <button type="button" data-action="reset">Reset demo</button>
-              <button type="button" data-action="toggle-guides">Hide guides</button>
-            </div>
-          </div>
-        </section>
+  const layer = $<HTMLElement>("[data-authoring-layer]");
+  if (!layer || !currentScene) return;
 
-        <section class="panel panel--stage stage-card">
-          <p class="stage-meta" data-stage-meta></p>
-          <div class="stage-frame">
-            <div class="stage-mount" data-stage-mount></div>
-          </div>
-          <p class="shortcut-note">Shortcuts: press G to toggle guides. Hold Shift while dragging to axis-lock. Motion animation is preview-only and does not affect layout resolution.</p>
-        </section>
-      </main>
+  const field = state.params.textFields.find(f => f.id === fieldId);
+  if (!field) return;
 
-      <aside class="preview-sidebar">
-        <section class="panel panel--sidebar" data-document-panel></section>
-        <section class="panel panel--sidebar" data-selection-panel></section>
-      </aside>
-    </div>
-  `;
+  const text = currentScene.texts.find(t => t.id === fieldId);
+  if (!text) return;
 
-  renderDocumentControls();
-  renderSelectionPanel();
-  syncGuideButton();
+  const { widthPx, heightPx } = state.params.frame;
+  const b = text.bounds;
 
-  const resetButton = document.querySelector("[data-action='reset']");
-  const guideButton = document.querySelector("[data-action='toggle-guides']");
-  resetButton?.addEventListener("click", () => {
-    resetPreview();
-  });
-  guideButton?.addEventListener("click", () => {
-    state.showGuides = !state.showGuides;
-    renderDocumentControls();
-    syncGuideButton();
+  const textarea = document.createElement("textarea");
+  textarea.className = "stage__inline-editor";
+  textarea.value = getResolvedTextFieldText(field);
+  textarea.style.left = `${(b.left / widthPx) * 100}%`;
+  textarea.style.top = `${(b.top / heightPx) * 100}%`;
+  textarea.style.width = `${Math.max(b.width / widthPx * 100, 15)}%`;
+  textarea.style.minHeight = `${Math.max(b.height / heightPx * 100, 5)}%`;
+
+  textarea.addEventListener("input", () => {
+    updateTextField(fieldId, f => ({ ...f, text: textarea.value }));
     void renderStage();
+  });
+
+  textarea.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeInlineEditor();
+      e.preventDefault();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      closeInlineEditor();
+      e.preventDefault();
+    }
+    e.stopPropagation();
+  });
+
+  textarea.addEventListener("blur", () => {
+    closeInlineEditor();
+  });
+
+  layer.appendChild(textarea);
+  editSession = { id: fieldId, element: textarea };
+
+  requestAnimationFrame(() => {
+    textarea.focus();
+    textarea.select();
   });
 }
 
-function handleStagePointerDown(event: PointerEvent): void {
-  const itemElement = (event.target as HTMLElement | null)?.closest<HTMLElement>("[data-kind][data-id]");
-  if (!itemElement || !currentScene) {
-    select(null);
-    void renderStage();
-    return;
-  }
+function closeInlineEditor() {
+  if (!editSession) return;
+  editSession.element.remove();
+  editSession = null;
+}
 
-  const id = itemElement.dataset.id;
-  const kind = itemElement.dataset.kind;
-  if (!id || (kind !== "text" && kind !== "logo" && kind !== "text-resize-handle")) {
-    return;
-  }
+// ─── Pointer event handling ───────────────────────────────────────────
 
-  if (kind === "text-resize-handle") {
-    const textField = state.params.textFields.find((field) => field.id === id);
-    const handle = itemElement.dataset.handle === "left" ? "left" : "right";
-    if (!textField) {
-      return;
-    }
+function clientToFrame(clientX: number, clientY: number): { frameX: number; frameY: number } | null {
+  const stage = getStageEl();
+  if (!stage) return null;
 
-    select({ kind: "text", id });
-    currentDrag = {
-      selection: { kind: "text", id },
-      mode: "resize-text",
-      resizeHandle: handle,
-      metrics: currentScene.grid,
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      initialField: { ...textField }
-    };
-    void renderStage();
-    return;
-  }
+  const rect = stage.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return null;
 
-  const selection: Selection = kind === "text"
-    ? { kind: "text", id }
-    : { kind: "logo", id };
-  select(selection);
-  void renderStage();
-
-  if (selection.kind === "text") {
-    const textField = state.params.textFields.find((field) => field.id === id);
-    if (!textField) {
-      return;
-    }
-
-    currentDrag = {
-      selection,
-      mode: "move",
-      metrics: currentScene.grid,
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      initialField: { ...textField }
-    };
-    return;
-  }
-
-  if (!state.params.logo) {
-    return;
-  }
-
-  currentDrag = {
-    selection,
-    mode: "move",
-    metrics: currentScene.grid,
-    startClientX: event.clientX,
-    startClientY: event.clientY,
-    initialLogo: { ...state.params.logo }
+  return {
+    frameX: (clientX - rect.left) / rect.width * state.params.frame.widthPx,
+    frameY: (clientY - rect.top) / rect.height * state.params.frame.heightPx
   };
 }
 
-function handleStageDoubleClick(event: MouseEvent): void {
-  const itemElement = (event.target as HTMLElement | null)?.closest<HTMLElement>("[data-kind='text'][data-id]");
-  const id = itemElement?.dataset.id;
-  if (!id) {
+const HIT_SLOP_PX = 10;
+const RESIZE_HANDLE_HIT_RADIUS_PX = 12;
+
+function getResizeHandleAtPoint(clientX: number, clientY: number): ResizeEdge | null {
+  if (!state.selected) return null;
+
+  const stage = getStageEl();
+  if (!stage || !currentScene) return null;
+
+  const selectedItem = getSelectedOverlayItemBounds(getOverlayItemBounds());
+  if (!selectedItem) return null;
+
+  const rect = stage.getBoundingClientRect();
+  const itemLeft = rect.left + (selectedItem.left / 100) * rect.width;
+  const itemTop = rect.top + (selectedItem.top / 100) * rect.height;
+  const itemWidth = (selectedItem.width / 100) * rect.width;
+  const itemHeight = (selectedItem.height / 100) * rect.height;
+  const itemRight = itemLeft + itemWidth;
+  const itemBottom = itemTop + itemHeight;
+  const itemMidY = itemTop + itemHeight / 2;
+
+  const handlePoints: Array<{ edge: ResizeEdge; x: number; y: number }> = [
+    { edge: "nw", x: itemLeft, y: itemTop },
+    { edge: "ne", x: itemRight, y: itemTop },
+    { edge: "sw", x: itemLeft, y: itemBottom },
+    { edge: "se", x: itemRight, y: itemBottom },
+    { edge: "w", x: itemLeft, y: itemMidY },
+    { edge: "e", x: itemRight, y: itemMidY }
+  ];
+
+  for (const handle of handlePoints) {
+    const dx = clientX - handle.x;
+    const dy = clientY - handle.y;
+    if (Math.hypot(dx, dy) <= RESIZE_HANDLE_HIT_RADIUS_PX) {
+      return handle.edge;
+    }
+  }
+
+  return null;
+}
+
+function findHitTarget(clientX: number, clientY: number): Selection | null {
+  const pt = clientToFrame(clientX, clientY);
+  if (!pt) return null;
+  const { frameX, frameY } = pt;
+  const overlayItems = getOverlayItemBounds();
+
+  // Check logo first
+  const logo = state.params.logo;
+  if (logo) {
+    if (
+      frameX >= logo.xPx - HIT_SLOP_PX && frameX <= logo.xPx + logo.widthPx + HIT_SLOP_PX &&
+      frameY >= logo.yPx - HIT_SLOP_PX && frameY <= logo.yPx + logo.heightPx + HIT_SLOP_PX
+    ) {
+      return { kind: "logo", id: logo.id ?? "logo" };
+    }
+  }
+
+  // Check text fields (reverse for z-order)
+  if (currentScene) {
+    const texts = overlayItems.filter(item => item.kind === "text").reverse();
+    for (const text of texts) {
+      if (
+        frameX >= text.leftPx - HIT_SLOP_PX && frameX <= text.rightPx + HIT_SLOP_PX &&
+        frameY >= text.topPx - HIT_SLOP_PX && frameY <= text.bottomPx + HIT_SLOP_PX
+      ) {
+        return { kind: "text", id: text.id };
+      }
+    }
+  }
+
+  return null;
+}
+
+function getFrameDelta(clientX: number, clientY: number): { deltaXPx: number; deltaYPx: number } {
+  if (!currentDrag) return { deltaXPx: 0, deltaYPx: 0 };
+  const stage = getStageEl();
+  if (!stage) return { deltaXPx: 0, deltaYPx: 0 };
+
+  const rect = stage.getBoundingClientRect();
+  if (rect.width <= 0) return { deltaXPx: 0, deltaYPx: 0 };
+
+  return {
+    deltaXPx: (clientX - currentDrag.startClientX) / rect.width * state.params.frame.widthPx,
+    deltaYPx: (clientY - currentDrag.startClientY) / rect.height * state.params.frame.heightPx
+  };
+}
+
+function handlePointerDown(e: PointerEvent) {
+  if (editSession || e.button !== 0) return;
+
+  const resizeEdge = getResizeHandleAtPoint(e.clientX, e.clientY);
+  if (resizeEdge && state.selected && currentScene) {
+    const dragState: DragState = {
+      selection: state.selected,
+      metrics: currentScene.grid,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      mode: "resize",
+      resizeEdge
+    };
+    if (state.selected.kind === "text") {
+      dragState.initialField = state.params.textFields.find(f => f.id === state.selected!.id);
+    } else if (state.selected.kind === "logo") {
+      dragState.initialLogo = state.params.logo ? { ...state.params.logo } : undefined;
+    }
+    currentDrag = dragState;
+    setDocumentSelectionSuppressed(true);
+    const stage = getStageEl();
+    stage?.setPointerCapture(e.pointerId);
+    renderAuthoringUI();
+    e.preventDefault();
     return;
   }
 
-  setTextSelection(id, true);
+  const hit = findHitTarget(e.clientX, e.clientY);
+  if (!hit) { select(null); renderAuthoringUI(); return; }
+
+  select(hit);
+  if (!currentScene) return;
+
+  const dragState: DragState = {
+    selection: hit,
+    metrics: currentScene.grid,
+    startClientX: e.clientX,
+    startClientY: e.clientY,
+    mode: "move"
+  };
+
+  if (hit.kind === "text") {
+    dragState.initialField = state.params.textFields.find(f => f.id === hit.id);
+  } else if (hit.kind === "logo") {
+    dragState.initialLogo = state.params.logo ? { ...state.params.logo } : undefined;
+  }
+
+  currentDrag = dragState;
+  setDocumentSelectionSuppressed(true);
+  const stage = getStageEl();
+  stage?.setPointerCapture(e.pointerId);
+  renderAuthoringUI();
+  e.preventDefault();
+}
+
+function handlePointerMove(e: PointerEvent) {
+  if (currentDrag && currentScene) {
+    const delta = getFrameDelta(e.clientX, e.clientY);
+
+    if (currentDrag.mode === "resize") {
+      // Resize mode — adjust columnSpan (text) or dimensions (logo)
+      if (currentDrag.selection.kind === "text" && currentDrag.initialField) {
+        const metrics = currentDrag.metrics;
+        const colW = metrics.columnWidthPx + metrics.columnGutterPx;
+        const edge = currentDrag.resizeEdge;
+
+        if (edge === "e" || edge === "ne" || edge === "se") {
+          // Expand/shrink right edge → change columnSpan
+          const spanDelta = colW > 0 ? Math.round(delta.deltaXPx / colW) : 0;
+          const maxSpan = metrics.columnCount - currentDrag.initialField.keylineIndex + 1;
+          const newSpan = Math.max(1, Math.min(maxSpan, currentDrag.initialField.columnSpan + spanDelta));
+          updateTextField(currentDrag.selection.id, f => ({ ...f, columnSpan: newSpan }));
+        } else if (edge === "w" || edge === "nw" || edge === "sw") {
+          // Shrink/expand left edge → change keylineIndex + columnSpan
+          const colDelta = colW > 0 ? Math.round(delta.deltaXPx / colW) : 0;
+          const newKeyline = Math.max(1, Math.min(
+            currentDrag.initialField.keylineIndex + currentDrag.initialField.columnSpan - 1,
+            currentDrag.initialField.keylineIndex + colDelta
+          ));
+          const keylineDiff = newKeyline - currentDrag.initialField.keylineIndex;
+          const newSpan = Math.max(1, currentDrag.initialField.columnSpan - keylineDiff);
+          updateTextField(currentDrag.selection.id, f => ({ ...f, keylineIndex: newKeyline, columnSpan: newSpan }));
+        }
+        void renderStage();
+      }
+
+      if (currentDrag.selection.kind === "logo" && currentDrag.initialLogo) {
+        const il = currentDrag.initialLogo;
+        const edge = currentDrag.resizeEdge;
+        let newW = il.widthPx;
+        let newH = il.heightPx;
+        let newX = il.xPx;
+        let newY = il.yPx;
+        const aspect = il.widthPx / (il.heightPx || 1);
+
+        if (edge === "se" || edge === "e" || edge === "ne") {
+          newW = Math.max(16, il.widthPx + delta.deltaXPx);
+          if (edge !== "e") newH = newW / aspect;
+          if (edge === "ne") newY = il.yPx + il.heightPx - newH;
+        } else if (edge === "sw" || edge === "w" || edge === "nw") {
+          newW = Math.max(16, il.widthPx - delta.deltaXPx);
+          newX = il.xPx + il.widthPx - newW;
+          if (edge !== "w") newH = newW / aspect;
+          if (edge === "nw") newY = il.yPx + il.heightPx - newH;
+        }
+
+        updateLogo(() => ({ ...il, xPx: newX, yPx: newY, widthPx: newW, heightPx: newH }));
+        syncTitleToLogoHeight(newH);
+        void renderStage();
+      }
+      e.preventDefault();
+    } else {
+      // Move mode
+      const axisLock: DragAxisLock = e.shiftKey
+        ? (Math.abs(delta.deltaXPx) >= Math.abs(delta.deltaYPx) ? "x" : "y")
+        : "free";
+
+      if (currentDrag.selection.kind === "text" && currentDrag.initialField) {
+        const result = moveTextField(currentDrag.initialField, currentDrag.metrics, { ...delta, axisLock });
+        updateTextField(currentDrag.selection.id, () => result);
+        void renderStage();
+      }
+
+      if (currentDrag.selection.kind === "logo" && currentDrag.initialLogo) {
+        const result = moveLogo(currentDrag.initialLogo, { ...delta, axisLock });
+        updateLogo(() => result);
+        void renderStage();
+      }
+
+      e.preventDefault();
+    }
+  } else {
+    const newHoverHandle = getResizeHandleAtPoint(e.clientX, e.clientY);
+    const hit = findHitTarget(e.clientX, e.clientY);
+    const newHoverId = hit ? hit.id : null;
+    if (newHoverId !== hoverId || newHoverHandle !== hoverHandle) {
+      hoverId = newHoverId;
+      hoverHandle = newHoverHandle;
+      renderAuthoringUI();
+    }
+  }
+}
+
+function handlePointerUp(_e: PointerEvent) {
+  if (currentDrag) {
+    currentDrag = null;
+    setDocumentSelectionSuppressed(false);
+    buildConfigEditor();
+    renderAuthoringUI();
+  }
+}
+
+function handlePointerCancel() {
+  if (currentDrag) {
+    currentDrag = null;
+    setDocumentSelectionSuppressed(false);
+    renderAuthoringUI();
+  }
+}
+
+function handleDblClick(e: MouseEvent) {
+  const hit = findHitTarget(e.clientX, e.clientY);
+  if (hit && hit.kind === "text" && getContentSource() === "inline") {
+    openInlineEditor(hit.id);
+  }
+}
+
+// ─── Keyboard shortcuts ───────────────────────────────────────────────
+
+function handleKeyDown(e: KeyboardEvent) {
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+    if (e.key === "Escape") {
+      (e.target as HTMLElement).blur();
+      e.preventDefault();
+    }
+    return;
+  }
+
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+    e.preventDefault();
+    saveCurrentAsPreset();
+    buildPresetTabs();
+    return;
+  }
+
+  if (e.key === "g" || e.key === "G") {
+    const idx = GUIDE_MODES.indexOf(state.guideMode);
+    state.guideMode = GUIDE_MODES[(idx + 1) % GUIDE_MODES.length];
+    void renderStage();
+    return;
+  }
+
+  if (e.key === "Escape" && currentDrag) {
+    currentDrag = null;
+    return;
+  }
+}
+
+// ─── Drawer toggle (mobile) ──────────────────────────────────────────
+
+function setupDrawerToggle() {
+  const toggleBtn = $<HTMLElement>("[data-drawer-toggle]");
+  const closeBtn = $<HTMLElement>("[data-drawer-close]");
+  const backdrop = $<HTMLElement>("[data-drawer-backdrop]");
+  const aside = $<HTMLElement>("[data-control-panel]");
+
+  function openDrawer() {
+    aside?.classList.remove("is-collapsed");
+    document.body.classList.add("drawer-open");
+    toggleBtn?.setAttribute("aria-expanded", "true");
+  }
+
+  function closeDrawer() {
+    aside?.classList.add("is-collapsed");
+    document.body.classList.remove("drawer-open");
+    toggleBtn?.setAttribute("aria-expanded", "false");
+  }
+
+  toggleBtn?.addEventListener("click", () => {
+    const isOpen = toggleBtn.getAttribute("aria-expanded") === "true";
+    if (isOpen) closeDrawer(); else openDrawer();
+  });
+  closeBtn?.addEventListener("click", closeDrawer);
+  backdrop?.addEventListener("click", closeDrawer);
+}
+
+// ─── Button handlers ──────────────────────────────────────────────────
+
+function setupButtons() {
+  $("[data-export-frame-button]")?.addEventListener("click", () => {
+    const canvas = getCanvasEl();
+    if (!canvas) return;
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${state.exportSettings.exportName}_${state.outputProfileKey}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, "image/png");
+  });
+
+  $("[data-reset-button]")?.addEventListener("click", () => {
+    state.params = createDefaultOverlayParams();
+    state.haloConfig = createDefaultHaloFieldConfig();
+    state.outputProfileKey = DEFAULT_OUTPUT_PROFILE_KEY;
+    state.contentFormatKey = "generic_social";
+    state.selected = { kind: "text", id: "main_heading" };
+    state.stagedCsvDraft = null;
+    resizeRenderer();
+    buildOutputProfileOptions();
+    buildPresetTabs();
+    buildConfigEditor();
+    void renderStage();
+  });
+
+  $("[data-preset-save]")?.addEventListener("click", () => {
+    saveCurrentAsPreset();
+    buildPresetTabs();
+  });
+
+  $("[data-preset-delete]")?.addEventListener("click", () => {
+    if (state.activePresetId) {
+      deletePreset(state.activePresetId);
+      buildPresetTabs();
+    }
+  });
+}
+
+// ─── Window resize ───────────────────────────────────────────────────
+
+function setupResize() {
+  function checkDock() {
+    if (window.innerWidth >= 1200) {
+      document.body.classList.add("editor-docked");
+    } else {
+      document.body.classList.remove("editor-docked");
+    }
+  }
+  checkDock();
+  window.addEventListener("resize", checkDock);
+}
+
+// ─── Initialization ──────────────────────────────────────────────────
+
+function init() {
+  updateStageAspectRatio();
+  initHaloRenderer();
+
+  buildOutputProfileOptions();
+  buildPresetTabs();
+  buildConfigEditor();
+
+  setupDrawerToggle();
+  setupButtons();
+  setupResize();
+  initAuthoringLayer();
+
+  // Pointer events on the stage element (not the SVG — SVG is pointer-events:none)
+  const stage = getStageEl();
+  if (stage) {
+    stage.addEventListener("pointerdown", handlePointerDown);
+    stage.addEventListener("pointermove", handlePointerMove);
+    stage.addEventListener("pointerup", handlePointerUp);
+    stage.addEventListener("pointercancel", handlePointerCancel);
+    stage.addEventListener("dblclick", handleDblClick);
+  }
+
+  window.addEventListener("keydown", handleKeyDown);
+
   void renderStage();
 }
 
-function handlePointerMove(event: PointerEvent): void {
-  const drag = currentDrag;
-  if (!drag) {
-    return;
-  }
-
-  const { deltaXPx, deltaYPx } = getFrameDeltaFromPointer(event.clientX, event.clientY);
-  const axisLock = getAxisLock(deltaXPx, deltaYPx, event.shiftKey);
-
-  if (drag.mode === "resize-text" && drag.selection.kind === "text" && drag.initialField && drag.resizeHandle) {
-    const initialField = drag.initialField;
-    const metrics = drag.metrics;
-    updateTextField(drag.selection.id, () => resolveTextFieldResize(initialField, metrics, drag.resizeHandle!, deltaXPx));
-    void renderStage();
-    return;
-  }
-
-  if (drag.selection.kind === "text" && drag.initialField) {
-    const initialField = drag.initialField;
-    const metrics = drag.metrics;
-    updateTextField(drag.selection.id, () => moveTextField(initialField, metrics, {
-      deltaXPx,
-      deltaYPx,
-      axisLock
-    }));
-    void renderStage();
-    return;
-  }
-
-  if (drag.selection.kind === "logo" && drag.initialLogo) {
-    const initialLogo = drag.initialLogo;
-    updateLogo(() => moveLogo(initialLogo, {
-      deltaXPx,
-      deltaYPx,
-      axisLock
-    }));
-    void renderStage();
-  }
-}
-
-function handlePointerUp(): void {
-  if (!currentDrag) {
-    return;
-  }
-
-  currentDrag = null;
-  renderSelectionPanel();
-}
-
-function handleKeyDown(event: KeyboardEvent): void {
-  const activeTagName = document.activeElement?.tagName;
-  const isEditingField = activeTagName === "INPUT" || activeTagName === "TEXTAREA";
-  if (!isEditingField && event.key.toLowerCase() === "g") {
-    state.showGuides = !state.showGuides;
-    renderDocumentControls();
-    syncGuideButton();
-    void renderStage();
-  }
-
-  if (event.key === "Escape") {
-    currentDrag = null;
-  }
-}
-
-buildAppShell();
-syncMotionAnimation();
-document.addEventListener("pointerdown", (event) => {
-  const stageMount = document.querySelector("[data-stage-mount]");
-  if (!(stageMount instanceof HTMLElement) || !stageMount.contains(event.target as Node)) {
-    return;
-  }
-
-  handleStagePointerDown(event);
-});
-document.addEventListener("dblclick", (event) => {
-  const stageMount = document.querySelector("[data-stage-mount]");
-  if (!(stageMount instanceof HTMLElement) || !stageMount.contains(event.target as Node)) {
-    return;
-  }
-
-  handleStageDoubleClick(event);
-});
-window.addEventListener("pointermove", handlePointerMove);
-window.addEventListener("pointerup", handlePointerUp);
-window.addEventListener("keydown", handleKeyDown);
-
-void renderStage();
+init();
