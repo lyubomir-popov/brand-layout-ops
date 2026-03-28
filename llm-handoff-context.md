@@ -141,6 +141,12 @@ If you want the shortest high-level snapshot, read this file first.
 - All overlay pixel coordinates (text anchors, logo bounds, grid keylines, column span widths) are now rounded to integer pixels at resolution time (commit `4c97dd3`)
 - Speaker highlight removed from content format order; only `generic_social` is selectable (commit `4c97dd3`)
 - Presets section removed from config panel — documents are the authoring unit (commit `4c97dd3`)
+- Release label fold-seam fade: labels near the seam now fade behind the most recent spoke instead of rendering on top (commit `5b927dd`)
+- `getGeometryScale` now falls back to `composition.scale` when no mascot box, so halo scale slider affects background spokes and echo shapes (commit `5b927dd`)
+- Radial gradients removed from phyllotaxis and fuzzy-boids scene-family preview; `drawSoftGlow` helper deleted (commit `5b927dd`)
+- `normalizeOverlayTextFieldOffsetBaselines` simplified: unused `params` and `measurer` arguments removed; `normalizeOverlayParamsForEditing` signature simplified accordingly (commit `5b927dd`)
+- Dead export `getMinimumFirstBaselineInsetBaselines` removed from `layout-text` (commit `5b927dd`)
+- Redundant `Math.round` wrapping `getKeylineXPx` in `resolveTextPlacement` removed — already rounded at source (commit `5b927dd`)
 
 ## Current sprint TODO (do in order)
 
@@ -160,14 +166,9 @@ Items EQ-1 through EQ-9 are the user-directed priorities in dependency order:
 
 ### Immediate next steps (do before EQ-3)
 
-**Code cleanup from audit:**
-- [ ] Simplify or inline `normalizeOverlayTextFieldOffsetBaselines` in `operator-overlay-layout` — it now takes `params` and `measurer` it doesn't use, its body is just `Math.round(field.offsetBaselines)`, and `resolveTextPlacement` already does the same round. The full chain `updateTextField → normalizeParamsTextFieldOffsets → normalizeOverlayParamsForEditing → normalizeOverlayTextFieldOffsetBaselines` is a no-op round-trip.
-- [ ] Remove dead export `getMinimumFirstBaselineInsetBaselines` from `layout-text` (zero consumers).
-- [ ] Remove redundant `Math.round()` wrapping `getKeylineXPx()` in `resolveTextPlacement` — `columnKeylinePositionsPx` is already rounded in `computeLayoutGridMetrics`.
+**Bug: Halo scale zoom coverage** — `getGeometryScale` now falls back to `composition.scale` when no mascot box (commit `5b927dd`), so background spokes and echo shapes scale with the slider. Release labels already scaled. Verify visually that all elements (dots, spokes, shapes, labels, strokes) zoom uniformly; if any element still ignores scale, trace its geometry path.
 
-**New bugs:**
-- [ ] **Halo scale should zoom everything**: the Scale slider in Halo Field composition only affects the dot field. It should also scale Ubuntu release labels, shapes, and strokes so it behaves like a zoom control.
-- [ ] **Remove radial gradient from phyllotaxis and fuzzy boids**: `renderSceneFamilyPreviewFrame` in `scene-family-preview.ts` draws a shared radial gradient (line ~729) before dispatching to either family, and each family renderer adds more `drawSoftGlow` calls. Remove all of these.
+**Bug: Release label fold-seam overlap** — `drawReleaseLabelOverlay` now applies `getFoldSeamAlpha` so labels near the fold seam fade behind the most recent spoke (commit `5b927dd`). Verify visually that the oldest release labels at the 9-o'clock seam appear behind the newest one.
 
 ### Previous completed work (kept for reference)
 

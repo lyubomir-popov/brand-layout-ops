@@ -702,12 +702,12 @@
           {
             "id": "body_intro",
             "contentFieldId": "body_intro",
-            "styleKey": "b_head",
+            "styleKey": "title",
             "text": "",
             "keylineIndex": 5,
             "rowIndex": 1,
             "offsetBaselines": 2,
-            "columnSpan": 2
+            "columnSpan": 3
           },
           {
             "id": "detail_primary",

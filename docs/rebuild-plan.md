@@ -550,14 +550,15 @@ These should be addressed before starting EQ-3.
 
 #### Code cleanup from audit
 
-- [ ] **Simplify `normalizeOverlayTextFieldOffsetBaselines`**: now takes `params` and `measurer` it doesn't use; its body is just `Math.round(field.offsetBaselines)` — the same rounding `resolveTextPlacement` already does. Either inline it or strip the unused params. The full call chain `updateTextField → normalizeParamsTextFieldOffsets → normalizeOverlayParamsForEditing → normalizeOverlayTextFieldOffsetBaselines` is now a no-op round-trip for offset rounding.
-- [ ] **Remove dead export `getMinimumFirstBaselineInsetBaselines`** from `layout-text`: zero consumers after the `operator-overlay-layout` import was removed.
-- [ ] **Remove double-round on keylines**: `resolveTextPlacement` wraps `getKeylineXPx()` in `Math.round()` but the source (`columnKeylinePositionsPx`) is already rounded in `computeLayoutGridMetrics`. Pick one layer.
+- [x] **Simplify `normalizeOverlayTextFieldOffsetBaselines`**: stripped unused `params` and `measurer` arguments; `normalizeOverlayParamsForEditing` signature simplified accordingly (commit `5b927dd`).
+- [x] **Remove dead export `getMinimumFirstBaselineInsetBaselines`** from `layout-text` (commit `5b927dd`).
+- [x] **Remove double-round on keylines**: removed redundant `Math.round()` wrapping `getKeylineXPx()` — already rounded at source (commit `5b927dd`).
 
-#### New bugs
+#### Recently fixed bugs
 
-- [ ] **Halo scale should zoom everything**: the Scale slider in Halo Field composition only affects the dot field. It should also scale Ubuntu release labels, shapes, and strokes so it feels like zooming in/out.
-- [ ] **Remove radial gradient from phyllotaxis and fuzzy boids**: both family renderers draw a decorative radial gradient background glow (`createRadialGradient` in `renderSceneFamilyPreviewFrame` line ~729, plus per-family `drawSoftGlow` calls in `drawPhyllotaxisPreview` and `drawFuzzyBoidsPreview`). Remove all of these.
+- [x] **Halo scale zoom coverage**: `getGeometryScale` now falls back to `composition.scale` when no mascot box, matching the reference app (commit `5b927dd`). Verify visually.
+- [x] **Radial gradient removed from scene families**: shared and per-family glow calls removed; `drawSoftGlow` deleted (commit `5b927dd`).
+- [x] **Release label fold-seam z-order**: `drawReleaseLabelOverlay` now applies `getFoldSeamAlpha` so labels near the seam fade behind the most recent spoke (commit `5b927dd`).
 
 ## Discussion Items Not Yet Scheduled
 
