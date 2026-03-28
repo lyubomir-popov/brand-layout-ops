@@ -41,7 +41,7 @@ If you want the shortest high-level snapshot, read this file first.
 - After that document seam is stable, the next highest parity target is still the full Ubuntu Summit scene-family pass and remaining mascot or halo composition fidelity.
 - For architecture detail, read `docs/rebuild-plan.md`. For long-term direction, read `docs/product-roadmap.md`.
 
-## Current state (updated 2025-07-17)
+## Current state (updated 2025-07-18)
 
 **Stage 1 — Parity Rebuild** is in progress. The overlay-preview app has:
 
@@ -139,8 +139,8 @@ If you want the shortest high-level snapshot, read this file first.
 Items EQ-1 through EQ-9 are the user-directed priorities in dependency order:
 
 1. **EQ-1** — ~~Switch UI library from `portable-vertical-rhythm` to `baseline-foundry` (panel preset).~~ **DONE** (commits `50f4c4f` + `fc35f96`). Dependency swapped, all CSS class names migrated from `p-*`/`vr-*`/`vf-*` to native `bf-*`.
-2. **EQ-2** — Operator selector UI (radio list of operators → shows selected operator's params). **← NEXT**
-3. **EQ-3** — Fuzzy boids parameter panel (numBoids, separation, alignment, cohesion, bounds, etc.).
+2. **EQ-2** — ~~Operator selector UI (radio list of operators → shows selected operator's params).~~ **DONE** (commit `626b7ea`). Radio group between shell and operator sections, `group` field on `ParameterSectionDefinition`, accordion state preserved across rebuilds. Also fixed 7 regression bugs: dark theme attribute, button labels, panel resize compat alias, text drag offset normalization, SCSS→CSS rename, and 9 invalid CSS token names.
+3. **EQ-3** — Fuzzy boids parameter panel (numBoids, separation, alignment, cohesion, bounds, etc.). **← NEXT**
 4. **EQ-4** — Phyllotaxis parameter panel (numPoints, radius, radiusFalloff, angleOffsetDeg, animation).
 5. **EQ-5** — Scatter operator (`operator-scatter`, scatter points inside SVG shape).
 6. **EQ-6** — Resolve or remove presets (documents replaced presets — clarify architecture).

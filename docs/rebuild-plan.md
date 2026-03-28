@@ -482,14 +482,17 @@ Foundational — all subsequent panel work should build on the new library.
 - [x] Reference: `baseline-foundry/docs/brand-layout-ops-agent-prompt.md` contains the detailed swap instructions.
 - [x] Migrate all CSS class names from `p-*`/`vr-*`/`vf-*` to native `bf-*` baseline-foundry equivalents across 15 source files (commit `fc35f96`).
 
-### EQ-2. Operator selector UI (Houdini-style parameter pane, stage 1)
+### EQ-2. Operator selector UI (Houdini-style parameter pane, stage 1) ✅
 
 Replace the "show all accordion sections" model with a selectable operator list.
 
-- [ ] Add a radio list (or expandable accordion) at the top of the inspector showing all registered operators: `operator-overlay-layout`, `operator-halo-field`, `operator-fuzzy-boids`, `operator-phyllotaxis`, and future operators.
-- [ ] Selecting an operator shows only that operator's parameter panel in the inspector.
-- [ ] Shell-level concerns (playback, export, document, output format) remain above the operator selector as non-operator sections.
-- [ ] The existing section-registry primitive in `parameter-ui` should grow to support this selection model.
+- [x] Add a radio list (or expandable accordion) at the top of the inspector showing all registered operators: `operator-overlay-layout`, `operator-halo-field`, `operator-fuzzy-boids`, `operator-phyllotaxis`, and future operators.
+- [x] Selecting an operator shows only that operator's parameter panel in the inspector.
+- [x] Shell-level concerns (playback, export, document, output format) remain above the operator selector as non-operator sections.
+- [x] The existing section-registry primitive in `parameter-ui` should grow to support this selection model.
+- [x] Added `group` field to `ParameterSectionDefinition` — operator-owned sections tagged with their scene family key.
+- [x] Accordion state preserved across `buildConfigEditor` rebuilds via `data-section-key` attribute tracking.
+- [x] Also fixed 7 regression bugs from the EQ-1 class migration: dark theme `data-bf-tone` attribute, 5 buttons missing `textContent`, panel resize dual-property compat, text drag offset normalization (stored/rendered divergence), SCSS→CSS rename, and 9 invalid `--bf-color-*` token names.
 
 ### EQ-3. Fuzzy boids parameter panel
 
