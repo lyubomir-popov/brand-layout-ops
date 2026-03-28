@@ -293,6 +293,7 @@ It reflects the current repo after the overlay-preview rebuild, reference-doc re
 0. **Whole-scene Ubuntu Summit animation port is now the top explicit parity strategy.**
 	User decision on 2026-03-27: import the entire reference animation as one finished scene-family generator operator first, so parity can be achieved before any attempt to generalize. This should include mascot motion, blink, head shake, dot splash, spokes, radio lines, Ubuntu release labels, construction lines, finale behavior, and the screensaver loop.
 	Architectural rule: keep this as one coarse operator boundary for now, with rendering/orientation details still handled in adapters.
+	Incremental progress: `operator-ubuntu-summit-animation` now owns phase classification, runtime timing, loop timing, and mascot-box descriptor data, and the preview plus automation API now route through that descriptor instead of bypassing the package entirely.
 
 1. **Animation timeline state is still fundamentally missing.**
 	The current preview now has a coarse time-driven post-finale screensaver loop in the Three adapter, but not the full reference sequence.

@@ -33,6 +33,7 @@ import { getColumnSpanWidthPx, getKeylineXPx, snapBaselineToGrid } from "@brand-
 import { createApproximateTextMeasurer, getMinimumFirstBaselineInsetBaselines } from "@brand-layout-ops/layout-text";
 import type { DragAxisLock } from "@brand-layout-ops/overlay-interaction";
 import { moveLogo, moveTextField } from "@brand-layout-ops/overlay-interaction";
+import { buildUbuntuSummitAnimationSceneDescriptor } from "@brand-layout-ops/operator-ubuntu-summit-animation";
 import {
   createOverlayLayoutOperator,
   inspectOverlayCsvDraft,
@@ -45,8 +46,7 @@ import {
 import {
   createDefaultHaloFieldConfig,
   createHaloFieldConfigForProfile,
-  type HaloFieldConfig,
-  type MascotBox
+  type HaloFieldConfig
 } from "@brand-layout-ops/operator-halo-field";
 
 import { createHaloRenderer, type HaloRenderer } from "./halo-renderer.js";
@@ -1251,16 +1251,11 @@ async function writeCurrentAsSourceDefault(): Promise<void> {
   state.sourceDefaults = cloneSourceDefaultSnapshot(snapshot);
 }
 
-// ─── Mascot box from composition scale ────────────────────────────────
-
-function getMascotBox(): MascotBox | null {
-  const scale = state.haloConfig.composition.scale;
-  if (scale <= 0) return null;
-  return {
-    center_x_px: state.haloConfig.composition.center_x_px,
-    center_y_px: state.haloConfig.composition.center_y_px,
-    draw_size_px: 600 * scale
-  };
+function getUbuntuSummitSceneDescriptor() {
+  return buildUbuntuSummitAnimationSceneDescriptor({
+    haloConfig: state.haloConfig,
+    playbackTimeSec: state.playbackTimeSec
+  });
 }
 
 // ─── Halo field rendering (Three.js) ──────────────────────────────────
@@ -1296,7 +1291,8 @@ function updateStageAspectRatio() {
 
 function renderHaloFrame() {
   if (!haloRendererInstance) return;
-  haloRendererInstance.renderFrame(state.haloConfig, getMascotBox(), state.playbackTimeSec);
+  const sceneDescriptor = getUbuntuSummitSceneDescriptor();
+  haloRendererInstance.renderFrame(sceneDescriptor.haloConfig, sceneDescriptor.mascotBox, sceneDescriptor.playbackTimeSec);
 }
 
 function getPlaybackToggleButton(): HTMLButtonElement | null {
@@ -3966,6 +3962,7 @@ const initPromise = init();
 
 function getAutomationState() {
   const profile = getOutputProfile(state.outputProfileKey);
+  const sceneDescriptor = getUbuntuSummitSceneDescriptor();
   return {
     output_profile_key: state.outputProfileKey,
     output_profile: {
@@ -3976,7 +3973,10 @@ function getAutomationState() {
     },
     frame_rate: Math.max(1, Math.round(state.exportSettings.frameRate)),
     current_playback_time_sec: state.playbackTimeSec,
-    transparent_background: state.exportSettings.transparentBackground
+    transparent_background: state.exportSettings.transparentBackground,
+    scene_phase: sceneDescriptor.phase,
+    scene_timing: sceneDescriptor.runtimeTiming,
+    scene_loop_time_sec: sceneDescriptor.loopTimeSec
   };
 }
 

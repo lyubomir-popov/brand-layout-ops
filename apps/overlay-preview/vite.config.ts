@@ -91,7 +91,8 @@ export default defineConfig({
       "@brand-layout-ops/operator-overlay-layout": path.resolve(repoRoot, "packages/operator-overlay-layout/src/index.ts"),
       "@brand-layout-ops/overlay-interaction": path.resolve(repoRoot, "packages/overlay-interaction/src/index.ts"),
       "@brand-layout-ops/parameter-ui": path.resolve(repoRoot, "packages/parameter-ui/src/index.ts"),
-      "@brand-layout-ops/operator-halo-field": path.resolve(repoRoot, "packages/operator-halo-field/src/index.ts")
+      "@brand-layout-ops/operator-halo-field": path.resolve(repoRoot, "packages/operator-halo-field/src/index.ts"),
+      "@brand-layout-ops/operator-ubuntu-summit-animation": path.resolve(repoRoot, "packages/operator-ubuntu-summit-animation/src/index.ts")
     }
   },
   css: {
