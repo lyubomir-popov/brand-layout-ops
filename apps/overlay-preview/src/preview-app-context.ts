@@ -26,11 +26,6 @@ import type { HaloFieldConfig } from "@brand-layout-ops/operator-halo-field";
 import type { ExportSettings, Preset } from "./sample-document.js";
 import type { OverlayPreviewDocument as OverlayPreviewDocumentModel } from "./preview-document.js";
 import type { DocumentWorkspaceController } from "./document-workspace.js";
-import type {
-  FuzzyBoidsPreviewConfig,
-  PhyllotaxisPreviewConfig,
-  ScatterPreviewConfig
-} from "./scene-family-preview.js";
 
 // ——— Constants shared between main.ts and extracted panel modules ———
 
@@ -64,10 +59,8 @@ export interface PreviewState {
   exportSettingsByProfile: Record<string, ExportSettings>;
   haloConfig: HaloFieldConfig;
   haloConfigByProfile: Record<string, HaloFieldConfig>;
-  phyllotaxisConfig: PhyllotaxisPreviewConfig;
-  fuzzyBoidsConfig: FuzzyBoidsPreviewConfig;
-  scatterConfig: ScatterPreviewConfig;
   sourceDefaults: SourceDefaultSnapshot;
+  sourceDefaultProject: OverlayDocumentProject;
   documentProject: OverlayDocumentProject;
   isPlaying: boolean;
   playbackTimeSec: number;
@@ -210,6 +203,8 @@ export interface PreviewAppContext {
 
   // — Scene family —
 
+  /** Rebuild the saved background graph from the current scene-family state. */
+  syncDocumentBackgroundGraph(): void;
   /** Get the preview state snapshot for the current scene family. */
   getSceneFamilyPreviewState(): SceneFamilyPreviewSnapshot | null;
   /** Get a human-readable label for a scene family key. */

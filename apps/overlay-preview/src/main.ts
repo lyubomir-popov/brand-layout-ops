@@ -43,7 +43,9 @@ import {
 } from "@brand-layout-ops/operator-ubuntu-summit-animation";
 import {
   buildOverlayVariableItemLabel,
+  cloneOverlayDocumentProject,
   createOverlayDocumentProjectFromSnapshot,
+  createDefaultOverlayBackgroundGraph,
   cloneOverlaySourceDefaultSnapshot,
   cloneProfileContentFormatMap,
   cloneProfileFormatBuckets,
@@ -54,14 +56,16 @@ import {
   getOverlayMainHeadingField,
   getOverlayStyleDisplayLabel,
   inspectOverlayCsvDraft,
+  normalizeOverlayBackgroundGraph,
   normalizeOverlayProfileBucketState,
   normalizeOverlayParamsForEditing,
   normalizeOverlayTextFieldOffsetBaselines,
+  normalizeOverlaySceneFamilyConfigs,
   OVERLAY_SCENE_FAMILY_ORDER,
   OVERLAY_LAYOUT_OPERATOR_KEY,
   resolveOverlayContentFormatKeyForProfile,
   resolveOverlayTextValue,
-  sanitizeOverlaySourceDefaultSnapshot,
+  sanitizeOverlayDocumentFile,
   setOverlayTextValue,
   syncOverlayParamsFrameToProfile,
   syncOverlaySharedProfileParams,
@@ -105,9 +109,6 @@ import {
 import {
   buildSceneFamilyPreviewState,
   clearSceneFamilyPreviewCanvas,
-  createDefaultFuzzyBoidsPreviewConfig,
-  createDefaultPhyllotaxisPreviewConfig,
-  createDefaultScatterPreviewConfig,
   renderSceneFamilyPreviewFrame
 } from "./scene-family-preview.js";
 import {
@@ -136,7 +137,6 @@ import {
   buildOverlayPreviewDocumentPersistence,
   cloneExportSettingsByProfile,
   cloneHaloConfigByProfile,
-  createCurrentSourceDefaultSnapshot as createCurrentSourceDefaultSnapshotFromState,
   resetOverlayPreviewDocumentState
 } from "./preview-document-bridge.js";
 import {
@@ -293,6 +293,8 @@ const INITIAL_SOURCE_DEFAULTS = createBuiltInOverlaySourceDefaultSnapshot<Export
   createHaloConfig: getHaloConfigForProfile
 });
 
+const INITIAL_SOURCE_DEFAULT_PROJECT = createOverlayDocumentProjectFromSnapshot(INITIAL_SOURCE_DEFAULTS);
+
 const state: PreviewState = {
   params: cloneOverlayParams(INITIAL_PARAMS),
   selected: null,
@@ -319,11 +321,9 @@ const state: PreviewState = {
   haloConfigByProfile: {
     [_startProfileKey]: getHaloConfigForProfile(_startProfileKey)
   },
-  phyllotaxisConfig: createDefaultPhyllotaxisPreviewConfig(),
-  fuzzyBoidsConfig: createDefaultFuzzyBoidsPreviewConfig(),
-  scatterConfig: createDefaultScatterPreviewConfig(),
   sourceDefaults: cloneOverlaySourceDefaultSnapshot(INITIAL_SOURCE_DEFAULTS),
-  documentProject: createOverlayDocumentProjectFromSnapshot(INITIAL_SOURCE_DEFAULTS),
+  sourceDefaultProject: cloneOverlayDocumentProject(INITIAL_SOURCE_DEFAULT_PROJECT),
+  documentProject: cloneOverlayDocumentProject(INITIAL_SOURCE_DEFAULT_PROJECT),
   isPlaying: true,
   playbackTimeSec: 0
 };
@@ -336,6 +336,16 @@ const previewDocumentBridge = {
   normalizeParams: normalizeParamsTextFieldOffsets,
   syncHaloConfigToProfile
 };
+
+function syncDocumentBackgroundGraph() {
+  state.documentProject = {
+    ...state.documentProject,
+    backgroundGraph: createDefaultOverlayBackgroundGraph(
+      state.documentProject.sceneFamilyKey,
+      state.documentProject.sceneFamilyConfigs
+    )
+  };
+}
 
 const documentWorkspaceController = createDocumentWorkspaceController<OverlayPreviewDocument>({
   untitledName: UNTITLED_DOCUMENT_NAME,
@@ -1442,22 +1452,35 @@ function setSourceDefaultStatus(message: string, tone: "neutral" | "success" | "
     : "";
 }
 
-function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnapshot | null {
-  return sanitizeOverlaySourceDefaultSnapshot(rawSnapshot, {
+function sanitizeSourceDefaultSnapshot(
+  rawSnapshot: unknown
+): { snapshot: SourceDefaultSnapshot; project: OverlayDocumentProject } | null {
+  const document = sanitizeOverlayDocumentFile(rawSnapshot, {
+    fallbackName: UNTITLED_DOCUMENT_NAME,
     fallbackSnapshot: INITIAL_SOURCE_DEFAULTS,
     createExportSettings: createDefaultExportSettings,
     createHaloConfig: getHaloConfigForProfile,
     normalizeGuideMode
   });
+
+  if (!document) {
+    return null;
+  }
+
+  return {
+    snapshot: cloneOverlaySourceDefaultSnapshot(document.state),
+    project: cloneOverlayDocumentProject(document.project)
+  };
 }
 
-function createCurrentSourceDefaultSnapshot(): SourceDefaultSnapshot {
-  return createCurrentSourceDefaultSnapshotFromState(state, previewDocumentBridge);
-}
-
-function applySourceDefaultSnapshot(snapshot: SourceDefaultSnapshot) {
+function applySourceDefaultSnapshot(
+  snapshot: SourceDefaultSnapshot,
+  project: OverlayDocumentProject = state.sourceDefaultProject
+) {
   applySourceDefaultSnapshotToState(state, snapshot, previewDocumentBridge);
-  state.documentProject = createOverlayDocumentProjectFromSnapshot(snapshot, state.documentProject);
+  const normalizedProject = createOverlayDocumentProjectFromSnapshot(snapshot, project);
+  state.sourceDefaultProject = cloneOverlayDocumentProject(normalizedProject);
+  state.documentProject = cloneOverlayDocumentProject(normalizedProject);
   syncDocumentProjectToCurrentOutputProfile();
   normalizeSelection();
 }
@@ -1502,7 +1525,7 @@ function syncOverlayVisibilityUi() {
   }
 }
 
-async function readSourceDefaultSnapshot(): Promise<SourceDefaultSnapshot> {
+async function readSourceDefaultSnapshot(): Promise<{ snapshot: SourceDefaultSnapshot; project: OverlayDocumentProject }> {
   try {
     const response = await fetch(`${SOURCE_DEFAULT_ASSET_PATH}?t=${Date.now()}`, {
       cache: "no-store"
@@ -1511,32 +1534,36 @@ async function readSourceDefaultSnapshot(): Promise<SourceDefaultSnapshot> {
       throw new Error(`HTTP ${response.status}`);
     }
 
-    const snapshot = sanitizeSourceDefaultSnapshot(await response.json());
-    if (snapshot) {
-      return snapshot;
+    const sourceDefaultDocument = sanitizeSourceDefaultSnapshot(await response.json());
+    if (sourceDefaultDocument) {
+      return sourceDefaultDocument;
     }
   } catch {
     // Fall back to the built-in snapshot when the authored file is absent or invalid.
   }
 
-  return cloneOverlaySourceDefaultSnapshot(INITIAL_SOURCE_DEFAULTS);
+  return {
+    snapshot: cloneOverlaySourceDefaultSnapshot(INITIAL_SOURCE_DEFAULTS),
+    project: cloneOverlayDocumentProject(INITIAL_SOURCE_DEFAULT_PROJECT)
+  };
 }
 
 async function writeCurrentAsSourceDefault(): Promise<void> {
-  const snapshot = createCurrentSourceDefaultSnapshot();
+  const sourceDefaultDocument = buildCurrentDocumentPayload().document;
   const response = await fetch(SOURCE_DEFAULT_AUTHORING_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify(snapshot, null, 2)
+    body: JSON.stringify(sourceDefaultDocument, null, 2)
   });
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }
 
-  state.sourceDefaults = cloneOverlaySourceDefaultSnapshot(snapshot);
+  state.sourceDefaults = cloneOverlaySourceDefaultSnapshot(sourceDefaultDocument.state);
+  state.sourceDefaultProject = cloneOverlayDocumentProject(sourceDefaultDocument.project);
 }
 
 function getUbuntuSummitSceneDescriptor() {
@@ -1613,14 +1640,11 @@ function syncBackgroundRendererVisibility() {
 
 function getSceneFamilyPreviewState() {
   return buildSceneFamilyPreviewState({
-    sceneFamilyKey: state.documentProject.sceneFamilyKey,
+    backgroundGraph: state.documentProject.backgroundGraph,
     widthPx: state.params.frame.widthPx,
     heightPx: state.params.frame.heightPx,
     playbackTimeSec: state.playbackTimeSec,
-    haloConfig: state.haloConfig,
-    phyllotaxisConfig: state.phyllotaxisConfig,
-    fuzzyBoidsConfig: state.fuzzyBoidsConfig,
-    scatterConfig: state.scatterConfig
+    haloConfig: state.haloConfig
   });
 }
 
@@ -1802,7 +1826,7 @@ function buildOutputProfileOptions() {
   container.append(help);
 
   const toolbar = document.createElement("div");
-  toolbar.className = "preset-toolbar";
+  toolbar.className = "bf-cluster preview-cluster--tight";
 
   const addButton = document.createElement("button");
   addButton.type = "button";
@@ -1838,7 +1862,7 @@ function buildOutputProfileOptions() {
   container.append(toolbar);
 
   const list = document.createElement("div");
-  list.className = "preset-radio-list";
+  list.className = "bf-stack preview-stack--compact";
 
   for (const target of state.documentProject.targets) {
     const profile = OUTPUT_PROFILES[target.outputProfileKey];
@@ -1922,7 +1946,7 @@ function buildPresetTabs() {
 
   if (state.presets.length === 0) {
     const empty = document.createElement("p");
-    empty.className = "bf-form-help preset-empty";
+    empty.className = "bf-form-help bf-u-no-margin--bottom";
     empty.textContent = "No presets saved yet.";
     container.append(empty);
     updatePresetToolbarState();
@@ -1930,7 +1954,7 @@ function buildPresetTabs() {
   }
 
   const list = document.createElement("div");
-  list.className = "preset-radio-list";
+  list.className = "bf-stack preview-stack--compact";
 
   for (const preset of state.presets) {
     const row = document.createElement("label");
@@ -2042,6 +2066,7 @@ const ctx: PreviewAppContext = {
   applySourceDefaultSnapshot,
   writeCurrentAsSourceDefault,
   setSourceDefaultStatus,
+  syncDocumentBackgroundGraph,
   getSceneFamilyPreviewState,
   getSceneFamilyLabel,
   addDocumentTarget,
@@ -2115,6 +2140,7 @@ function buildOperatorSelectorEl(): HTMLElement {
         ...state.documentProject,
         sceneFamilyKey: sceneFamilyKey as OverlaySceneFamilyKey
       };
+      syncDocumentBackgroundGraph();
       markDocumentDirty();
       buildConfigEditor();
       syncBackgroundRendererVisibility();
@@ -2849,26 +2875,14 @@ function cycleGuideMode() {
   buildConfigEditor();
 }
 
+function isControlPanelOpen(): boolean {
+  return !getControlPanelEl()?.classList.contains("is-collapsed");
+}
+
 function setDrawerOpen(isOpen: boolean) {
-  const toggleBtn = $<HTMLElement>("[data-drawer-toggle]");
   const aside = $<HTMLElement>("[data-control-panel]");
-  if (document.body.classList.contains("editor-docked")) {
-    aside?.classList.remove("is-collapsed");
-    toggleBtn?.setAttribute("aria-expanded", "true");
-    document.body.classList.remove("drawer-open");
-    return;
-  }
-
-  if (isOpen) {
-    aside?.classList.remove("is-collapsed");
-    document.body.classList.add("drawer-open");
-    toggleBtn?.setAttribute("aria-expanded", "true");
-    return;
-  }
-
-  aside?.classList.add("is-collapsed");
-  document.body.classList.remove("drawer-open");
-  toggleBtn?.setAttribute("aria-expanded", "false");
+  aside?.classList.toggle("is-collapsed", !isOpen);
+  document.body.classList.toggle("drawer-open", !document.body.classList.contains("editor-docked") && isOpen);
 }
 
 // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Keyboard shortcuts ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
@@ -2901,6 +2915,12 @@ function handleKeyDown(e: KeyboardEvent) {
     }
 
     void documentWorkspaceController.saveCurrentDocument(false);
+    return;
+  }
+
+  if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === "Tab") {
+    setDrawerOpen(!isControlPanelOpen());
+    e.preventDefault();
     return;
   }
 
@@ -2946,15 +2966,9 @@ function handleKeyDown(e: KeyboardEvent) {
 
 // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Drawer toggle (mobile) ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 
-function setupDrawerToggle() {
-  const toggleBtn = $<HTMLElement>("[data-drawer-toggle]");
+function setupControlPanelVisibility() {
   const closeBtn = $<HTMLElement>("[data-drawer-close]");
   const backdrop = $<HTMLElement>("[data-drawer-backdrop]");
-
-  toggleBtn?.addEventListener("click", () => {
-    const isOpen = toggleBtn.getAttribute("aria-expanded") === "true";
-    setDrawerOpen(!isOpen);
-  });
   closeBtn?.addEventListener("click", () => setDrawerOpen(false));
   backdrop?.addEventListener("click", () => setDrawerOpen(false));
 }
@@ -3414,7 +3428,6 @@ function setupControlPanelResize() {
 function setupResize() {
   const appShell = getAppShellEl();
   const aside = getControlPanelEl();
-  const toggleBtn = $<HTMLElement>("[data-drawer-toggle]");
 
   function checkDock() {
     const isDocked = window.innerWidth >= 1200;
@@ -3422,16 +3435,8 @@ function setupResize() {
     appShell?.classList.toggle("has-pinned-aside", isDocked);
     aside?.classList.toggle("is-pinned", isDocked);
 
-    if (isDocked) {
-      aside?.classList.remove("is-collapsed");
-      document.body.classList.remove("drawer-open");
-      toggleBtn?.setAttribute("aria-expanded", "true");
-      updateControlPanelResizeHandleA11y();
-      return;
-    }
-
-    aside?.classList.add("is-collapsed");
-    toggleBtn?.setAttribute("aria-expanded", "false");
+    setDrawerOpen(!aside?.classList.contains("is-collapsed"));
+    updateControlPanelResizeHandleA11y();
   }
   checkDock();
   window.addEventListener("resize", checkDock);
@@ -3441,7 +3446,10 @@ function setupResize() {
 
 async function init() {
   setSourceDefaultStatus("Loading source default...");
-  applySourceDefaultSnapshot(await readSourceDefaultSnapshot());
+  {
+    const sourceDefaultDocument = await readSourceDefaultSnapshot();
+    applySourceDefaultSnapshot(sourceDefaultDocument.snapshot, sourceDefaultDocument.project);
+  }
   state.playbackTimeSec = 0;
   updateStageAspectRatio();
   initHaloRenderer();
@@ -3455,7 +3463,7 @@ async function init() {
 
   buildConfigEditor();
 
-  setupDrawerToggle();
+  setupControlPanelVisibility();
   setupButtons();
   setupControlPanelResize();
   setupResize();
@@ -3502,6 +3510,8 @@ function getAutomationState() {
       label: target.label,
       output_profile_key: target.outputProfileKey
     })),
+    document_background_graph: cloneOverlayDocumentProject(state.documentProject).backgroundGraph,
+    document_scene_family_configs: cloneOverlayDocumentProject(state.documentProject).sceneFamilyConfigs,
     frame_rate: Math.max(1, Math.round(state.exportSettings.frameRate)),
     current_playback_time_sec: state.playbackTimeSec,
     transparent_background: state.exportSettings.transparentBackground,
@@ -3528,10 +3538,15 @@ function getAutomationState() {
 }
 
 async function applyAutomationSnapshot(payload: Record<string, unknown> = {}) {
+  let shouldRebuildConfigEditor = false;
+  let shouldRebuildOutputProfileOptions = false;
+  let shouldSyncDocumentBackgroundGraph = false;
+  let backgroundGraphProvided = false;
+
   if (typeof payload.output_profile_key === "string" && OUTPUT_PROFILES[payload.output_profile_key]) {
     switchOutputProfile(payload.output_profile_key);
-    buildConfigEditor();
-    buildOutputProfileOptions();
+    shouldRebuildConfigEditor = true;
+    shouldRebuildOutputProfileOptions = true;
   }
 
   if (
@@ -3542,7 +3557,41 @@ async function applyAutomationSnapshot(payload: Record<string, unknown> = {}) {
       ...state.documentProject,
       sceneFamilyKey: payload.document_scene_family_key as OverlaySceneFamilyKey
     };
+    shouldRebuildConfigEditor = true;
+    shouldRebuildOutputProfileOptions = true;
+    shouldSyncDocumentBackgroundGraph = true;
+  }
+
+  if (typeof payload.document_scene_family_configs === "object" && payload.document_scene_family_configs !== null) {
+    state.documentProject = {
+      ...state.documentProject,
+      sceneFamilyConfigs: normalizeOverlaySceneFamilyConfigs(payload.document_scene_family_configs)
+    };
+    shouldRebuildConfigEditor = true;
+    shouldSyncDocumentBackgroundGraph = true;
+  }
+
+  if (typeof payload.document_background_graph === "object" && payload.document_background_graph !== null) {
+    state.documentProject = {
+      ...state.documentProject,
+      backgroundGraph: normalizeOverlayBackgroundGraph(
+        payload.document_background_graph,
+        state.documentProject.sceneFamilyKey,
+        state.documentProject.sceneFamilyConfigs
+      )
+    };
+    backgroundGraphProvided = true;
+  }
+
+  if (shouldSyncDocumentBackgroundGraph && !backgroundGraphProvided) {
+    syncDocumentBackgroundGraph();
+  }
+
+  if (shouldRebuildConfigEditor) {
     buildConfigEditor();
+  }
+
+  if (shouldRebuildOutputProfileOptions) {
     buildOutputProfileOptions();
   }
 

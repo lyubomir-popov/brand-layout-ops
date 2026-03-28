@@ -20,7 +20,7 @@ export function buildDocumentSection(ctx: PreviewAppContext): HTMLElement {
   body.append(createFormGroup("Name", nameInput));
 
   const toolbar = document.createElement("div");
-  toolbar.className = "preset-toolbar";
+  toolbar.className = "bf-cluster preview-cluster--tight";
 
   const dw = ctx.documentWorkspace;
   const buttonSpecs: Array<{ label: string; className: string; onClick: () => void | Promise<void> }> = [

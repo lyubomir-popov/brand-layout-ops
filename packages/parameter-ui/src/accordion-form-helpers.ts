@@ -169,7 +169,7 @@ export function buildAccordionSectionEl(title: string): { root: HTMLElement; bod
   heading.append(tab);
 
   const body = document.createElement("section");
-  body.className = "bf-accordion__panel config-group";
+  body.className = "bf-accordion__panel";
   body.id = sectionId;
   body.setAttribute("aria-hidden", "true");
   body.setAttribute("aria-labelledby", id);

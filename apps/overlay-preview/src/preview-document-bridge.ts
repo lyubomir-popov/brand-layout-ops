@@ -1,7 +1,6 @@
 import {
   cloneOverlayDocumentProject,
   cloneOverlaySourceDefaultSnapshot,
-  createOverlayDocumentProjectFromSnapshot,
   normalizeOverlayDocumentProject,
   normalizeOverlayProfileBucketState,
   type OverlayDocumentProject,
@@ -64,6 +63,7 @@ export interface OverlayPreviewDocumentBridgeState<
   haloConfig: THaloConfig;
   haloConfigByProfile: Record<string, THaloConfig>;
   sourceDefaults: OverlaySourceDefaultSnapshot<ExportSettings, THaloConfig, TGuideMode>;
+  sourceDefaultProject: OverlayDocumentProject;
   documentProject: OverlayDocumentProject;
 }
 
@@ -221,9 +221,7 @@ export function resetOverlayPreviewDocumentState<
   adapter: OverlayPreviewDocumentBridgeAdapter<THaloConfig>
 ): void {
   applySourceDefaultSnapshotToState(state, state.sourceDefaults, adapter);
-  state.documentProject = createOverlayDocumentProjectFromSnapshot(state.sourceDefaults, {
-    sceneFamilyKey: state.documentProject.sceneFamilyKey
-  });
+  state.documentProject = cloneOverlayDocumentProject(state.sourceDefaultProject);
   state.pendingCsvDraftsByBucket = {};
   state.presets = [];
   state.activePresetId = null;

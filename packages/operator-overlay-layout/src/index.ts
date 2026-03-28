@@ -102,6 +102,291 @@ export type OverlaySceneFamilyKey = typeof OVERLAY_SCENE_FAMILY_ORDER[number];
 
 export const DEFAULT_OVERLAY_SCENE_FAMILY_KEY: OverlaySceneFamilyKey = OVERLAY_SCENE_FAMILY_ORDER[0];
 
+export type OverlayFuzzyBoidsBoundsKind = "none" | "radial" | "box";
+export type OverlayScatterDistributionMode = "uniform" | "density-weighted";
+export type OverlayScatterShapeKind = "ellipse" | "rect" | "rounded-rect" | "svg-path";
+
+export interface OverlayFuzzyBoidsConfig {
+  numBoids: number;
+  seed: number;
+  spawnRadiusPx: number;
+  staggerStartSeconds: number;
+  initialSpeedPxPerSecond: number;
+  initialSpeedJitter: number;
+  minSpeedPxPerSecond: number;
+  maxSpeedPxPerSecond: number;
+  maxAccelerationPxPerSecond2: number;
+  massMin: number;
+  massMax: number;
+  pscaleMin: number;
+  pscaleMax: number;
+  separationRadiusPx: number;
+  separationStrength: number;
+  alignmentRadiusPx: number;
+  alignmentStrength: number;
+  cohesionRadiusPx: number;
+  cohesionStrength: number;
+  centerPullStrength: number;
+  maxNeighbors: number;
+  boundsKind: OverlayFuzzyBoidsBoundsKind;
+  boundsRadiusPx: number;
+  boundsMarginPx: number;
+  boundsForcePxPerSecond2: number;
+}
+
+export interface OverlayPhyllotaxisConfig {
+  numPoints: number;
+  radiusPx: number;
+  radiusFalloff: number;
+  angleOffsetDeg: number;
+  animationEnabled: boolean;
+  animationSpeedDegPerSecond: number;
+}
+
+export interface OverlayScatterConfig {
+  pointCount: number;
+  seed: number;
+  distributionMode: OverlayScatterDistributionMode;
+  marginPx: number;
+  shapeKind: OverlayScatterShapeKind;
+  widthPx: number;
+  heightPx: number;
+  cornerRadiusPx: number;
+  svgPath: string;
+}
+
+export interface OverlaySceneFamilyConfigs {
+  phyllotaxis: OverlayPhyllotaxisConfig;
+  fuzzyBoids: OverlayFuzzyBoidsConfig;
+  scatter: OverlayScatterConfig;
+}
+
+export function createDefaultOverlayFuzzyBoidsConfig(): OverlayFuzzyBoidsConfig {
+  return {
+    numBoids: 220,
+    seed: 1,
+    spawnRadiusPx: 173,
+    staggerStartSeconds: 0,
+    initialSpeedPxPerSecond: 70,
+    initialSpeedJitter: 0.35,
+    minSpeedPxPerSecond: 19,
+    maxSpeedPxPerSecond: 97,
+    maxAccelerationPxPerSecond2: 97,
+    massMin: 0.85,
+    massMax: 1.15,
+    pscaleMin: 0.4,
+    pscaleMax: 1.1,
+    separationRadiusPx: 38,
+    separationStrength: 0.55,
+    alignmentRadiusPx: 130,
+    alignmentStrength: 0.28,
+    cohesionRadiusPx: 173,
+    cohesionStrength: 0.22,
+    centerPullStrength: 0.12,
+    maxNeighbors: 14,
+    boundsKind: "radial",
+    boundsRadiusPx: 302,
+    boundsMarginPx: 86,
+    boundsForcePxPerSecond2: 346
+  };
+}
+
+export function createDefaultOverlayPhyllotaxisConfig(): OverlayPhyllotaxisConfig {
+  return {
+    numPoints: 720,
+    radiusPx: 367,
+    radiusFalloff: 0.68,
+    angleOffsetDeg: 0,
+    animationEnabled: true,
+    animationSpeedDegPerSecond: 14
+  };
+}
+
+export function createDefaultOverlayScatterConfig(): OverlayScatterConfig {
+  return {
+    pointCount: 420,
+    seed: 1,
+    distributionMode: "uniform",
+    marginPx: 16,
+    shapeKind: "rounded-rect",
+    widthPx: 620,
+    heightPx: 420,
+    cornerRadiusPx: 64,
+    svgPath: "M -220 0 L -120 -150 L 120 -150 L 220 0 L 120 150 L -120 150 Z"
+  };
+}
+
+export function createDefaultOverlaySceneFamilyConfigs(): OverlaySceneFamilyConfigs {
+  return {
+    phyllotaxis: createDefaultOverlayPhyllotaxisConfig(),
+    fuzzyBoids: createDefaultOverlayFuzzyBoidsConfig(),
+    scatter: createDefaultOverlayScatterConfig()
+  };
+}
+
+export const OVERLAY_BACKGROUND_HALO_OPERATOR_KEY = "background.halo";
+export const OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY = "operator.phyllotaxis";
+export const OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY = "operator.fuzzy-boids";
+export const OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY = "operator.scatter";
+
+export type OverlayBackgroundOperatorKey =
+  | typeof OVERLAY_BACKGROUND_HALO_OPERATOR_KEY
+  | typeof OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY
+  | typeof OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY
+  | typeof OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY;
+
+export const OVERLAY_BACKGROUND_HALO_NODE_ID = "background-halo";
+export const OVERLAY_BACKGROUND_PHYLLOTAXIS_NODE_ID = "background-phyllotaxis";
+export const OVERLAY_BACKGROUND_FUZZY_SEED_NODE_ID = "background-fuzzy-seed";
+export const OVERLAY_BACKGROUND_FUZZY_BOIDS_NODE_ID = "background-fuzzy-boids";
+export const OVERLAY_BACKGROUND_SCATTER_NODE_ID = "background-scatter";
+
+export interface OverlayBackgroundEdge {
+  fromNodeId: string;
+  fromPortKey: string;
+  toNodeId: string;
+  toPortKey: string;
+}
+
+export interface OverlayHaloBackgroundNode {
+  id: string;
+  operatorKey: typeof OVERLAY_BACKGROUND_HALO_OPERATOR_KEY;
+  params: Record<string, never>;
+}
+
+export interface OverlayPhyllotaxisBackgroundNode {
+  id: string;
+  operatorKey: typeof OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY;
+  params: OverlayPhyllotaxisConfig;
+}
+
+export interface OverlayFuzzyBoidsBackgroundNode {
+  id: string;
+  operatorKey: typeof OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY;
+  params: OverlayFuzzyBoidsConfig;
+}
+
+export interface OverlayScatterBackgroundNode {
+  id: string;
+  operatorKey: typeof OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY;
+  params: OverlayScatterConfig;
+}
+
+export type OverlayBackgroundNode =
+  | OverlayHaloBackgroundNode
+  | OverlayPhyllotaxisBackgroundNode
+  | OverlayFuzzyBoidsBackgroundNode
+  | OverlayScatterBackgroundNode;
+
+export interface OverlayBackgroundGraph {
+  activeNodeId: string;
+  nodes: OverlayBackgroundNode[];
+  edges: OverlayBackgroundEdge[];
+}
+
+function createDefaultOverlayFuzzySeedConfig(fuzzyBoidsConfig: OverlayFuzzyBoidsConfig): OverlayPhyllotaxisConfig {
+  return {
+    numPoints: Math.max(1, Math.round(fuzzyBoidsConfig.numBoids)),
+    radiusPx: Math.max(48, fuzzyBoidsConfig.spawnRadiusPx * 1.12),
+    radiusFalloff: 0.5,
+    angleOffsetDeg: 0,
+    animationEnabled: true,
+    animationSpeedDegPerSecond: 8
+  };
+}
+
+export function getOverlayBackgroundOperatorKey(sceneFamilyKey: OverlaySceneFamilyKey): OverlayBackgroundOperatorKey {
+  switch (sceneFamilyKey) {
+    case "phyllotaxis":
+      return OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY;
+    case "fuzzy-boids":
+      return OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY;
+    case "scatter":
+      return OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY;
+    default:
+      return OVERLAY_BACKGROUND_HALO_OPERATOR_KEY;
+  }
+}
+
+export function getOverlaySceneFamilyKeyForBackgroundOperator(
+  operatorKey: OverlayBackgroundOperatorKey
+): OverlaySceneFamilyKey {
+  switch (operatorKey) {
+    case OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY:
+      return "phyllotaxis";
+    case OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY:
+      return "fuzzy-boids";
+    case OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY:
+      return "scatter";
+    default:
+      return "halo";
+  }
+}
+
+export function createDefaultOverlayBackgroundGraph(
+  sceneFamilyKey: OverlaySceneFamilyKey = DEFAULT_OVERLAY_SCENE_FAMILY_KEY,
+  sceneFamilyConfigs: OverlaySceneFamilyConfigs = createDefaultOverlaySceneFamilyConfigs()
+): OverlayBackgroundGraph {
+  switch (sceneFamilyKey) {
+    case "phyllotaxis":
+      return {
+        activeNodeId: OVERLAY_BACKGROUND_PHYLLOTAXIS_NODE_ID,
+        nodes: [{
+          id: OVERLAY_BACKGROUND_PHYLLOTAXIS_NODE_ID,
+          operatorKey: OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY,
+          params: cloneOverlayJson(sceneFamilyConfigs.phyllotaxis)
+        }],
+        edges: []
+      };
+    case "fuzzy-boids":
+      return {
+        activeNodeId: OVERLAY_BACKGROUND_FUZZY_BOIDS_NODE_ID,
+        nodes: [
+          {
+            id: OVERLAY_BACKGROUND_FUZZY_SEED_NODE_ID,
+            operatorKey: OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY,
+            params: createDefaultOverlayFuzzySeedConfig(sceneFamilyConfigs.fuzzyBoids)
+          },
+          {
+            id: OVERLAY_BACKGROUND_FUZZY_BOIDS_NODE_ID,
+            operatorKey: OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY,
+            params: cloneOverlayJson(sceneFamilyConfigs.fuzzyBoids)
+          }
+        ],
+        edges: [{
+          fromNodeId: OVERLAY_BACKGROUND_FUZZY_SEED_NODE_ID,
+          fromPortKey: "pointField",
+          toNodeId: OVERLAY_BACKGROUND_FUZZY_BOIDS_NODE_ID,
+          toPortKey: "seedField"
+        }]
+      };
+    case "scatter":
+      return {
+        activeNodeId: OVERLAY_BACKGROUND_SCATTER_NODE_ID,
+        nodes: [{
+          id: OVERLAY_BACKGROUND_SCATTER_NODE_ID,
+          operatorKey: OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY,
+          params: cloneOverlayJson(sceneFamilyConfigs.scatter)
+        }],
+        edges: []
+      };
+    default:
+      return {
+        activeNodeId: OVERLAY_BACKGROUND_HALO_NODE_ID,
+        nodes: [{
+          id: OVERLAY_BACKGROUND_HALO_NODE_ID,
+          operatorKey: OVERLAY_BACKGROUND_HALO_OPERATOR_KEY,
+          params: {}
+        }],
+        edges: []
+      };
+  }
+}
+
+export function cloneOverlayBackgroundGraph(graph: OverlayBackgroundGraph): OverlayBackgroundGraph {
+  return cloneOverlayJson(graph);
+}
+
 export interface OverlayDocumentMetadata {
   name: string;
   createdAt: string;
@@ -118,6 +403,8 @@ export interface OverlayDocumentProject {
   sceneFamilyKey: OverlaySceneFamilyKey;
   activeTargetId: string;
   targets: OverlayDocumentTarget[];
+  sceneFamilyConfigs: OverlaySceneFamilyConfigs;
+  backgroundGraph: OverlayBackgroundGraph;
 }
 
 export interface OverlayDocumentFile<
@@ -229,6 +516,15 @@ function normalizeOverlayDocumentString(rawValue: unknown, fallbackValue: string
   return trimmedValue.length > 0 ? trimmedValue : fallbackValue;
 }
 
+function normalizeOverlayNumber(rawValue: unknown, fallbackValue: number): number {
+  const value = Number(rawValue);
+  return Number.isFinite(value) ? value : fallbackValue;
+}
+
+function normalizeOverlayBoolean(rawValue: unknown, fallbackValue: boolean): boolean {
+  return typeof rawValue === "boolean" ? rawValue : fallbackValue;
+}
+
 function normalizeOverlaySceneFamilyKey(
   rawSceneFamilyKey: unknown,
   fallbackKey: OverlaySceneFamilyKey = DEFAULT_OVERLAY_SCENE_FAMILY_KEY
@@ -240,6 +536,272 @@ function normalizeOverlaySceneFamilyKey(
   return OVERLAY_SCENE_FAMILY_ORDER.includes(rawSceneFamilyKey as OverlaySceneFamilyKey)
     ? rawSceneFamilyKey as OverlaySceneFamilyKey
     : fallbackKey;
+}
+
+function normalizeOverlayFuzzyBoidsBoundsKind(
+  rawBoundsKind: unknown,
+  fallbackKind: OverlayFuzzyBoidsBoundsKind
+): OverlayFuzzyBoidsBoundsKind {
+  return rawBoundsKind === "none" || rawBoundsKind === "radial" || rawBoundsKind === "box"
+    ? rawBoundsKind
+    : fallbackKind;
+}
+
+function normalizeOverlayScatterDistributionMode(
+  rawDistributionMode: unknown,
+  fallbackMode: OverlayScatterDistributionMode
+): OverlayScatterDistributionMode {
+  return rawDistributionMode === "uniform" || rawDistributionMode === "density-weighted"
+    ? rawDistributionMode
+    : fallbackMode;
+}
+
+function normalizeOverlayScatterShapeKind(
+  rawShapeKind: unknown,
+  fallbackKind: OverlayScatterShapeKind
+): OverlayScatterShapeKind {
+  return rawShapeKind === "ellipse"
+    || rawShapeKind === "rect"
+    || rawShapeKind === "rounded-rect"
+    || rawShapeKind === "svg-path"
+    ? rawShapeKind
+    : fallbackKind;
+}
+
+export function cloneOverlaySceneFamilyConfigs(
+  sceneFamilyConfigs: OverlaySceneFamilyConfigs
+): OverlaySceneFamilyConfigs {
+  return cloneOverlayJson(sceneFamilyConfigs);
+}
+
+function normalizeOverlayPhyllotaxisConfig(
+  rawConfig: unknown,
+  fallbackConfig: OverlayPhyllotaxisConfig = createDefaultOverlayPhyllotaxisConfig()
+): OverlayPhyllotaxisConfig {
+  const rawPhyllotaxis = isRecord(rawConfig) ? rawConfig : {};
+  return {
+    numPoints: Math.max(1, Math.round(normalizeOverlayNumber(rawPhyllotaxis.numPoints, fallbackConfig.numPoints))),
+    radiusPx: normalizeOverlayNumber(rawPhyllotaxis.radiusPx, fallbackConfig.radiusPx),
+    radiusFalloff: normalizeOverlayNumber(rawPhyllotaxis.radiusFalloff, fallbackConfig.radiusFalloff),
+    angleOffsetDeg: normalizeOverlayNumber(rawPhyllotaxis.angleOffsetDeg, fallbackConfig.angleOffsetDeg),
+    animationEnabled: normalizeOverlayBoolean(rawPhyllotaxis.animationEnabled, fallbackConfig.animationEnabled),
+    animationSpeedDegPerSecond: normalizeOverlayNumber(
+      rawPhyllotaxis.animationSpeedDegPerSecond,
+      fallbackConfig.animationSpeedDegPerSecond
+    )
+  };
+}
+
+function normalizeOverlayFuzzyBoidsConfig(
+  rawConfig: unknown,
+  fallbackConfig: OverlayFuzzyBoidsConfig = createDefaultOverlayFuzzyBoidsConfig()
+): OverlayFuzzyBoidsConfig {
+  const rawFuzzyBoids = isRecord(rawConfig) ? rawConfig : {};
+  return {
+    numBoids: Math.max(1, Math.round(normalizeOverlayNumber(rawFuzzyBoids.numBoids, fallbackConfig.numBoids))),
+    seed: Math.max(0, Math.round(normalizeOverlayNumber(rawFuzzyBoids.seed, fallbackConfig.seed))),
+    spawnRadiusPx: normalizeOverlayNumber(rawFuzzyBoids.spawnRadiusPx, fallbackConfig.spawnRadiusPx),
+    staggerStartSeconds: normalizeOverlayNumber(rawFuzzyBoids.staggerStartSeconds, fallbackConfig.staggerStartSeconds),
+    initialSpeedPxPerSecond: normalizeOverlayNumber(rawFuzzyBoids.initialSpeedPxPerSecond, fallbackConfig.initialSpeedPxPerSecond),
+    initialSpeedJitter: normalizeOverlayNumber(rawFuzzyBoids.initialSpeedJitter, fallbackConfig.initialSpeedJitter),
+    minSpeedPxPerSecond: normalizeOverlayNumber(rawFuzzyBoids.minSpeedPxPerSecond, fallbackConfig.minSpeedPxPerSecond),
+    maxSpeedPxPerSecond: normalizeOverlayNumber(rawFuzzyBoids.maxSpeedPxPerSecond, fallbackConfig.maxSpeedPxPerSecond),
+    maxAccelerationPxPerSecond2: normalizeOverlayNumber(
+      rawFuzzyBoids.maxAccelerationPxPerSecond2,
+      fallbackConfig.maxAccelerationPxPerSecond2
+    ),
+    massMin: normalizeOverlayNumber(rawFuzzyBoids.massMin, fallbackConfig.massMin),
+    massMax: normalizeOverlayNumber(rawFuzzyBoids.massMax, fallbackConfig.massMax),
+    pscaleMin: normalizeOverlayNumber(rawFuzzyBoids.pscaleMin, fallbackConfig.pscaleMin),
+    pscaleMax: normalizeOverlayNumber(rawFuzzyBoids.pscaleMax, fallbackConfig.pscaleMax),
+    separationRadiusPx: normalizeOverlayNumber(rawFuzzyBoids.separationRadiusPx, fallbackConfig.separationRadiusPx),
+    separationStrength: normalizeOverlayNumber(rawFuzzyBoids.separationStrength, fallbackConfig.separationStrength),
+    alignmentRadiusPx: normalizeOverlayNumber(rawFuzzyBoids.alignmentRadiusPx, fallbackConfig.alignmentRadiusPx),
+    alignmentStrength: normalizeOverlayNumber(rawFuzzyBoids.alignmentStrength, fallbackConfig.alignmentStrength),
+    cohesionRadiusPx: normalizeOverlayNumber(rawFuzzyBoids.cohesionRadiusPx, fallbackConfig.cohesionRadiusPx),
+    cohesionStrength: normalizeOverlayNumber(rawFuzzyBoids.cohesionStrength, fallbackConfig.cohesionStrength),
+    centerPullStrength: normalizeOverlayNumber(rawFuzzyBoids.centerPullStrength, fallbackConfig.centerPullStrength),
+    maxNeighbors: Math.max(1, Math.round(normalizeOverlayNumber(rawFuzzyBoids.maxNeighbors, fallbackConfig.maxNeighbors))),
+    boundsKind: normalizeOverlayFuzzyBoidsBoundsKind(rawFuzzyBoids.boundsKind, fallbackConfig.boundsKind),
+    boundsRadiusPx: normalizeOverlayNumber(rawFuzzyBoids.boundsRadiusPx, fallbackConfig.boundsRadiusPx),
+    boundsMarginPx: normalizeOverlayNumber(rawFuzzyBoids.boundsMarginPx, fallbackConfig.boundsMarginPx),
+    boundsForcePxPerSecond2: normalizeOverlayNumber(
+      rawFuzzyBoids.boundsForcePxPerSecond2,
+      fallbackConfig.boundsForcePxPerSecond2
+    )
+  };
+}
+
+function normalizeOverlayScatterConfig(
+  rawConfig: unknown,
+  fallbackConfig: OverlayScatterConfig = createDefaultOverlayScatterConfig()
+): OverlayScatterConfig {
+  const rawScatter = isRecord(rawConfig) ? rawConfig : {};
+  return {
+    pointCount: Math.max(1, Math.round(normalizeOverlayNumber(rawScatter.pointCount, fallbackConfig.pointCount))),
+    seed: Math.max(0, Math.round(normalizeOverlayNumber(rawScatter.seed, fallbackConfig.seed))),
+    distributionMode: normalizeOverlayScatterDistributionMode(rawScatter.distributionMode, fallbackConfig.distributionMode),
+    marginPx: normalizeOverlayNumber(rawScatter.marginPx, fallbackConfig.marginPx),
+    shapeKind: normalizeOverlayScatterShapeKind(rawScatter.shapeKind, fallbackConfig.shapeKind),
+    widthPx: normalizeOverlayNumber(rawScatter.widthPx, fallbackConfig.widthPx),
+    heightPx: normalizeOverlayNumber(rawScatter.heightPx, fallbackConfig.heightPx),
+    cornerRadiusPx: normalizeOverlayNumber(rawScatter.cornerRadiusPx, fallbackConfig.cornerRadiusPx),
+    svgPath: normalizeOverlayDocumentString(rawScatter.svgPath, fallbackConfig.svgPath)
+  };
+}
+
+export function normalizeOverlaySceneFamilyConfigs(rawConfigs: unknown): OverlaySceneFamilyConfigs {
+  const defaults = createDefaultOverlaySceneFamilyConfigs();
+  if (!isRecord(rawConfigs)) {
+    return defaults;
+  }
+
+  return {
+    phyllotaxis: normalizeOverlayPhyllotaxisConfig(rawConfigs.phyllotaxis, defaults.phyllotaxis),
+    fuzzyBoids: normalizeOverlayFuzzyBoidsConfig(rawConfigs.fuzzyBoids, defaults.fuzzyBoids),
+    scatter: normalizeOverlayScatterConfig(rawConfigs.scatter, defaults.scatter)
+  };
+}
+
+function normalizeOverlayBackgroundOperatorKey(rawOperatorKey: unknown): OverlayBackgroundOperatorKey | null {
+  return rawOperatorKey === OVERLAY_BACKGROUND_HALO_OPERATOR_KEY
+    || rawOperatorKey === OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY
+    || rawOperatorKey === OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY
+    || rawOperatorKey === OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY
+    ? rawOperatorKey
+    : null;
+}
+
+function createNormalizedOverlayBackgroundNode(
+  rawNode: unknown,
+  nodeIndex: number,
+  sceneFamilyConfigs: OverlaySceneFamilyConfigs,
+  fallbackNodesById: Map<string, OverlayBackgroundNode>
+): OverlayBackgroundNode | null {
+  if (!isRecord(rawNode)) {
+    return null;
+  }
+
+  const operatorKey = normalizeOverlayBackgroundOperatorKey(rawNode.operatorKey);
+  if (!operatorKey) {
+    return null;
+  }
+
+  const fallbackNodeId = `background-node-${nodeIndex + 1}`;
+  const nodeId = normalizeOverlayDocumentString(rawNode.id, fallbackNodeId);
+  const fallbackNode = fallbackNodesById.get(nodeId);
+
+  switch (operatorKey) {
+    case OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY:
+      return {
+        id: nodeId,
+        operatorKey,
+        params: normalizeOverlayPhyllotaxisConfig(
+          rawNode.params,
+          fallbackNode?.operatorKey === operatorKey ? fallbackNode.params : sceneFamilyConfigs.phyllotaxis
+        )
+      };
+    case OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY:
+      return {
+        id: nodeId,
+        operatorKey,
+        params: normalizeOverlayFuzzyBoidsConfig(
+          rawNode.params,
+          fallbackNode?.operatorKey === operatorKey ? fallbackNode.params : sceneFamilyConfigs.fuzzyBoids
+        )
+      };
+    case OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY:
+      return {
+        id: nodeId,
+        operatorKey,
+        params: normalizeOverlayScatterConfig(
+          rawNode.params,
+          fallbackNode?.operatorKey === operatorKey ? fallbackNode.params : sceneFamilyConfigs.scatter
+        )
+      };
+    default:
+      return {
+        id: nodeId,
+        operatorKey,
+        params: {}
+      };
+  }
+}
+
+export function normalizeOverlayBackgroundGraph(
+  rawGraph: unknown,
+  sceneFamilyKey: OverlaySceneFamilyKey,
+  sceneFamilyConfigs: OverlaySceneFamilyConfigs
+): OverlayBackgroundGraph {
+  const fallbackGraph = createDefaultOverlayBackgroundGraph(sceneFamilyKey, sceneFamilyConfigs);
+  if (!isRecord(rawGraph) || !Array.isArray(rawGraph.nodes)) {
+    return fallbackGraph;
+  }
+
+  const fallbackNodesById = new Map(fallbackGraph.nodes.map((node) => [node.id, node]));
+  const nodes: OverlayBackgroundNode[] = [];
+  const seenNodeIds = new Set<string>();
+
+  rawGraph.nodes.forEach((rawNode, nodeIndex) => {
+    const normalizedNode = createNormalizedOverlayBackgroundNode(rawNode, nodeIndex, sceneFamilyConfigs, fallbackNodesById);
+    if (!normalizedNode || seenNodeIds.has(normalizedNode.id)) {
+      return;
+    }
+
+    nodes.push(normalizedNode);
+    seenNodeIds.add(normalizedNode.id);
+  });
+
+  if (nodes.length === 0) {
+    return fallbackGraph;
+  }
+
+  const activeNodeId = normalizeOverlayDocumentString(rawGraph.activeNodeId, fallbackGraph.activeNodeId);
+  const activeNode = nodes.find((node) => node.id === activeNodeId);
+  if (!activeNode || getOverlaySceneFamilyKeyForBackgroundOperator(activeNode.operatorKey) !== sceneFamilyKey) {
+    return fallbackGraph;
+  }
+
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const edges: OverlayBackgroundEdge[] = [];
+  const seenEdges = new Set<string>();
+
+  if (Array.isArray(rawGraph.edges)) {
+    rawGraph.edges.forEach((rawEdge) => {
+      if (!isRecord(rawEdge)) {
+        return;
+      }
+
+      const fromNodeId = normalizeOverlayDocumentString(rawEdge.fromNodeId, "");
+      const fromPortKey = normalizeOverlayDocumentString(rawEdge.fromPortKey, "");
+      const toNodeId = normalizeOverlayDocumentString(rawEdge.toNodeId, "");
+      const toPortKey = normalizeOverlayDocumentString(rawEdge.toPortKey, "");
+      if (
+        fromNodeId.length === 0
+        || fromPortKey.length === 0
+        || toNodeId.length === 0
+        || toPortKey.length === 0
+        || !nodeIds.has(fromNodeId)
+        || !nodeIds.has(toNodeId)
+      ) {
+        return;
+      }
+
+      const edgeKey = `${fromNodeId}:${fromPortKey}:${toNodeId}:${toPortKey}`;
+      if (seenEdges.has(edgeKey)) {
+        return;
+      }
+
+      edges.push({ fromNodeId, fromPortKey, toNodeId, toPortKey });
+      seenEdges.add(edgeKey);
+    });
+  }
+
+  return {
+    activeNodeId,
+    nodes,
+    edges
+  };
 }
 
 function getOverlayDocumentTargetLabel(outputProfileKey: string): string {
@@ -321,11 +883,14 @@ export function normalizeOverlayDocumentProject<
     const activeTargetId = fallbackTargets.find((target) => target.outputProfileKey === snapshot.outputProfileKey)?.id
       ?? fallbackTargets[0]?.id
       ?? getOverlayDocumentTargetId(snapshot.outputProfileKey);
+    const sceneFamilyConfigs = createDefaultOverlaySceneFamilyConfigs();
 
     return {
       sceneFamilyKey: DEFAULT_OVERLAY_SCENE_FAMILY_KEY,
       activeTargetId,
-      targets: fallbackTargets
+      targets: fallbackTargets,
+      sceneFamilyConfigs,
+      backgroundGraph: createDefaultOverlayBackgroundGraph(DEFAULT_OVERLAY_SCENE_FAMILY_KEY, sceneFamilyConfigs)
     };
   }
 
@@ -386,11 +951,15 @@ export function normalizeOverlayDocumentProject<
   ))
     ? rawProject.activeTargetId
     : snapshotTargetId;
+  const sceneFamilyKey = normalizeOverlaySceneFamilyKey(rawProject.sceneFamilyKey);
+  const sceneFamilyConfigs = normalizeOverlaySceneFamilyConfigs(rawProject.sceneFamilyConfigs);
 
   return {
-    sceneFamilyKey: normalizeOverlaySceneFamilyKey(rawProject.sceneFamilyKey),
+    sceneFamilyKey,
     activeTargetId,
-    targets
+    targets,
+    sceneFamilyConfigs,
+    backgroundGraph: normalizeOverlayBackgroundGraph(rawProject.backgroundGraph, sceneFamilyKey, sceneFamilyConfigs)
   };
 }
 

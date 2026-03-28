@@ -17,10 +17,21 @@ import type { ScatterPreviewConfig } from "./scene-family-preview.js";
 
 export function buildScatterSection(ctx: PreviewAppContext): HTMLElement {
   const { root, body } = buildAccordionSectionEl("Scatter");
-  const sc = ctx.state.scatterConfig;
+  const sc = ctx.state.documentProject.sceneFamilyConfigs.scatter;
 
   function update(patch: Partial<ScatterPreviewConfig>, rebuildEditor = false) {
-    ctx.state.scatterConfig = { ...ctx.state.scatterConfig, ...patch };
+    ctx.state.documentProject = {
+      ...ctx.state.documentProject,
+      sceneFamilyConfigs: {
+        ...ctx.state.documentProject.sceneFamilyConfigs,
+        scatter: {
+          ...ctx.state.documentProject.sceneFamilyConfigs.scatter,
+          ...patch
+        }
+      }
+    };
+    ctx.syncDocumentBackgroundGraph();
+    ctx.markDocumentDirty();
     if (rebuildEditor) {
       ctx.buildConfigEditor();
     }

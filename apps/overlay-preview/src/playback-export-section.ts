@@ -3,8 +3,7 @@
  */
 import {
   buildAccordionSectionEl,
-  createCheckboxFormGroup,
-  wrapCol
+  createCheckboxFormGroup
 } from "@brand-layout-ops/parameter-ui";
 import type { PreviewAppContext } from "./preview-app-context.js";
 
@@ -13,7 +12,7 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
   const { state } = ctx;
 
   const row = document.createElement("div");
-  row.className = "row";
+  row.className = "bf-cluster preview-cluster--tight playback-export-actions";
 
   const playBtn = document.createElement("button");
   playBtn.className = "bf-button is-dense";
@@ -21,21 +20,21 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
   playBtn.setAttribute("data-playback-toggle", "");
   playBtn.textContent = state.isPlaying ? "Pause Motion" : "Play Motion";
   playBtn.addEventListener("click", () => { ctx.togglePlayback(); });
-  row.append(wrapCol(2, playBtn));
+  row.append(playBtn);
 
   const exportBtn = document.createElement("button");
   exportBtn.className = "bf-button--base is-dense";
   exportBtn.type = "button";
   exportBtn.textContent = "Export PNG";
   exportBtn.addEventListener("click", () => { void ctx.exportComposedFramePng(); });
-  row.append(wrapCol(2, exportBtn));
+  row.append(exportBtn);
 
   const seqBtn = document.createElement("button");
   seqBtn.className = "bf-button--base is-dense";
   seqBtn.type = "button";
   seqBtn.textContent = "Export Sequence";
   seqBtn.addEventListener("click", () => { void ctx.exportPngSequence(); });
-  row.append(wrapCol(2, seqBtn));
+  row.append(seqBtn);
 
   const resetBtn = document.createElement("button");
   resetBtn.className = "bf-button--base is-dense";
@@ -52,7 +51,7 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
     ctx.setSourceDefaultStatus("Reset to source default.");
     void ctx.renderStage();
   });
-  row.append(wrapCol(2, resetBtn));
+  row.append(resetBtn);
 
   const writeBtn = document.createElement("button");
   writeBtn.className = "bf-button--base is-dense";
@@ -72,7 +71,7 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
       }
     })();
   });
-  row.append(wrapCol(2, writeBtn));
+  row.append(writeBtn);
 
   body.append(row);
 

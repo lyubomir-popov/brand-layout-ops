@@ -69,7 +69,7 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
     body.append(createFormGroup("CSV Data", textarea));
 
     const actions = document.createElement("div");
-    actions.style.cssText = "display:flex;gap:0.5rem;margin-top:0.25rem;";
+    actions.className = "bf-cluster preview-cluster--tight";
 
     const applyBtn = document.createElement("button");
     applyBtn.className = "bf-button is-dense";

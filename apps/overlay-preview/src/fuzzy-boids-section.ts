@@ -20,10 +20,21 @@ import {
 export function buildFuzzyBoidsSection(ctx: PreviewAppContext): HTMLElement {
   const { state } = ctx;
   const { root, body } = buildAccordionSectionEl("Fuzzy Boids");
-  const bc = state.fuzzyBoidsConfig;
+  const bc = state.documentProject.sceneFamilyConfigs.fuzzyBoids;
 
   function update(patch: Partial<FuzzyBoidsPreviewConfig>) {
-    state.fuzzyBoidsConfig = { ...state.fuzzyBoidsConfig, ...patch };
+    state.documentProject = {
+      ...state.documentProject,
+      sceneFamilyConfigs: {
+        ...state.documentProject.sceneFamilyConfigs,
+        fuzzyBoids: {
+          ...state.documentProject.sceneFamilyConfigs.fuzzyBoids,
+          ...patch
+        }
+      }
+    };
+    ctx.syncDocumentBackgroundGraph();
+    ctx.markDocumentDirty();
     void ctx.renderStage();
   }
 

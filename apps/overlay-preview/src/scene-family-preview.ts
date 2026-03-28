@@ -1,5 +1,19 @@
 import type { BoidField, BoidRecord, ColorRgba, PointField, PointRecord, Vector3 } from "@brand-layout-ops/core-types";
 import { FuzzyBoidsSimulation, type FuzzyBoidsBoundsParams } from "@brand-layout-ops/operator-fuzzy-boids";
+import { resolvePhyllotaxisField } from "@brand-layout-ops/operator-phyllotaxis";
+import type {
+  OverlayBackgroundGraph,
+  OverlayFuzzyBoidsConfig,
+  OverlayPhyllotaxisConfig,
+  OverlayScatterConfig,
+  OverlaySceneFamilyKey
+} from "@brand-layout-ops/operator-overlay-layout";
+import {
+  OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY,
+  OVERLAY_BACKGROUND_HALO_OPERATOR_KEY,
+  OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY,
+  OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY
+} from "@brand-layout-ops/operator-overlay-layout";
 import {
   resolveScatterPointField,
   resolveScatterShape,
@@ -9,9 +23,13 @@ import {
 } from "@brand-layout-ops/operator-scatter";
 
 const fuzzyBoidsSimulation = new FuzzyBoidsSimulation();
-import { resolvePhyllotaxisField } from "@brand-layout-ops/operator-phyllotaxis";
 import type { HaloFieldConfig } from "@brand-layout-ops/operator-halo-field";
-import type { OverlaySceneFamilyKey } from "@brand-layout-ops/operator-overlay-layout";
+const EMPTY_POINT_FIELD: PointField = { points: [], detail: {} };
+let fuzzyBoidsPreviewGraphKey = "";
+
+export type FuzzyBoidsPreviewConfig = OverlayFuzzyBoidsConfig;
+export type PhyllotaxisPreviewConfig = OverlayPhyllotaxisConfig;
+export type ScatterPreviewConfig = OverlayScatterConfig;
 
 type PreviewableSceneFamilyKey = Exclude<OverlaySceneFamilyKey, "halo">;
 
@@ -71,119 +89,12 @@ const DEFAULT_SCENE_FAMILY_COLOR: ColorRgba = {
   a: 1
 };
 
-export interface FuzzyBoidsPreviewConfig {
-  numBoids: number;
-  seed: number;
-  spawnRadiusPx: number;
-  staggerStartSeconds: number;
-  initialSpeedPxPerSecond: number;
-  initialSpeedJitter: number;
-  minSpeedPxPerSecond: number;
-  maxSpeedPxPerSecond: number;
-  maxAccelerationPxPerSecond2: number;
-  massMin: number;
-  massMax: number;
-  pscaleMin: number;
-  pscaleMax: number;
-  separationRadiusPx: number;
-  separationStrength: number;
-  alignmentRadiusPx: number;
-  alignmentStrength: number;
-  cohesionRadiusPx: number;
-  cohesionStrength: number;
-  centerPullStrength: number;
-  maxNeighbors: number;
-  boundsKind: "none" | "radial" | "box";
-  boundsRadiusPx: number;
-  boundsMarginPx: number;
-  boundsForcePxPerSecond2: number;
-}
-
-export function createDefaultFuzzyBoidsPreviewConfig(): FuzzyBoidsPreviewConfig {
-  return {
-    numBoids: 220,
-    seed: 1,
-    spawnRadiusPx: 173,
-    staggerStartSeconds: 0,
-    initialSpeedPxPerSecond: 70,
-    initialSpeedJitter: 0.35,
-    minSpeedPxPerSecond: 19,
-    maxSpeedPxPerSecond: 97,
-    maxAccelerationPxPerSecond2: 97,
-    massMin: 0.85,
-    massMax: 1.15,
-    pscaleMin: 0.4,
-    pscaleMax: 1.1,
-    separationRadiusPx: 38,
-    separationStrength: 0.55,
-    alignmentRadiusPx: 130,
-    alignmentStrength: 0.28,
-    cohesionRadiusPx: 173,
-    cohesionStrength: 0.22,
-    centerPullStrength: 0.12,
-    maxNeighbors: 14,
-    boundsKind: "radial",
-    boundsRadiusPx: 302,
-    boundsMarginPx: 86,
-    boundsForcePxPerSecond2: 346
-  };
-}
-
-export interface PhyllotaxisPreviewConfig {
-  numPoints: number;
-  radiusPx: number;
-  radiusFalloff: number;
-  angleOffsetDeg: number;
-  animationEnabled: boolean;
-  animationSpeedDegPerSecond: number;
-}
-
-export function createDefaultPhyllotaxisPreviewConfig(): PhyllotaxisPreviewConfig {
-  return {
-    numPoints: 720,
-    radiusPx: 367,
-    radiusFalloff: 0.68,
-    angleOffsetDeg: 0,
-    animationEnabled: true,
-    animationSpeedDegPerSecond: 14
-  };
-}
-
-export interface ScatterPreviewConfig {
-  pointCount: number;
-  seed: number;
-  distributionMode: ScatterDistributionMode;
-  marginPx: number;
-  shapeKind: ScatterShapeKind;
-  widthPx: number;
-  heightPx: number;
-  cornerRadiusPx: number;
-  svgPath: string;
-}
-
-export function createDefaultScatterPreviewConfig(): ScatterPreviewConfig {
-  return {
-    pointCount: 420,
-    seed: 1,
-    distributionMode: "uniform",
-    marginPx: 16,
-    shapeKind: "rounded-rect",
-    widthPx: 620,
-    heightPx: 420,
-    cornerRadiusPx: 64,
-    svgPath: "M -220 0 L -120 -150 L 120 -150 L 220 0 L 120 150 L -120 150 Z"
-  };
-}
-
 export interface BuildSceneFamilyPreviewStateOptions {
-  sceneFamilyKey: OverlaySceneFamilyKey;
+  backgroundGraph: OverlayBackgroundGraph;
   widthPx: number;
   heightPx: number;
   playbackTimeSec: number;
   haloConfig: HaloFieldConfig;
-  phyllotaxisConfig: PhyllotaxisPreviewConfig;
-  fuzzyBoidsConfig: FuzzyBoidsPreviewConfig;
-  scatterConfig: ScatterPreviewConfig;
 }
 
 export interface RenderSceneFamilyPreviewFrameOptions {
@@ -831,131 +742,213 @@ export function clearSceneFamilyPreviewCanvas(canvas: HTMLCanvasElement, widthPx
 export function buildSceneFamilyPreviewState(
   options: BuildSceneFamilyPreviewStateOptions
 ): SceneFamilyPreviewState | null {
-  if (options.sceneFamilyKey === "halo") {
+  const center = getPreviewCenter(options.widthPx, options.heightPx, options.haloConfig);
+  const minDimensionPx = Math.min(options.widthPx, options.heightPx);
+  const nodesById = new Map(options.backgroundGraph.nodes.map((node) => [node.id, node]));
+  const activeNode = nodesById.get(options.backgroundGraph.activeNodeId);
+  if (!activeNode || activeNode.operatorKey === OVERLAY_BACKGROUND_HALO_OPERATOR_KEY) {
     return null;
   }
 
-  const center = getPreviewCenter(options.widthPx, options.heightPx, options.haloConfig);
-  const minDimensionPx = Math.min(options.widthPx, options.heightPx);
+  const incomingEdgesByNodeId = new Map<string, typeof options.backgroundGraph.edges>();
+  for (const edge of options.backgroundGraph.edges) {
+    const incomingEdges = incomingEdgesByNodeId.get(edge.toNodeId) ?? [];
+    incomingEdges.push(edge);
+    incomingEdgesByNodeId.set(edge.toNodeId, incomingEdges);
+  }
 
-  if (options.sceneFamilyKey === "phyllotaxis") {
-    const pc = options.phyllotaxisConfig;
-    const angleOffsetDeg = pc.angleOffsetDeg + (pc.animationEnabled ? options.playbackTimeSec * pc.animationSpeedDegPerSecond : 0);
-    const pointField = resolvePhyllotaxisField({
-      numPoints: pc.numPoints,
-      radius: pc.radiusPx,
-      radiusFalloff: pc.radiusFalloff,
-      angleOffsetDeg,
-      origin: center
-    });
+  interface ResolvedBackgroundNode {
+    sceneFamilyKey: OverlaySceneFamilyKey;
+    pointField?: PointField;
+    boidField?: BoidField;
+    shape?: ScatterResolvedShape;
+    distributionMode?: ScatterDistributionMode;
+    bounds?: FuzzyBoidsBoundsParams;
+    maxRadiusPx?: number;
+    armSteps?: number[];
+    linkRadiusPx?: number;
+    seedField?: PointField;
+  }
 
+  const resolvedNodeCache = new Map<string, ResolvedBackgroundNode | null>();
+  const resolvingNodeIds = new Set<string>();
+
+  const resolveNode = (nodeId: string): ResolvedBackgroundNode | null => {
+    if (resolvedNodeCache.has(nodeId)) {
+      return resolvedNodeCache.get(nodeId) ?? null;
+    }
+
+    if (resolvingNodeIds.has(nodeId)) {
+      return null;
+    }
+
+    const node = nodesById.get(nodeId);
+    if (!node) {
+      resolvedNodeCache.set(nodeId, null);
+      return null;
+    }
+
+    resolvingNodeIds.add(nodeId);
+    const incomingEdges = incomingEdgesByNodeId.get(nodeId) ?? [];
+    let resolvedNode: ResolvedBackgroundNode | null = null;
+
+    switch (node.operatorKey) {
+      case OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY: {
+        const pc = node.params as OverlayPhyllotaxisConfig;
+        const angleOffsetDeg = pc.angleOffsetDeg + (pc.animationEnabled ? options.playbackTimeSec * pc.animationSpeedDegPerSecond : 0);
+        const pointField = resolvePhyllotaxisField({
+          numPoints: pc.numPoints,
+          radius: pc.radiusPx,
+          radiusFalloff: pc.radiusFalloff,
+          angleOffsetDeg,
+          origin: center
+        });
+        resolvedNode = {
+          sceneFamilyKey: "phyllotaxis",
+          pointField,
+          maxRadiusPx: Number(pointField.detail.max_radius ?? pc.radiusPx),
+          armSteps: [21, 34]
+        };
+        break;
+      }
+      case OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY: {
+        const sc = node.params as OverlayScatterConfig;
+        const scatterParams = {
+          pointCount: sc.pointCount,
+          seed: sc.seed,
+          distributionMode: sc.distributionMode,
+          marginPx: sc.marginPx,
+          shape: {
+            kind: sc.shapeKind,
+            widthPx: sc.widthPx,
+            heightPx: sc.heightPx,
+            cornerRadiusPx: sc.cornerRadiusPx,
+            svgPath: sc.svgPath,
+            origin: center
+          }
+        };
+        resolvedNode = {
+          sceneFamilyKey: "scatter",
+          pointField: resolveScatterPointField(scatterParams),
+          shape: resolveScatterShape(scatterParams),
+          distributionMode: sc.distributionMode
+        };
+        break;
+      }
+      case OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY: {
+        const bc = node.params as OverlayFuzzyBoidsConfig;
+        const seedEdge = incomingEdges.find((edge) => edge.toPortKey === "seedField");
+        const seedSourceNode = seedEdge ? nodesById.get(seedEdge.fromNodeId) ?? null : null;
+        const seedField = seedEdge ? resolveNode(seedEdge.fromNodeId)?.pointField ?? null : null;
+        const previewGraphKey = JSON.stringify({
+          activeNodeId: options.backgroundGraph.activeNodeId,
+          fuzzyNodeId: node.id,
+          fuzzyParams: bc,
+          seedSourceNodeId: seedSourceNode?.id ?? null,
+          seedSourceParams: seedSourceNode?.params ?? null
+        });
+        if (previewGraphKey !== fuzzyBoidsPreviewGraphKey) {
+          fuzzyBoidsSimulation.reset();
+          fuzzyBoidsPreviewGraphKey = previewGraphKey;
+        }
+
+        const fuzzyBoids = fuzzyBoidsSimulation.resolve({
+          timeSeconds: options.playbackTimeSec,
+          deltaTimeSeconds: 1 / 30,
+          numBoids: bc.numBoids,
+          seed: bc.seed,
+          center,
+          spawnRadiusPx: bc.spawnRadiusPx,
+          staggerStartSeconds: bc.staggerStartSeconds,
+          initialSpeedPxPerSecond: bc.initialSpeedPxPerSecond,
+          initialSpeedJitter: bc.initialSpeedJitter,
+          minSpeedPxPerSecond: bc.minSpeedPxPerSecond,
+          maxSpeedPxPerSecond: bc.maxSpeedPxPerSecond,
+          maxAccelerationPxPerSecond2: bc.maxAccelerationPxPerSecond2,
+          massMin: bc.massMin,
+          massMax: bc.massMax,
+          pscaleMin: bc.pscaleMin,
+          pscaleMax: bc.pscaleMax,
+          separationRadiusPx: bc.separationRadiusPx,
+          separationStrength: bc.separationStrength,
+          alignmentRadiusPx: bc.alignmentRadiusPx,
+          alignmentStrength: bc.alignmentStrength,
+          cohesionRadiusPx: bc.cohesionRadiusPx,
+          cohesionStrength: bc.cohesionStrength,
+          centerPullStrength: bc.centerPullStrength,
+          maxNeighbors: bc.maxNeighbors,
+          bounds: {
+            kind: bc.boundsKind,
+            radiusPx: bc.boundsRadiusPx,
+            marginPx: bc.boundsMarginPx,
+            forcePxPerSecond2: bc.boundsForcePxPerSecond2
+          },
+          palette: Object.values(buildPreviewPalette(options.haloConfig))
+        }, center, seedField);
+
+        resolvedNode = {
+          sceneFamilyKey: "fuzzy-boids",
+          pointField: fuzzyBoids.pointField,
+          boidField: fuzzyBoids.boidField,
+          seedField: seedField ?? EMPTY_POINT_FIELD,
+          bounds: {
+            kind: bc.boundsKind,
+            radiusPx: bc.boundsRadiusPx,
+            marginPx: bc.boundsMarginPx,
+            forcePxPerSecond2: bc.boundsForcePxPerSecond2
+          },
+          linkRadiusPx: minDimensionPx * 0.09
+        };
+        break;
+      }
+      default:
+        resolvedNode = null;
+        break;
+    }
+
+    resolvingNodeIds.delete(nodeId);
+    resolvedNodeCache.set(nodeId, resolvedNode);
+    return resolvedNode;
+  };
+
+  const resolvedActiveNode = resolveNode(activeNode.id);
+  if (!resolvedActiveNode?.pointField) {
+    return null;
+  }
+
+  if (resolvedActiveNode.sceneFamilyKey === "phyllotaxis") {
     return {
       sceneFamilyKey: "phyllotaxis",
-      pointField,
+      pointField: resolvedActiveNode.pointField,
       center,
-      maxRadiusPx: Number(pointField.detail.max_radius ?? pc.radiusPx),
-      armSteps: [21, 34]
+      maxRadiusPx: resolvedActiveNode.maxRadiusPx ?? 0,
+      armSteps: resolvedActiveNode.armSteps ?? [21, 34]
     };
   }
 
-  if (options.sceneFamilyKey === "scatter") {
-    const sc = options.scatterConfig;
-    const pointField = resolveScatterPointField({
-      pointCount: sc.pointCount,
-      seed: sc.seed,
-      distributionMode: sc.distributionMode,
-      marginPx: sc.marginPx,
-      shape: {
-        kind: sc.shapeKind,
-        widthPx: sc.widthPx,
-        heightPx: sc.heightPx,
-        cornerRadiusPx: sc.cornerRadiusPx,
-        svgPath: sc.svgPath,
-        origin: center
-      }
-    });
-    const shape = resolveScatterShape({
-      pointCount: sc.pointCount,
-      seed: sc.seed,
-      distributionMode: sc.distributionMode,
-      marginPx: sc.marginPx,
-      shape: {
-        kind: sc.shapeKind,
-        widthPx: sc.widthPx,
-        heightPx: sc.heightPx,
-        cornerRadiusPx: sc.cornerRadiusPx,
-        svgPath: sc.svgPath,
-        origin: center
-      }
-    });
-
+  if (resolvedActiveNode.sceneFamilyKey === "scatter" && resolvedActiveNode.shape && resolvedActiveNode.distributionMode) {
     return {
       sceneFamilyKey: "scatter",
-      pointField,
+      pointField: resolvedActiveNode.pointField,
       center,
-      shape,
-      distributionMode: sc.distributionMode
+      shape: resolvedActiveNode.shape,
+      distributionMode: resolvedActiveNode.distributionMode
     };
   }
 
-  const bc = options.fuzzyBoidsConfig;
-  const seedField = resolvePhyllotaxisField({
-    numPoints: bc.numBoids,
-    radius: minDimensionPx * 0.18,
-    radiusFalloff: 0.5,
-    angleOffsetDeg: options.playbackTimeSec * 8,
-    origin: center
-  });
-  const fuzzyBoids = fuzzyBoidsSimulation.resolve({
-    timeSeconds: options.playbackTimeSec,
-    deltaTimeSeconds: 1 / 30,
-    numBoids: bc.numBoids,
-    seed: bc.seed,
-    center,
-    spawnRadiusPx: bc.spawnRadiusPx,
-    staggerStartSeconds: bc.staggerStartSeconds,
-    initialSpeedPxPerSecond: bc.initialSpeedPxPerSecond,
-    initialSpeedJitter: bc.initialSpeedJitter,
-    minSpeedPxPerSecond: bc.minSpeedPxPerSecond,
-    maxSpeedPxPerSecond: bc.maxSpeedPxPerSecond,
-    maxAccelerationPxPerSecond2: bc.maxAccelerationPxPerSecond2,
-    massMin: bc.massMin,
-    massMax: bc.massMax,
-    pscaleMin: bc.pscaleMin,
-    pscaleMax: bc.pscaleMax,
-    separationRadiusPx: bc.separationRadiusPx,
-    separationStrength: bc.separationStrength,
-    alignmentRadiusPx: bc.alignmentRadiusPx,
-    alignmentStrength: bc.alignmentStrength,
-    cohesionRadiusPx: bc.cohesionRadiusPx,
-    cohesionStrength: bc.cohesionStrength,
-    centerPullStrength: bc.centerPullStrength,
-    maxNeighbors: bc.maxNeighbors,
-    bounds: {
-      kind: bc.boundsKind,
-      radiusPx: bc.boundsRadiusPx,
-      marginPx: bc.boundsMarginPx,
-      forcePxPerSecond2: bc.boundsForcePxPerSecond2
-    },
-    palette: Object.values(buildPreviewPalette(options.haloConfig))
-  }, center, seedField);
+  if (resolvedActiveNode.sceneFamilyKey === "fuzzy-boids" && resolvedActiveNode.boidField && resolvedActiveNode.bounds) {
+    return {
+      sceneFamilyKey: "fuzzy-boids",
+      pointField: resolvedActiveNode.pointField,
+      center,
+      boidField: resolvedActiveNode.boidField,
+      seedField: resolvedActiveNode.seedField ?? EMPTY_POINT_FIELD,
+      bounds: resolvedActiveNode.bounds,
+      linkRadiusPx: resolvedActiveNode.linkRadiusPx ?? minDimensionPx * 0.09
+    };
+  }
 
-  const bounds: FuzzyBoidsBoundsParams = {
-    kind: bc.boundsKind,
-    radiusPx: bc.boundsRadiusPx,
-    marginPx: bc.boundsMarginPx,
-    forcePxPerSecond2: bc.boundsForcePxPerSecond2
-  };
-
-  return {
-    sceneFamilyKey: "fuzzy-boids",
-    pointField: fuzzyBoids.pointField,
-    center,
-    boidField: fuzzyBoids.boidField,
-    seedField,
-    bounds,
-    linkRadiusPx: minDimensionPx * 0.09
-  };
+  return null;
 }
 
 export function renderSceneFamilyPreviewFrame(

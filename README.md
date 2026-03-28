@@ -90,7 +90,7 @@ npm run demo:spokes
 - `@brand-layout-ops/layout-grid`: baseline-grid and column-grid resolution
 - `@brand-layout-ops/layout-text`: wrapping and placement math using a provided measurer
 - `@brand-layout-ops/layout-engine`: scene-level layout composition for branded overlay content
-- `@brand-layout-ops/operator-overlay-layout`: graph-facing overlay composition operator plus shared overlay defaults and document-schema primitives
+- `@brand-layout-ops/operator-overlay-layout`: graph-facing overlay composition operator plus shared overlay defaults and document-schema primitives, including document-owned scene-family configs and background-chain persistence
 - `@brand-layout-ops/operator-copy-to-points`: Houdini-style point instancing with propagated attributes for later Three.js and SVG backends
 - `@brand-layout-ops/operator-orbits`: coarse orbit-ring point-field generator for motion-side rebuild work
 - `@brand-layout-ops/operator-phyllotaxis`: golden-angle point-field generation matching the current Houdini phyllotaxis HDA logic

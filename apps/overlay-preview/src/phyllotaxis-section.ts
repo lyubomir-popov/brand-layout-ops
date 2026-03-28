@@ -18,10 +18,21 @@ import type { PhyllotaxisPreviewConfig } from "./scene-family-preview.js";
 
 export function buildPhyllotaxisSection(ctx: PreviewAppContext): HTMLElement {
   const { root, body } = buildAccordionSectionEl("Phyllotaxis");
-  const pc = ctx.state.phyllotaxisConfig;
+  const pc = ctx.state.documentProject.sceneFamilyConfigs.phyllotaxis;
 
   function update(patch: Partial<PhyllotaxisPreviewConfig>) {
-    ctx.state.phyllotaxisConfig = { ...ctx.state.phyllotaxisConfig, ...patch };
+    ctx.state.documentProject = {
+      ...ctx.state.documentProject,
+      sceneFamilyConfigs: {
+        ...ctx.state.documentProject.sceneFamilyConfigs,
+        phyllotaxis: {
+          ...ctx.state.documentProject.sceneFamilyConfigs.phyllotaxis,
+          ...patch
+        }
+      }
+    };
+    ctx.syncDocumentBackgroundGraph();
+    ctx.markDocumentDirty();
     void ctx.renderStage();
   }
 

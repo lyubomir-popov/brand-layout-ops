@@ -7,7 +7,6 @@
   <title>Brand Layout Ops Preview</title>
 </head>
 <body class="bf-theme" data-bf-tone="dark">
-  <button class="bf-button is-dense drawer-toggle" type="button" data-drawer-toggle aria-expanded="false" aria-controls="control-drawer">Controls</button>
   <button class="drawer-backdrop" type="button" data-drawer-backdrop aria-label="Close controls"></button>
   <div class="bf-application mascot-app" data-bf-tone="dark">
     <main class="bf-main">
@@ -21,7 +20,7 @@
       </div>
     </main>
 
-    <aside class="bf-aside is-collapsed" id="control-drawer" data-control-panel aria-label="Animation controls">
+    <aside class="bf-aside" id="control-drawer" data-control-panel aria-label="Animation controls">
       <div
         class="bf-application__aside-resize-handle"
         data-control-panel-resize-handle
@@ -39,7 +38,7 @@
           </div>
         </div>
         <div class="bf-panel__content">
-          <div class="config-sections" data-config-editor></div>
+          <div class="bf-stack preview-stack--compact" data-config-editor></div>
         </div>
       </div>
     </aside>

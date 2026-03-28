@@ -21,7 +21,7 @@ export function buildPresetsSection(ctx: PreviewAppContext): HTMLElement {
   body.append(createFormGroup("Name", nameInput));
 
   const toolbar = document.createElement("div");
-  toolbar.className = "preset-toolbar";
+  toolbar.className = "bf-cluster preview-cluster--tight";
 
   const btnSpec: Array<{ label: string; attr: string; className: string }> = [
     { label: "Save", attr: "data-preset-save", className: "bf-button is-dense" },
