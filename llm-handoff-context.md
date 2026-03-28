@@ -58,6 +58,7 @@ All scoped under `@brand-layout-ops/`.
 - CSV authoring UI now shows row status, alias-based field mapping, and per-field staged-versus-applied values for the active format
 - `operator-ubuntu-summit-animation` now computes scene phase, runtime timing, loop timing, and mascot-box metadata, and the preview plus automation state now consume that descriptor path
 - Linked title-to-logo sizing now normalizes through shared preview-state params, so profile switches and loaded snapshots keep the A Head/logo lock intact
+- MP4 export verification now covers both straight encode and fade-in/fade-out flags against a real 48-frame headless export on Windows
 
 ## Current sprint TODO (do in order)
 
@@ -81,7 +82,7 @@ All scoped under `@brand-layout-ops/`.
 ### C. Remaining parity (see `docs/rebuild-plan.md` gap audit)
 
 - [x] Guide toggle 3-state cycle (already implemented: off → composition → baseline, `W`/`G` keys)
-- [x] Export pipeline — single PNG ✅, PNG sequence with modal ✅ (MP4 needs server-side FFmpeg — deferred)
+- [x] Export pipeline — single PNG ✅, PNG sequence with modal ✅, headless export ✅, MP4 encode ✅, fade encode flags ✅ (local FFmpeg install verified on Windows)
 - [x] Logo intrinsic aspect ratio (loads via `Image`, uses `naturalWidth`/`naturalHeight`)
 - [ ] Full Ubuntu Summit animation as one coarse scene-family operator
 - [ ] Mascot composition (face SVG, halo SVG, blink, head turn) — **deprioritized**
@@ -92,7 +93,7 @@ All scoped under `@brand-layout-ops/`.
 - [x] `scripts/export-headless.ts` — Playwright headless PNG sequence export (rewrites old DOM-manipulation approach)
 - [x] `scripts/encode-mp4.ts` — FFmpeg PNG→MP4 encoder (libx264, CRF 10/14, yuv444p/yuv420p, slow preset, -tune animation, bt709)
 - [x] PNG sequence export via File System Access API (`showDirectoryPicker`, fallback to download links)
-- [x] Verify end-to-end: `npm run export:headless` → `npm run export:encode-mp4` → MP4 (48-frame, 2-second headless export verified at 1080x1350; local FFmpeg install required on Windows)
+- [x] Verify end-to-end: `npm run export:headless` → `npm run export:encode-mp4` → MP4 (48-frame, 2-second headless export verified at 1080x1350; straight encode and fade encode flags both verified; local FFmpeg install required on Windows)
 
 ### F. Bug fixes from user notes
 

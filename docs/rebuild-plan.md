@@ -216,8 +216,8 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 
 10. **Export pipeline (PARTIAL).**
 	Single frame PNG ✔, PNG sequence with frame-range modal + File System Access directory picker ✔, headless Playwright PNG exporter (`scripts/export-headless.ts`) ✔, FFmpeg MP4 encoder (`scripts/encode-mp4.ts`) ✔ (libx264, CRF 10/14, yuv444p/yuv420p, slow preset, -tune animation, bt709). `window.__layoutOpsAutomation` API matches reference `__mascotAutomation` pattern. Transparent background option ✔.
-	End-to-end verification now confirmed with a 48-frame, 2-second headless export at 1080x1350 followed by MP4 encode on Windows using a local FFmpeg install.
-	Remaining: fade-in/fade-out integration and any final `output/{dimensions}/` workflow polish.
+	End-to-end verification now confirmed with a 48-frame, 2-second headless export at 1080x1350 followed by MP4 encode on Windows using a local FFmpeg install, and fade-in/fade-out encode flags are verified against that frame sequence.
+	Remaining: any final `output/{dimensions}/` workflow polish.
 	Reference files: `index.js` (export_current_frame_png, export_png_sequence, export_current_mp4).
 
 11. **Guide toggle 3-state cycle (DONE).**
