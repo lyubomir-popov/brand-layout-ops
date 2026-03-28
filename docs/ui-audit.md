@@ -20,7 +20,7 @@ Legend: ✅ = implemented, ⚠️ = partial/different, ❌ = missing
 | Control | Ref | Current | Notes |
 |---------|-----|---------|-------|
 | Show Overlay System (checkbox) | ✅ | ✅ | "Show overlay" in Playback & Export section |
-| Show Guides (checkbox, `W` shortcut) | ✅ | ⚠️ | We have a 3-option dropdown in Grid section (`off / composition / baseline`). Reference uses checkbox + `W` to cycle. Shortcut `W` exists but guide toggle cycle not fully matched. |
+| Show Guides (checkbox, `W` shortcut) | ✅ | ⚠️ | We use a 3-option dropdown in Grid section (`off / composition / baseline`) instead of a checkbox, but the `W` or `G` cycle and the baseline option are implemented. |
 
 ---
 
@@ -88,13 +88,13 @@ The reference has a tabbed text-styles sub-panel where each style tab exposes ed
 | Margin Left (baselines) | ✅ | ✅ | |
 | Margin Right (baselines) | ✅ | ✅ | |
 | Row Gutter (baselines) | ✅ | ✅ | |
-| Column Gutter (baselines) | ✅ | ❌ | Missing from our grid section |
+| Column Gutter (baselines) | ✅ | ✅ | Labeled "Col Gutter" in our grid section |
 | Fit Within Safe Area (checkbox) | ✅ | ✅ | |
 | Overlay Background Above Animation (checkbox) | ✅ | ❌ | Controls z-order of safe-area background panel vs mascot/halo |
-| Safe Area Top (px) — conditional | ✅ | ❌ | Shown only when Fit Within Safe Area is ON; per-profile defaults exist but no runtime override UI |
-| Safe Area Right (px) — conditional | ✅ | ❌ | Same |
-| Safe Area Bottom (px) — conditional | ✅ | ❌ | Same |
-| Safe Area Left (px) — conditional | ✅ | ❌ | Same |
+| Safe Area Top (px) — conditional | ✅ | ✅ | Shown only when Fit Within Safe Area is ON |
+| Safe Area Right (px) — conditional | ✅ | ✅ | Same |
+| Safe Area Bottom (px) — conditional | ✅ | ✅ | Same |
+| Safe Area Left (px) — conditional | ✅ | ✅ | Same |
 
 ---
 
@@ -109,7 +109,7 @@ The reference has a tabbed text-styles sub-panel where each style tab exposes ed
 | Source default status text | ✅ | ✅ | |
 | Transparent PNG background checkbox | ✅ | ✅ | |
 | Export MP4 button → modal | ✅ | ❌ | No export modal, no MP4 pipeline |
-| Export PNG Sequence button → modal | ✅ | ❌ | No sequence pipeline |
+| Export PNG Sequence button → modal | ✅ | ✅ | Opens a frame-range modal and writes via File System Access when available |
 
 ---
 
@@ -117,11 +117,11 @@ The reference has a tabbed text-styles sub-panel where each style tab exposes ed
 
 | Control | Ref | Current | Notes |
 |---------|-----|---------|-------|
-| Start Frame / End Frame inputs | ✅ | ❌ | |
-| Frame Count & Duration display | ✅ | ❌ | |
+| Start Frame / End Frame inputs | ✅ | ✅ | |
+| Frame Count & Duration display | ✅ | ✅ | |
 | Fade In checkbox (MP4 only) | ✅ | ❌ | |
 | Fade Out checkbox (MP4 only) | ✅ | ❌ | |
-| Submit / Cancel buttons | ✅ | ❌ | |
+| Submit / Cancel buttons | ✅ | ✅ | |
 
 ---
 
@@ -135,7 +135,7 @@ The reference has a tabbed text-styles sub-panel where each style tab exposes ed
 | Delete Preset button | ✅ | ✅ | |
 | Export Preset (JSON) button | ✅ | ✅ | |
 | Import Preset (JSON) file input | ✅ | ✅ | |
-| Preset name input | ✅ | ❌ | We auto-generate preset names; no editable name field |
+| Preset name input | ✅ | ✅ | Editable name field above the preset actions |
 | Preset meta status display | ✅ | ❌ | Success/error messages for preset operations |
 
 ---
@@ -154,7 +154,7 @@ The reference has a "Presets" tab with global brand settings shared across all o
 | Reference Spoke Color | ✅ | ✅ | In Halo Field section as "Reference" |
 | Echo Marker Color | ✅ | ✅ | In Halo Field section as "Echo Color" |
 | Overlay Text Color | ✅ | ❌ | We don't expose overlay text color as a control |
-| Mascot Color | ✅ | ❌ | No mascot yet |
+| Mascot Color | ✅ | ❌ | Mascot rendering now exists, but no dedicated mascot color control is exposed |
 
 ---
 
@@ -194,24 +194,24 @@ The reference has a "Presets" tab with global brand settings shared across all o
 
 | Control | Ref | Current | Notes |
 |---------|-----|---------|-------|
-| Show SVG Halo Reference (checkbox) | ✅ | ❌ | Debug overlay |
-| Show Phase Debug Overlay (checkbox) | ✅ | ❌ | Debug overlay |
+| Show SVG Halo Reference (checkbox) | ✅ | ✅ | Exposed as "Show Reference Halo" |
+| Show Phase Debug Overlay (checkbox) | ✅ | ✅ | Exposed as "Show Debug Masks" |
 | Construction Plane Color | ✅ | ✅ | |
 | Reference Spoke Color | ✅ | ✅ | |
 | Echo Marker Color | ✅ | ✅ | |
 | Outer Spoke Thickness (px) | ✅ | ✅ | "Spoke Width" slider |
-| Echo Shape Stroke (px) | ✅ | ❌ | |
-| Echo Shape Scale Multiplier | ✅ | ❌ | |
-| Echo Sparse Scale Boost | ✅ | ❌ | |
+| Echo Shape Stroke (px) | ✅ | ✅ | Exposed as "Echo Stroke" |
+| Echo Shape Scale Multiplier | ✅ | ✅ | Exposed as "Echo Scale" |
+| Echo Sparse Scale Boost | ✅ | ✅ | Exposed as "Sparse Boost" |
 | Inner Spoke Start Thickness (px) | ✅ | ⚠️ | "Phase Width" maps to start thickness |
-| Inner Spoke End Thickness (px) | ✅ | ❌ | |
+| Inner Spoke End Thickness (px) | ✅ | ✅ | Exposed as "Phase End Width" |
 | Echo Count | ✅ | ✅ | |
 | Echo Marker Style | ✅ | ✅ | "Echo Style" dropdown; we also have extra styles (diamond, star, hexagon, radial_dash) |
-| Echo Shape Seed | ✅ | ❌ | |
-| Mixed Shape Replacement | ✅ | ❌ | |
-| Echo Dot Scale Multiplier | ✅ | ❌ | |
-| Echo Ripple Count | ✅ | ❌ | |
-| Echo Outer Fade | ✅ | ❌ | |
+| Echo Shape Seed | ✅ | ✅ | |
+| Mixed Shape Replacement | ✅ | ✅ | Exposed as "Mix Shape %" |
+| Echo Dot Scale Multiplier | ✅ | ✅ | Exposed as "Echo Scale" |
+| Echo Ripple Count | ✅ | ✅ | |
+| Echo Outer Fade | ✅ | ✅ | Exposed as "Echo Fade" |
 
 ---
 
@@ -219,9 +219,9 @@ The reference has a "Presets" tab with global brand settings shared across all o
 
 | Control | Ref | Current | Notes |
 |---------|-----|---------|-------|
-| Show Release Labels (checkbox) | ✅ | ❌ | Release labels not rendered yet |
-| Label Font Size (px) | ✅ | ❌ | |
-| Label Position (u) | ✅ | ❌ | Normalized along spoke |
+| Show Release Labels (checkbox) | ✅ | ✅ | Release labels are rendered on the overlay canvas |
+| Label Font Size (px) | ✅ | ✅ | Exposed as "Label Size" |
+| Label Position (u) | ✅ | ✅ | Exposed as "Label Position" |
 
 ---
 
@@ -231,8 +231,8 @@ The reference has a "Presets" tab with global brand settings shared across all o
 |---------|-----|---------|-------|
 | Breath Cycle (sec) | ✅ | ✅ | Slider |
 | Breath Ramp In (sec) | ✅ | ✅ | Slider |
-| Pulse Orbits (checkbox) | ✅ | ❌ | |
-| Pulse Spokes (checkbox) | ✅ | ❌ | |
+| Pulse Orbits (checkbox) | ✅ | ✅ | |
+| Pulse Spokes (checkbox) | ✅ | ✅ | |
 | Min Spokes | ✅ | ✅ | Slider |
 | Phase Boundary Transition (sec) | ✅ | ✅ | "Boundary Ease" slider |
 
@@ -302,30 +302,30 @@ Dot motion controls are mostly missing. The renderer handles dot animation inter
 | Text Styles Editor | 6 | 0 | 0 | 6 |
 | Selected Element | 8 | 5 | 2 | 1 |
 | Logo | 4 | 2 | 1 | 1 |
-| Layout Grid | 12 | 8 | 0 | 4 |
-| Playback & Export | 8 | 6 | 0 | 2 |
-| Export Modal | 5 | 0 | 0 | 5 |
-| Presets | 8 | 6 | 0 | 2 |
+| Layout Grid | 15 | 14 | 0 | 1 |
+| Playback & Export | 8 | 7 | 0 | 1 |
+| Export Modal | 5 | 3 | 0 | 2 |
+| Presets | 8 | 7 | 0 | 1 |
 | Global Brand Settings | 9 | 3 | 1 | 5 |
 | Composition (Stage) | 4 | 1 | 1 | 2 |
 | Generator Wrangle | 6 | 6 | 0 | 0 |
 | Mascot Asset | 1 | 0 | 0 | 1 |
-| Halo Spoke Lines | 17 | 5 | 1 | 11 |
-| Release Labels | 3 | 0 | 0 | 3 |
-| Screensaver Loop | 6 | 4 | 0 | 2 |
+| Halo Spoke Lines | 18 | 17 | 1 | 0 |
+| Release Labels | 3 | 3 | 0 | 0 |
+| Screensaver Loop | 6 | 6 | 0 | 0 |
 | Vignette | 12 | 0 | 0 | 12 |
 | Dot Motion | 17 | 0 | 0 | 17 |
 | Dot Style | 4 | 1 | 0 | 3 |
-| **Total** | **136** | **51** | **8** | **77** |
+| **Total** | **140** | **79** | **8** | **53** |
 
-**Coverage: 51 / 136 implemented (37%), 8 partial (6%), 77 missing (57%)**
+**Coverage: 79 / 140 implemented (56%), 8 partial (6%), 53 missing (38%)**
 
 ### Priority gaps for parity
 
 1. **Text Styles Editor** — editable font size / line height / weight per style, match buttons
-2. **Column Gutter** — simple grid addition
-3. **Safe Area override inputs** — conditional UI when Fit Within Safe Area is on
-4. **Export pipeline** — MP4 / PNG sequence with modal
+2. **Overlay Background Above Animation** — safe-area fill z-order toggle still missing
+3. **MP4 export UI parity** — no one-click MP4 modal with fade-in or fade-out options yet
+4. **Dot motion controls** — `transition_wrangle` remains mostly internal rather than surfaced in the editor
 5. **Halo spoke details** — echo shape stroke, scale, seed, ripple, fade controls
 6. **Vignette** — entire subsystem and UI
 7. **Dot motion** — parametric controls for transition_wrangle
