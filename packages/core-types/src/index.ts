@@ -212,6 +212,8 @@ export function getOverlayContentFormatSpec(formatKey?: string): OverlayContentF
 // ---------------------------------------------------------------------------
 
 export const LINKED_TITLE_BASE_FONT_SIZE_PX = 63;
+export const LINKED_LOGO_BASE_WIDTH_PX = 63;
+export const LINKED_LOGO_BASE_HEIGHT_PX = 108;
 
 export interface GridSettings {
   baselineStepPx: number;

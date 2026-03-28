@@ -21,6 +21,18 @@ Reference source repo:
 - If work jumps ahead of the current phase, record the reason in the deviation log instead of pretending it followed the original order.
 - Open ideas that are important but not yet approved work should stay in the discussion section at the end until we explicitly schedule them.
 
+## Anti-Drift Checklist
+
+Use this before and after substantial work so parity implementation keeps serving the long-term product.
+
+- A scene family must be swappable. New motion work should move toward a world where halo, boids, phyllotaxis, and later generators can sit behind the same document, layout, and export stack.
+- The layout engine stays rigorous and document-owned. Do not let renderer adapters or preview-only helpers become the canonical home for layout semantics.
+- Preview code is an adapter, not the product core. If a rule must survive renderer changes, it belongs in shared types, layout kernels, operator outputs, or backend contracts.
+- UI work should reduce hardcoded preview ownership over time. Prefer section registration, manifests, and typed operator surfaces over adding more bespoke accordion builders indefinitely.
+- Export targets stay backend-driven. PNG, MP4, SVG, PDF, and EPS should share scene or document authority rather than each inventing their own semantics.
+- Product direction is a Houdini-like operator app for branded documents, not a freeform-design-first clone. Template CRUD, document sizes, and stakeholder flows matter, but only in ways that preserve deterministic layout and operator composability.
+- Parity is still the gate. If a task does not close parity, reduce future drift, or unblock backend separation, it needs a stronger reason.
+
 ## Where To Inspect Open Parity Gaps
 
 Use this map before changing code so parity work stays anchored to the reference behavior.
@@ -130,6 +142,7 @@ Decision so far:
 - keep mascot-specific face or head motion in an adapter or scene-family layer until reuse becomes concrete
 - parity signoff basis for the current motion background: the preview now reproduces the main coarse visual motifs from the reference app at the adapter level: central aura, dual phase lobes, echo rings, orbit structure, and phase-biased spoke density, without widening the kernel too early
 - updated 2026-03-27: the next parity pass should port the entire Ubuntu Summit animation wholesale into one coarse scene-family operator before attempting finer decomposition. Reuse can be evaluated after parity.
+- clarified 2026-03-28: the long-term target is a Houdini-like operator app with rigorous document layout plus backend-driven exports, where halo, boids, phyllotaxis, and later scene families can be swapped under the same document and template model.
 
 ### Phase 6. Verify parity here
 
@@ -194,7 +207,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 4. **Linked title-to-logo sizing (PARTIAL).**
 	`link_title_size_to_logo_height = true` scales title font size proportionally to `overlay_logo.height_px` using `LINKED_TITLE_BASE_FONT_SIZE_PX = 63` as the reference base. Current repo has no linked sizing logic.
 	Reference files: `rendering.js` (linked title font size calculation in text rendering).
-	Update 2026-03-27 late pass: a preview-side helper now exists. Update 2026-03-28: the preview now also normalizes loaded/switching params so title size remains the canonical driver for logo size in state, but this still remains open until the rule lives in the shared layout/operator path rather than only the preview shell.
+	Update 2026-03-27 late pass: a preview-side helper now exists. Update 2026-03-28: the preview now also normalizes loaded/switching params so title size remains the canonical driver for logo size in state. Latest anti-drift pass: the sizing helper now lives in `layout-engine`, but this still remains open until the full rule is consumed through shared document or operator paths instead of preview normalization alone.
 
 5. **Logo asset sizing and aspect ratio (DONE).**
 	Logo image is loaded via `Image`, `naturalWidth`/`naturalHeight` read for dynamic aspect ratio. Width derived from configured height via `getCurrentLogoAspectRatio()`. Logo drag and resize with aspect-ratio lock on corner handles.

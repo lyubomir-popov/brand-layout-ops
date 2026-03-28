@@ -2,6 +2,8 @@ import type { GridSettings, LogoPlacementSpec, TextFieldPlacementSpec, TextStyle
 import {
   DEFAULT_OUTPUT_PROFILE_KEY,
   getOutputProfile,
+  LINKED_LOGO_BASE_HEIGHT_PX,
+  LINKED_LOGO_BASE_WIDTH_PX,
   LINKED_TITLE_BASE_FONT_SIZE_PX,
   OVERLAY_CONTENT_FORMAT_ORDER,
   OVERLAY_CONTENT_FORMATS,
@@ -206,9 +208,6 @@ function createLandscapeTextFields(): TextFieldPlacementSpec[] {
   ];
 }
 
-export const LINKED_LOGO_BASE_WIDTH_PX = 63;
-export const LINKED_LOGO_BASE_HEIGHT_PX = 108;
-
 const DEFAULT_LOGO: LogoPlacementSpec = {
   id: "brand-mark",
   xPx: 41,
@@ -311,48 +310,6 @@ const SPEAKER_CSV_DRAFT = [
   "session_title,speaker_name,speaker_role,speaker_photo",
   '"Developer ready Ubuntu on Qualcomm IoT","Ameya Pandit","Software Engineering Lead, Qualcomm","./assets/speaker_photos/ameya_pandit.jpg"'
 ].join("\n");
-
-// ---------------------------------------------------------------------------
-// Linked title-to-logo scaling
-// ---------------------------------------------------------------------------
-
-export function getLinkedTitleFontSizePx(
-  logoHeightPx: number,
-  baseFontSizePx: number = LINKED_TITLE_BASE_FONT_SIZE_PX,
-  baseLogoHeightPx: number = LINKED_LOGO_BASE_HEIGHT_PX
-): number {
-  if (logoHeightPx <= 0 || baseFontSizePx <= 0 || baseLogoHeightPx <= 0) {
-    return Math.round(baseFontSizePx);
-  }
-
-  return Math.round(baseFontSizePx * (logoHeightPx / baseLogoHeightPx));
-}
-
-export function getLinkedLogoHeightPx(
-  titleFontSizePx: number,
-  baseFontSizePx: number = LINKED_TITLE_BASE_FONT_SIZE_PX,
-  baseLogoHeightPx: number = LINKED_LOGO_BASE_HEIGHT_PX
-): number {
-  if (titleFontSizePx <= 0 || baseFontSizePx <= 0 || baseLogoHeightPx <= 0) {
-    return Math.round(baseLogoHeightPx);
-  }
-
-  return Math.round(baseLogoHeightPx * (titleFontSizePx / baseFontSizePx));
-}
-
-export function getLinkedLogoDimensionsPx(
-  titleFontSizePx: number,
-  aspectRatio: number = LINKED_LOGO_BASE_WIDTH_PX / LINKED_LOGO_BASE_HEIGHT_PX,
-  baseFontSizePx: number = LINKED_TITLE_BASE_FONT_SIZE_PX,
-  baseLogoHeightPx: number = LINKED_LOGO_BASE_HEIGHT_PX
-): { widthPx: number; heightPx: number } {
-  const safeAspectRatio = aspectRatio > 0 ? aspectRatio : LINKED_LOGO_BASE_WIDTH_PX / LINKED_LOGO_BASE_HEIGHT_PX;
-  const heightPx = getLinkedLogoHeightPx(titleFontSizePx, baseFontSizePx, baseLogoHeightPx);
-  return {
-    widthPx: Math.max(1, Math.round(heightPx * safeAspectRatio)),
-    heightPx: Math.max(1, heightPx)
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Preset infrastructure

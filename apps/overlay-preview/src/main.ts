@@ -33,6 +33,7 @@ import {
 } from "@brand-layout-ops/core-types";
 import { OperatorRegistry, evaluateGraph } from "@brand-layout-ops/graph-runtime";
 import { getColumnSpanWidthPx, getKeylineXPx, snapBaselineToGrid } from "@brand-layout-ops/layout-grid";
+import { getLinkedLogoDimensionsPx, getLinkedTitleFontSizePx } from "@brand-layout-ops/layout-engine";
 import { createApproximateTextMeasurer, getMinimumFirstBaselineInsetBaselines } from "@brand-layout-ops/layout-text";
 import type { DragAxisLock } from "@brand-layout-ops/overlay-interaction";
 import { moveLogo, moveTextField } from "@brand-layout-ops/overlay-interaction";
@@ -64,8 +65,6 @@ import {
   createDefaultOverlayParams,
   createPresetId,
   denormalizePresetFromPersistence,
-  getLinkedLogoDimensionsPx,
-  getLinkedTitleFontSizePx,
   getNextPresetName,
   loadActivePresetId,
   loadPresets,
@@ -104,6 +103,8 @@ interface DragState {
   initialField?: TextFieldPlacementSpec | undefined;
   initialLogo?: LogoPlacementSpec | undefined;
 }
+
+type ConfigSectionFactory = () => HTMLElement;
 
 // ─── Operator registry ────────────────────────────────────────────────
 
@@ -1996,6 +1997,27 @@ function buildPresetsSection(): HTMLElement {
   return root;
 }
 
+const coreConfigSectionFactories: ConfigSectionFactory[] = [
+  buildPlaybackExportSection,
+  buildOutputFormatSection,
+  buildPresetsSection,
+  buildContentFormatSection,
+  buildOverlaySection,
+  buildParagraphStylesSection,
+  buildGridSection,
+  buildHaloConfigSection
+];
+
+const registeredConfigSectionFactories: ConfigSectionFactory[] = [];
+
+function registerConfigSection(factory: ConfigSectionFactory) {
+  registeredConfigSectionFactories.push(factory);
+}
+
+function getConfigSectionFactories(): ConfigSectionFactory[] {
+  return [...coreConfigSectionFactories, ...registeredConfigSectionFactories];
+}
+
 function buildConfigEditor() {
   const container = getConfigEditor();
   if (!container) return;
@@ -2007,14 +2029,10 @@ function buildConfigEditor() {
   const list = document.createElement("ul");
   list.className = "p-accordion__list";
 
-  list.append(buildPlaybackExportSection());
-  list.append(buildOutputFormatSection());
-  list.append(buildPresetsSection());
-  list.append(buildContentFormatSection());
-  list.append(buildOverlaySection());
-  list.append(buildParagraphStylesSection());
-  list.append(buildGridSection());
-  list.append(buildHaloConfigSection());
+  const sectionFactories = getConfigSectionFactories();
+  for (const buildSection of sectionFactories) {
+    list.append(buildSection());
+  }
 
   accordion.append(list);
   container.append(accordion);

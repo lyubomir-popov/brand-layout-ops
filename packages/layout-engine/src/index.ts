@@ -1,6 +1,57 @@
-import type { FrameSize, GridSettings, LayerScene, LogoPlacement, LogoPlacementSpec, SafeAreaInsets, TextFieldPlacementSpec, TextMeasurer, TextStyleSpec } from "@brand-layout-ops/core-types";
+import {
+  LINKED_LOGO_BASE_HEIGHT_PX,
+  LINKED_LOGO_BASE_WIDTH_PX,
+  LINKED_TITLE_BASE_FONT_SIZE_PX,
+  type FrameSize,
+  type GridSettings,
+  type LayerScene,
+  type LogoPlacement,
+  type LogoPlacementSpec,
+  type SafeAreaInsets,
+  type TextFieldPlacementSpec,
+  type TextMeasurer,
+  type TextStyleSpec
+} from "@brand-layout-ops/core-types";
 import { computeLayoutGridMetrics } from "@brand-layout-ops/layout-grid";
 import { resolveTextPlacement } from "@brand-layout-ops/layout-text";
+
+export function getLinkedTitleFontSizePx(
+  logoHeightPx: number,
+  baseFontSizePx: number = LINKED_TITLE_BASE_FONT_SIZE_PX,
+  baseLogoHeightPx: number = LINKED_LOGO_BASE_HEIGHT_PX
+): number {
+  if (logoHeightPx <= 0 || baseFontSizePx <= 0 || baseLogoHeightPx <= 0) {
+    return Math.round(baseFontSizePx);
+  }
+
+  return Math.round(baseFontSizePx * (logoHeightPx / baseLogoHeightPx));
+}
+
+export function getLinkedLogoHeightPx(
+  titleFontSizePx: number,
+  baseFontSizePx: number = LINKED_TITLE_BASE_FONT_SIZE_PX,
+  baseLogoHeightPx: number = LINKED_LOGO_BASE_HEIGHT_PX
+): number {
+  if (titleFontSizePx <= 0 || baseFontSizePx <= 0 || baseLogoHeightPx <= 0) {
+    return Math.round(baseLogoHeightPx);
+  }
+
+  return Math.round(baseLogoHeightPx * (titleFontSizePx / baseFontSizePx));
+}
+
+export function getLinkedLogoDimensionsPx(
+  titleFontSizePx: number,
+  aspectRatio: number = LINKED_LOGO_BASE_WIDTH_PX / LINKED_LOGO_BASE_HEIGHT_PX,
+  baseFontSizePx: number = LINKED_TITLE_BASE_FONT_SIZE_PX,
+  baseLogoHeightPx: number = LINKED_LOGO_BASE_HEIGHT_PX
+): { widthPx: number; heightPx: number } {
+  const safeAspectRatio = aspectRatio > 0 ? aspectRatio : LINKED_LOGO_BASE_WIDTH_PX / LINKED_LOGO_BASE_HEIGHT_PX;
+  const heightPx = getLinkedLogoHeightPx(titleFontSizePx, baseFontSizePx, baseLogoHeightPx);
+  return {
+    widthPx: Math.max(1, Math.round(heightPx * safeAspectRatio)),
+    heightPx: Math.max(1, heightPx)
+  };
+}
 
 export interface LayoutEngineInput {
   frame: FrameSize;

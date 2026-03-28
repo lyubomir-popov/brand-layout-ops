@@ -28,6 +28,18 @@ Session-scoped scratch (Copilot `/memories/session/`) is fine for in-progress no
 3. **Do not** create new markdown files to document changes unless the user explicitly requests one.
 4. **Commit message discipline:** prefix with the area touched (`halo:`, `ui:`, `grid:`, `docs:`, `types:`) and keep the first line under 72 chars.
 
+## Autonomous continuation rule
+
+If the user explicitly says to proceed autonomously, commit often, or keep working while they are away, treat that as standing approval to keep executing the best available plan without waiting for small confirmations.
+
+In that mode:
+
+1. Work through the current plan until you hit a real blocker, not a minor ambiguity.
+2. Make small validated checkpoint commits after substantive chunks instead of piling unrelated work into one large diff.
+3. Re-read `llm-handoff-context.md` and `docs/rebuild-plan.md` after major chunks or when priorities shift, and periodically re-audit whether the work is still aligned with the rebuild purpose.
+4. Update the canonical docs as work lands so the next chat can continue cold.
+5. Do not stop just to ask whether to continue unless the next best move is genuinely unclear or risky.
+
 ### What goes where
 
 | Information | Goes in |
@@ -44,6 +56,7 @@ Session-scoped scratch (Copilot `/memories/session/`) is fine for in-progress no
 - Operator packages expose typed I/O; parameter UI reads operator manifests.
 - No monolithic app-level geometry rules.
 - SVG, PDF, EPS, and CMYK are export-backend concerns only.
+- If a canonical rule must survive renderer or preview changes, move it toward shared types, layout kernels, operator outputs, or backend contracts rather than leaving it in `apps/overlay-preview`.
 
 ## How to port this workflow to another project
 
