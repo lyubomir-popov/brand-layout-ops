@@ -26,7 +26,10 @@ import type { HaloFieldConfig } from "@brand-layout-ops/operator-halo-field";
 import type { ExportSettings, Preset } from "./sample-document.js";
 import type { OverlayPreviewDocument as OverlayPreviewDocumentModel } from "./preview-document.js";
 import type { DocumentWorkspaceController } from "./document-workspace.js";
-import type { FuzzyBoidsPreviewConfig } from "./scene-family-preview.js";
+import type {
+  FuzzyBoidsPreviewConfig,
+  PhyllotaxisPreviewConfig
+} from "./scene-family-preview.js";
 
 // ——— Constants shared between main.ts and extracted panel modules ———
 
@@ -60,6 +63,7 @@ export interface PreviewState {
   exportSettingsByProfile: Record<string, ExportSettings>;
   haloConfig: HaloFieldConfig;
   haloConfigByProfile: Record<string, HaloFieldConfig>;
+  phyllotaxisConfig: PhyllotaxisPreviewConfig;
   fuzzyBoidsConfig: FuzzyBoidsPreviewConfig;
   sourceDefaults: SourceDefaultSnapshot;
   documentProject: OverlayDocumentProject;

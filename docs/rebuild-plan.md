@@ -498,17 +498,17 @@ Replace the "show all accordion sections" model with a selectable operator list.
 
 The boids scene family has no UI for controlling its parameters.
 
-- [ ] Build a parameter panel for `operator-fuzzy-boids` exposing: `numBoids`, `separationRadiusPx`, `separationStrength`, `alignmentRadiusPx`, `alignmentStrength`, `cohesionRadiusPx`, `cohesionStrength`, `centerPullStrength`, `maxNeighbors`, `spawnRadiusPx`, `initialSpeedPxPerSecond`, `minSpeedPxPerSecond`, `maxSpeedPxPerSecond`, `maxAccelerationPxPerSecond2`, `bounds` (kind, radius, margin, force), `pscaleMin`, `pscaleMax`, `massMin`, `massMax`, `staggerStartSeconds`, `seed`.
-- [ ] Wire the panel to live-update the simulation through the `FuzzyBoidsSimulation` cache.
-- [ ] The panel should be registered as operator-owned so the operator selector (EQ-2) can show it.
+- [x] Build a parameter panel for `operator-fuzzy-boids` exposing: `numBoids`, `separationRadiusPx`, `separationStrength`, `alignmentRadiusPx`, `alignmentStrength`, `cohesionRadiusPx`, `cohesionStrength`, `centerPullStrength`, `maxNeighbors`, `spawnRadiusPx`, `initialSpeedPxPerSecond`, `minSpeedPxPerSecond`, `maxSpeedPxPerSecond`, `maxAccelerationPxPerSecond2`, `bounds` (kind, radius, margin, force), `pscaleMin`, `pscaleMax`, `massMin`, `massMax`, `staggerStartSeconds`, `seed`.
+- [x] Wire the panel to live-update the simulation through the `FuzzyBoidsSimulation` cache.
+- [x] The panel should be registered as operator-owned so the operator selector (EQ-2) can show it.
 
 ### EQ-4. Phyllotaxis parameter panel
 
 The phyllotaxis scene family has no UI for controlling its parameters.
 
-- [ ] Build a parameter panel for `operator-phyllotaxis` exposing: `numPoints`, `radius`, `radiusFalloff`, `angleOffsetDeg`, and animation speed control (or disable animation).
-- [ ] Wire the panel to live-update the phyllotaxis field.
-- [ ] Register as operator-owned for the operator selector.
+- [x] Build a parameter panel for `operator-phyllotaxis` exposing: `numPoints`, `radius`, `radiusFalloff`, `angleOffsetDeg`, and animation speed control (or disable animation).
+- [x] Wire the panel to live-update the phyllotaxis field.
+- [x] Register as operator-owned for the operator selector.
 
 ### EQ-5. Scatter operator
 
@@ -535,8 +535,8 @@ Presets were a workaround for lack of multiple documents. Now that documents exi
 
 ### EQ-8. Paragraph styles — conditional visibility
 
-- [ ] The paragraph styles section should only appear when the layout grid is available/active.
-- [ ] Link the paragraph styles section visibility to the grid section state so they feel connected.
+- [x] The paragraph styles section should only appear when the layout grid is available/active.
+- [x] Link the paragraph styles section visibility to the grid section state so they feel connected.
 
 ### EQ-9. Remove dead stat labels from scene-family preview canvas ✅
 

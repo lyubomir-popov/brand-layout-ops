@@ -115,12 +115,33 @@ export function createDefaultFuzzyBoidsPreviewConfig(): FuzzyBoidsPreviewConfig 
   };
 }
 
+export interface PhyllotaxisPreviewConfig {
+  numPoints: number;
+  radiusPx: number;
+  radiusFalloff: number;
+  angleOffsetDeg: number;
+  animationEnabled: boolean;
+  animationSpeedDegPerSecond: number;
+}
+
+export function createDefaultPhyllotaxisPreviewConfig(): PhyllotaxisPreviewConfig {
+  return {
+    numPoints: 720,
+    radiusPx: 367,
+    radiusFalloff: 0.68,
+    angleOffsetDeg: 0,
+    animationEnabled: true,
+    animationSpeedDegPerSecond: 14
+  };
+}
+
 export interface BuildSceneFamilyPreviewStateOptions {
   sceneFamilyKey: OverlaySceneFamilyKey;
   widthPx: number;
   heightPx: number;
   playbackTimeSec: number;
   haloConfig: HaloFieldConfig;
+  phyllotaxisConfig: PhyllotaxisPreviewConfig;
   fuzzyBoidsConfig: FuzzyBoidsPreviewConfig;
 }
 
@@ -671,11 +692,13 @@ export function buildSceneFamilyPreviewState(
   const minDimensionPx = Math.min(options.widthPx, options.heightPx);
 
   if (options.sceneFamilyKey === "phyllotaxis") {
+    const pc = options.phyllotaxisConfig;
+    const angleOffsetDeg = pc.angleOffsetDeg + (pc.animationEnabled ? options.playbackTimeSec * pc.animationSpeedDegPerSecond : 0);
     const pointField = resolvePhyllotaxisField({
-      numPoints: 720,
-      radius: minDimensionPx * 0.34,
-      radiusFalloff: 0.68,
-      angleOffsetDeg: options.playbackTimeSec * 14,
+      numPoints: pc.numPoints,
+      radius: pc.radiusPx,
+      radiusFalloff: pc.radiusFalloff,
+      angleOffsetDeg,
       origin: center
     });
 
@@ -683,7 +706,7 @@ export function buildSceneFamilyPreviewState(
       sceneFamilyKey: "phyllotaxis",
       pointField,
       center,
-      maxRadiusPx: Number(pointField.detail.max_radius ?? minDimensionPx * 0.34),
+      maxRadiusPx: Number(pointField.detail.max_radius ?? pc.radiusPx),
       armSteps: [21, 34]
     };
   }

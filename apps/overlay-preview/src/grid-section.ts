@@ -50,7 +50,7 @@ export function buildGridSection(ctx: PreviewAppContext): HTMLElement {
     "Guides",
     createSelectInput(state.guideMode,
       [{ label: "Off", value: "off" }, { label: "Composition Grid", value: "composition" }, { label: "Baseline Grid", value: "baseline" }],
-      (v) => { state.guideMode = v as GuideMode; try { localStorage.setItem("brand-layout-ops-guide-mode-v1", v); } catch { /* quota */ } void ctx.renderStage(); }
+      (v) => { state.guideMode = v as GuideMode; try { localStorage.setItem("brand-layout-ops-guide-mode-v1", v); } catch { /* quota */ } ctx.buildConfigEditor(); void ctx.renderStage(); }
     )
   )));
 

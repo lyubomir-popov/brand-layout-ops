@@ -106,6 +106,7 @@ import {
   buildSceneFamilyPreviewState,
   clearSceneFamilyPreviewCanvas,
   createDefaultFuzzyBoidsPreviewConfig,
+  createDefaultPhyllotaxisPreviewConfig,
   renderSceneFamilyPreviewFrame
 } from "./scene-family-preview.js";
 import {
@@ -160,6 +161,7 @@ import { buildContentFormatSection } from "./content-format-section.js";
 import { buildOverlaySection } from "./overlay-section.js";
 import { buildParagraphStylesSection } from "./paragraph-styles-section.js";
 import { buildFuzzyBoidsSection } from "./fuzzy-boids-section.js";
+import { buildPhyllotaxisSection } from "./phyllotaxis-section.js";
 
 // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Types ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 
@@ -315,6 +317,7 @@ const state: PreviewState = {
   haloConfigByProfile: {
     [_startProfileKey]: getHaloConfigForProfile(_startProfileKey)
   },
+  phyllotaxisConfig: createDefaultPhyllotaxisPreviewConfig(),
   fuzzyBoidsConfig: createDefaultFuzzyBoidsPreviewConfig(),
   sourceDefaults: cloneOverlaySourceDefaultSnapshot(INITIAL_SOURCE_DEFAULTS),
   documentProject: createOverlayDocumentProjectFromSnapshot(INITIAL_SOURCE_DEFAULTS),
@@ -1612,6 +1615,7 @@ function getSceneFamilyPreviewState() {
     heightPx: state.params.frame.heightPx,
     playbackTimeSec: state.playbackTimeSec,
     haloConfig: state.haloConfig,
+    phyllotaxisConfig: state.phyllotaxisConfig,
     fuzzyBoidsConfig: state.fuzzyBoidsConfig
   });
 }
@@ -2058,7 +2062,8 @@ const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
   { key: "paragraph-styles", order: 600, factory: () => buildParagraphStylesSection(ctx) },
   { key: "layout-grid", order: 700, factory: () => buildGridSection(ctx), afterRender: syncOverlayVisibilityUi },
   { key: "halo-config", order: 800, group: "halo", factory: () => buildHaloConfigSection(ctx) },
-  { key: "fuzzy-boids", order: 810, group: "fuzzy-boids", factory: () => buildFuzzyBoidsSection(ctx) }
+  { key: "fuzzy-boids", order: 810, group: "fuzzy-boids", factory: () => buildFuzzyBoidsSection(ctx) },
+  { key: "phyllotaxis", order: 820, group: "phyllotaxis", factory: () => buildPhyllotaxisSection(ctx) }
 ];
 
 const configSectionRegistry = createParameterSectionRegistry(CORE_CONFIG_SECTION_DEFINITIONS);
@@ -2143,7 +2148,7 @@ function buildConfigEditor() {
   const activeGroup = state.documentProject.sceneFamilyKey;
 
   // Shell sections (no group) — always visible
-  const shellSections = sections.filter((section) => !section.group);
+  const shellSections = sections.filter((section) => !section.group && (section.key !== "paragraph-styles" || state.guideMode !== "off"));
   for (const section of shellSections) {
     const el = section.factory();
     el.dataset.sectionKey = section.key;
@@ -2836,6 +2841,7 @@ function cycleGuideMode() {
   const idx = GUIDE_MODES.indexOf(state.guideMode);
   state.guideMode = GUIDE_MODES[(idx + 1) % GUIDE_MODES.length];
   try { localStorage.setItem(GUIDE_MODE_STORAGE_KEY, state.guideMode); } catch { /* quota */ }
+  buildConfigEditor();
 }
 
 function setDrawerOpen(isOpen: boolean) {
