@@ -167,7 +167,6 @@ import { buildOutputFormatSection } from "./output-format-section.js";
 import { buildPresetsSection } from "./presets-section.js";
 import { buildContentFormatSection } from "./content-format-section.js";
 import { buildOverlaySection } from "./overlay-section.js";
-import { buildParagraphStylesSection } from "./paragraph-styles-section.js";
 import { buildFuzzyBoidsSection } from "./fuzzy-boids-section.js";
 import { buildPhyllotaxisSection } from "./phyllotaxis-section.js";
 import { buildScatterSection } from "./scatter-section.js";
@@ -942,7 +941,20 @@ function deleteSelectedTextField() {
 
 function createOverlayItemActionRow(): HTMLElement {
   const actions = document.createElement("div");
-  actions.style.cssText = "display:flex;gap:0.5rem;flex-wrap:wrap;";
+  actions.className = "bf-cluster preview-cluster--tight";
+
+  for (const field of state.params.textFields) {
+    const selectButton = document.createElement("button");
+    const isActive = state.selected?.kind === "text" && state.selected.id === field.id;
+    selectButton.className = isActive ? "bf-button is-dense" : "bf-button--base is-dense";
+    selectButton.type = "button";
+    selectButton.textContent = getOverlayFieldDisplayLabel(state.params, field.id);
+    selectButton.disabled = isActive;
+    selectButton.addEventListener("click", () => {
+      select({ kind: "text", id: field.id });
+    });
+    actions.append(selectButton);
+  }
 
   const addButton = document.createElement("button");
   addButton.className = "bf-button is-dense";
@@ -2219,7 +2231,6 @@ const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
   { key: "document", order: 250, factory: () => buildDocumentSection(ctx), afterRender: updateDocumentUi },
   { key: "content-format", order: 400, factory: () => buildContentFormatSection(ctx) },
   { key: "selected-overlay", order: 500, factory: () => buildOverlaySection(ctx) },
-  { key: "paragraph-styles", order: 600, factory: () => buildParagraphStylesSection(ctx) },
   { key: "layout-grid", order: 700, factory: () => buildGridSection(ctx), afterRender: syncOverlayVisibilityUi },
   { key: "halo-config", order: 800, group: "halo", factory: () => buildHaloConfigSection(ctx) },
   { key: "fuzzy-boids", order: 810, group: "fuzzy-boids", factory: () => buildFuzzyBoidsSection(ctx) },
@@ -2429,7 +2440,7 @@ function buildConfigEditor() {
   const activeGroup = getSelectedBackgroundNodeGroup();
 
   // Shell sections (no group) — always visible
-  const shellSections = sections.filter((section) => !section.group && (section.key !== "paragraph-styles" || state.guideMode !== "off"));
+  const shellSections = sections.filter((section) => !section.group);
   for (const section of shellSections) {
     const el = section.factory();
     el.dataset.sectionKey = section.key;

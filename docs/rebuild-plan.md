@@ -124,7 +124,8 @@ Port the current interaction model into `overlay-interaction` and `parameter-ui`
 	Shared `OUTPUT_PROFILES` now match the reference app's named size list, seeded safe areas, and default frame rates, and the authored source-default document now carries those same safe-area values for the live startup path. The portrait-vs-landscape startup default remains a separate product choice rather than part of this parity checkbox.
 - [x] Overlay content-format parity: `generic_social` and `speaker_highlight` field buckets with alias-based CSV matching.
 	Both formats are now exposed again through the shared `OVERLAY_CONTENT_FORMAT_ORDER`, the preview keeps per-profile buckets for each format, and alias-based CSV matching already routes through shared `operator-overlay-layout` helpers instead of preview-local field maps.
-- [ ] Selected-element authoring parity: add text blocks, style assignment, and richer selected-item controls.
+- [x] Selected-element authoring parity: add text blocks, style assignment, and richer selected-item controls.
+	The Selected Element section now owns text-item quick switching, add/delete text actions, inline style assignment, inline style metrics, text editing, CSV-backed status notes, layout controls, and the richer selected-logo controls, so selected-item editing no longer requires bouncing to a separate Paragraph Styles accordion.
 - [x] Preset workflow parity: save, update, delete, import, and export presets.
 - [x] Shortcut parity: `W` guide toggle, `Ctrl`/`Cmd+S` document save, `Ctrl`/`Cmd+Shift+S` save as, `Ctrl`/`Cmd+Alt+S` source-default writeback, `Space` or `P` playback toggle, `Tab` control-panel show or hide, and inline-editor commit semantics.
 
@@ -246,8 +247,8 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 6. **Style-based labels in selected-element editor (DONE).**
 	`getOverlayFieldDisplayLabel` produces "A Head", "B Head 1", "P 2" etc. with ordinal counting when multiple fields share a style. Logo is "Selected Logo". The label helpers now live in `packages/operator-overlay-layout/src/index.ts` instead of preview-local maps.
 
-7. **Selected-element authoring surface (PARTIAL).**
-	Missing: richer selected-item controls panel and full reference-grade per-style tab structure. The current repo now has selection + drag + resize + inline editing, direct style assignment, add/delete text blocks, selected-text controls for font size, line height, and weight, explicit no-default selection behavior, and selected-logo controls for toggling the title-size lock plus swapping the logo asset path, but it still does not match the full editor-panel breadth of the reference app.
+7. **Selected-element authoring surface (DONE).**
+	The current repo now has selection + drag + resize + inline editing, quick-select buttons for text items inside the Selected Element section, add/delete text blocks, inline style assignment, selected-text controls for font size, line height, and weight, explicit no-default selection behavior, CSV-backed status notes for selected text, and selected-logo controls for toggling the title-size lock plus swapping the logo asset path. The final shape is intentionally a unified selected-item surface instead of reproducing the reference app's older separate paragraph-style panel.
 	Reference files: `editor-constants.js` (`OVERLAY_TEXT_STYLE_TAB_SPECS`, `OVERLAY_LOGO_CONTROL_ROWS`, `OVERLAY_GRID_CONTROL_ROWS`), `index.js` (editor panel architecture).
 
 8. **Preset workflow (PARTIAL).**
@@ -550,8 +551,8 @@ Presets were a workaround for lack of multiple documents. Now that documents exi
 
 ### EQ-8. Paragraph styles — conditional visibility
 
-- [x] The paragraph styles section should only appear when the layout grid is available/active.
-- [x] Link the paragraph styles section visibility to the grid section state so they feel connected.
+- [x] Superseded: paragraph style controls now live inline inside the Selected Element section instead of in their own accordion panel.
+- [x] The remaining layout-grid visibility behavior still lives on the grid controls themselves; no separate paragraph-style visibility gate remains.
 
 ### EQ-9. Remove dead stat labels from scene-family preview canvas ✅
 

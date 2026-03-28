@@ -3,8 +3,7 @@
  */
 import {
   getOverlayFieldDisplayLabel,
-  getOverlayStyleDisplayLabel,
-  resolveOverlayTextValue
+  getOverlayStyleDisplayLabel
 } from "@brand-layout-ops/operator-overlay-layout";
 import {
   buildAccordionSectionEl,
@@ -12,7 +11,6 @@ import {
   createFormGroup,
   createNumberInput,
   createReadonlySpan,
-  createSelectInput,
   wrapCol
 } from "@brand-layout-ops/parameter-ui";
 import type { PreviewAppContext } from "./preview-app-context.js";
@@ -26,7 +24,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
   if (!state.selected) {
     const p = document.createElement("p");
     p.className = "bf-form-help";
-    p.textContent = "Click a text block or logo in the stage to select it.";
+    p.textContent = "Click a text block or logo in the stage to select it, or use the text buttons above.";
     body.append(p);
     return root;
   }
@@ -39,22 +37,63 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
     const metadataFields = document.createElement("div");
     metadataFields.className = "grid-row";
 
-    metadataFields.append(wrapCol(1, createFormGroup("Label", createReadonlySpan(getOverlayFieldDisplayLabel(state.params, field.id)))));
-    metadataFields.append(wrapCol(1, createFormGroup("ID", createReadonlySpan(field.id))));
-    metadataFields.append(wrapCol(2, createFormGroup("Style",
-      createSelectInput(
-        field.styleKey,
-        state.params.textStyles.map((style) => ({
-          label: getOverlayStyleDisplayLabel(style.key),
-          value: style.key
-        })),
-        (value) => {
-          ctx.applySelectedTextStyle(value);
-        }
-      )
-    )));
+    metadataFields.append(wrapCol(2, createFormGroup("Label", createReadonlySpan(getOverlayFieldDisplayLabel(state.params, field.id)))));
+    metadataFields.append(wrapCol(2, createFormGroup("ID", createReadonlySpan(field.id))));
 
     body.append(metadataFields);
+
+    if (ctx.getContentSource() === "inline") {
+      const textarea = document.createElement("textarea");
+      textarea.className = "bf-input is-dense control-inline-text";
+      textarea.rows = 3;
+      textarea.value = ctx.getResolvedTextFieldText(field);
+      textarea.addEventListener("input", () => {
+        ctx.updateSelectedTextValue(field.id, textarea.value);
+        void ctx.renderStage();
+      });
+      body.append(createFormGroup(`${getOverlayFieldDisplayLabel(state.params, field.id)} Text`, textarea));
+    } else {
+      const csvNote = document.createElement("p");
+      csvNote.className = "bf-form-help control-help";
+      csvNote.textContent = ctx.hasStagedCsvDraft()
+        ? "CSV-backed field. Staged CSV edits are pending for the active row; apply them from Content Format to update this field."
+        : "CSV-backed field. Text comes from the active CSV row; use Content Format to stage CSV changes for this field.";
+      body.append(csvNote);
+    }
+
+    const styleHelper = document.createElement("p");
+    styleHelper.className = "bf-form-help control-help";
+    styleHelper.textContent = `Apply a paragraph style to ${getOverlayFieldDisplayLabel(state.params, field.id)}.`;
+    body.append(styleHelper);
+
+    const stylePalette = document.createElement("div");
+    stylePalette.className = "style-palette";
+
+    for (const style of state.params.textStyles) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "style-palette__button";
+      button.disabled = field.styleKey === style.key;
+      if (field.styleKey === style.key) {
+        button.classList.add("is-active");
+      }
+      button.addEventListener("click", () => {
+        ctx.applySelectedTextStyle(style.key);
+      });
+
+      const label = document.createElement("span");
+      label.className = "style-palette__label";
+      label.textContent = getOverlayStyleDisplayLabel(style.key);
+
+      const meta = document.createElement("span");
+      meta.className = "style-palette__meta";
+      meta.textContent = `${style.fontSizePx}px / ${style.lineHeightPx}px / ${style.fontWeight ?? 400}`;
+
+      button.append(label, meta);
+      stylePalette.append(button);
+    }
+
+    body.append(stylePalette);
 
     if (selectedStyle) {
       const styleGrid = document.createElement("div");
@@ -88,18 +127,6 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
       )));
 
       body.append(styleGrid);
-    }
-
-    if (ctx.getContentSource() === "inline") {
-      const textarea = document.createElement("textarea");
-      textarea.className = "bf-input is-dense control-inline-text";
-      textarea.rows = 3;
-      textarea.value = ctx.getResolvedTextFieldText(field);
-      textarea.addEventListener("input", () => {
-        ctx.updateSelectedTextValue(field.id, textarea.value);
-        void ctx.renderStage();
-      });
-      body.append(createFormGroup(`${getOverlayFieldDisplayLabel(state.params, field.id)} Text`, textarea));
     }
 
     const grid = document.createElement("div");

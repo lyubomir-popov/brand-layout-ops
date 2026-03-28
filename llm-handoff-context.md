@@ -64,7 +64,7 @@ If you want the shortest high-level snapshot, read this file first.
 - Text north-corner resize now snaps vertically on the baseline grid instead of discarding vertical drag
 - CSV content resolution now matches overlay fields by format aliases and legacy slots, not only exact field IDs
 - Pending CSV drafts now survive output-profile and content-format switches instead of being discarded globally
-- Selected text controls now expose direct style assignment plus font size, line height, and weight editing for the active style
+- Selected text controls now expose quick-select buttons for each text item plus inline style assignment, font size, line height, and weight editing for the active style, all inside the Selected Element section
 - Export settings now persist per output profile inside preview state, source-default snapshots, and preset payloads instead of resetting on every profile switch
 - Halo config now persists per output profile inside preview state, source-default snapshots, and preset payloads instead of regenerating from defaults on every profile switch
 - Active content formats now persist per output profile inside preview state, source-default snapshots, and preset payloads, so profile switches restore the intended format bucket instead of reusing one global selection
@@ -159,7 +159,7 @@ If you want the shortest high-level snapshot, read this file first.
 - Redundant `Math.round` wrapping `getKeylineXPx` in `resolveTextPlacement` removed — already rounded at source (commit `5b927dd`)
 - Fuzzy boids inspector panel landed: `apps/overlay-preview/src/fuzzy-boids-section.ts` now exposes flock, speed, force, scale, mass, and bounds controls through the shared document project instead of hardcoded scene-family defaults (commit `25fed2c`)
 - Phyllotaxis inspector panel landed: `apps/overlay-preview/src/phyllotaxis-section.ts` now exposes point count, radius, radius falloff, angle offset, and animation controls through the shared document project instead of hardcoded scene-family defaults
-- Paragraph Styles section now hides when guides are off and reappears when composition or baseline guides are active, including `W`/`G` keyboard toggles and the grid-section dropdown
+- The standalone Paragraph Styles section is gone; paragraph-style assignment now lives inline in the Selected Element section next to text editing and layout controls
 - Scatter scene family landed: `packages/operator-scatter/src/index.ts` now generates point fields inside ellipse, rectangle, rounded-rect, or polygon-style SVG path boundaries, and `apps/overlay-preview/src/scatter-section.ts` exposes point count, seed, distribution mode, margin, and shape controls through the operator selector
 
 ## Current sprint TODO (do in order)
@@ -175,7 +175,7 @@ Items EQ-1 through EQ-12 are the user-directed priorities in dependency order:
 5. **EQ-5** — ~~Scatter operator (`operator-scatter`, scatter points inside SVG shape).~~ **DONE**. Added `@brand-layout-ops/operator-scatter`, promoted `scatter` to a document scene family so it fits the current selector model, and shipped an operator-owned panel plus preview renderer path.
 6. **EQ-6** — ~~Resolve or remove presets (documents replaced presets — clarify architecture).~~ **DONE** (commit `4c97dd3`). Presets section removed from config panel.
 7. **EQ-7** — ~~Content format cleanup (speaker_highlight → document-owned, inline text is fine).~~ **DONE** (commit `4c97dd3`). Speaker highlight content stayed in the shared document bucket model, and the format is now exposed again through the shared order so parity work can use that seeded data instead of preview-local special cases.
-8. **EQ-8** — ~~Paragraph styles conditional visibility (only when layout grid is active).~~ **DONE**. Paragraph styles now hide when guides are off and stay linked to grid-section guide-mode changes.
+8. **EQ-8** — ~~Paragraph styles conditional visibility (only when layout grid is active).~~ **DONE**. Paragraph-style controls ultimately moved inline into the Selected Element section, so there is no longer a separate paragraph-style accordion to gate.
 9. **EQ-9** — ~~Remove dead stat labels from scene-family preview canvas.~~ **DONE** (commit `fc35f96`). Removed `title`, `subtitle`, `stats` from preview state/snapshot, deleted `drawPreviewLabel`.
 10. **EQ-10** — ~~Move background-operator settings into document-owned persistence so save/save-as/reopen and source-default writeback restore the active operator plus its typed params.~~ **DONE**. Non-halo operator params now live in shared `document.project.sceneFamilyConfigs`, and source-default authoring now restores that shared project envelope instead of only a raw snapshot.
 11. **EQ-11** — ~~Persist typed operator handoff in the document model, starting with the active background chain and existing `PointField`/seed-field style ports.~~ **DONE**. Shared `document.project.backgroundGraph` now persists the active background chain, including the first fuzzy-boids seed-field handoff, and the preview plus automation bridge consume that saved chain directly.
@@ -183,7 +183,7 @@ Items EQ-1 through EQ-12 are the user-directed priorities in dependency order:
 
 ### Immediate next steps
 
-**Next parity slice** — close the remaining selected-element authoring gap: re-audit add-text affordances, style assignment, and the richer selected-item controls against the `racoon-anim` reference app, then pull the next missing control slice into the extracted panel modules instead of rebuilding more logic inside `main.ts`.
+**Next parity slice** — close the remaining CSV draft editing and source-writeback staging gap: re-audit staged draft UX, pending-writeback status, and any remaining source-default/document writeback affordances against the `racoon-anim` reference app, then move the next polish slice into the extracted content-format/document modules instead of burying it in `main.ts`.
 
 **After EQ-12** — decide whether the background preview adapter should call further into shared graph evaluation primitives or continue as a thin typed renderer adapter over the persisted chain.
 
@@ -280,7 +280,6 @@ Items EQ-1 through EQ-12 are the user-directed priorities in dependency order:
 | Extracted presets section builder | `apps/overlay-preview/src/presets-section.ts` |
 | Extracted content-format section builder | `apps/overlay-preview/src/content-format-section.ts` |
 | Extracted selected-element section builder | `apps/overlay-preview/src/overlay-section.ts` |
-| Extracted paragraph-styles section builder | `apps/overlay-preview/src/paragraph-styles-section.ts` |
 | Extracted form helpers (accordion builders, inputs) | `packages/parameter-ui/src/accordion-form-helpers.ts` |
 | Extracted SVG overlay adapter (guide, text, logo, safe-area markup) | `apps/overlay-preview/src/svg-overlay-adapter.ts` |
 | Preview-side document compatibility layer + preview extras on top of the shared document envelope | `apps/overlay-preview/src/preview-document.ts` |
