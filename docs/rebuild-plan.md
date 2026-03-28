@@ -426,11 +426,11 @@ It reflects the current repo after the overlay-preview rebuild, reference-doc re
 
 ### Extraction order
 
-1. Form helpers → `parameter-ui` (zero risk, ~200 lines, no closure deps).
-2. SVG overlay → `svg-overlay-adapter.ts` (pure functions, ~160 lines).
-3. Section builders → individual panel modules; operators self-register through the existing `parameter-ui` registry.
-4. Authoring interaction → `authoring-controller.ts`.
-5. Export + automation → `export-controller.ts`.
+1. ~~Form helpers → `parameter-ui` (zero risk, ~200 lines, no closure deps).~~ **Done** — `packages/parameter-ui/src/accordion-form-helpers.ts`, `buildSectionEl` renamed to `buildAccordionSectionEl` across 10 call sites.
+2. ~~SVG overlay → `svg-overlay-adapter.ts` (pure functions, ~160 lines).~~ **Done** — `apps/overlay-preview/src/svg-overlay-adapter.ts`, `renderSvgOverlay` rewritten as thin orchestrator.
+3. Section builders → individual panel modules; operators self-register through the existing `parameter-ui` registry. **Blocked**: all section builders read/write module-level `state` via closure. Next session should design a state-sharing protocol (context object or extracted state module) before moving code.
+4. Authoring interaction → `authoring-controller.ts`. Same state-sharing prerequisite.
+5. Export + automation → `export-controller.ts`. Same state-sharing prerequisite.
 6. Leave `main.ts` as a thin composition root that wires state, controllers, and renderers.
 
 ## Houdini-Like Parameter Pane — Architectural North Star

@@ -102,6 +102,34 @@ If you want the shortest high-level snapshot, read this file first.
 - Halo-field sliders in the preview now stack the range track above the numeric input, so narrow inspector columns stay usable even though PVR still only exposes the shared horizontal slider pair
 - Preview checkbox and metadata controls now use denser grid-row packing instead of leaving multiple full-height standalone form groups outside the shared panel grid
 
+**Preview shell extraction progress** (see `docs/rebuild-plan.md` § Preview Shell Audit):
+- Generic form helpers (createFormGroup, createSliderInput, etc.) extracted to `packages/parameter-ui/src/accordion-form-helpers.ts`; `buildSectionEl` renamed `buildAccordionSectionEl` across all call sites
+- SVG overlay adapter (createGuideMarkup, createTextMarkup, createLogoMarkup, createSafeAreaMarkup, escapeXml) extracted to `apps/overlay-preview/src/svg-overlay-adapter.ts`; `renderSvgOverlay` is now a thin orchestrator
+- main.ts is currently ~4 633 lines; next extraction targets (section builders, authoring controller, export controller) all require a state-sharing protocol before they can leave the file — see "Extraction order" in rebuild-plan.md
+- `operator-ubuntu-summit-animation` now computes scene phase, runtime timing, loop timing, mascot-box metadata, reveal geometry, screensaver pulse counts, and transient spoke-transition state, and the preview renderer plus automation state now consume that descriptor path
+- `operator-ubuntu-summit-animation` now also emits mascot motion timing and motion-state metadata (blink, head turn, eye closure, sneeze/nose bob) through the scene descriptor and automation bridge
+- The preview renderer now draws the local mascot face asset, optional reference halo asset, and reference-leaning eye or nose layering on the overlay canvas using the scene-family operator's mascot box and motion state
+- Linked title-to-logo sizing now normalizes through shared layout-engine helpers plus the shared overlay-layout path, so profile switches and loaded snapshots keep the A Head/logo lock intact while the canonical rule is no longer only preview-local
+- Style labels and ordinal field labels now also route through shared overlay-layout helpers instead of preview-local label maps
+- Base overlay text styles, seeded field layouts, seeded logo placement, sample CSV drafts, and `createDefaultOverlayParams` now also live in `operator-overlay-layout` instead of `sample-document.ts`
+- Profile format-bucket types, clone helpers, and active-bucket normalization now also live in `operator-overlay-layout`, so profile switches, preset loads, and source-default snapshots all use one canonical bucket-selection path instead of reimplementing it in `main.ts`
+- Ascent-aware first-baseline inset normalization now also routes through shared overlay-layout editing helpers instead of preview-local code in `main.ts`
+- Profile-switch overlay carryover and frame resync now also route through shared overlay-layout helpers instead of preview-local sync logic in `main.ts`
+- MP4 export verification now covers both straight encode and fade-in/fade-out flags against a real 48-frame headless export on Windows
+- The preview control surface now imports the sibling `portable-vertical-rhythm` package instead of `vanilla-framework`, and Halo Field range controls render as real themed sliders again rather than bare native thumbs
+- The preview shell now uses `portable-vertical-rhythm`'s pinned-aside application layout with a 30rem dock cap instead of preview-local reserved-width dock CSS, and the stage is no longer wrapped in a fixed-width panel shell
+- The docked control panel is now resizable from the stage edge, persists its width in localStorage, and supports keyboard resizing while still driving the shared `--vr-application-aside-width` app-shell variable
+- The preview config editor now builds its accordion from a keyed, ordered registry of section definitions with section-level post-render hooks instead of one fixed append sequence plus hardcoded follow-up wiring, as the next step back toward operator-registered control surfaces
+- The shared keyed section-registry primitive now lives in `packages/parameter-ui/src/index.ts` instead of `main.ts`, so future operator panels can register through shared parameter-surface infrastructure rather than preview-local maps
+- Overlay selection now starts empty and clears when the selected element disappears, so resize handles only arm after an explicit user selection instead of always falling back to another field
+- The logo panel now lets the user swap the logo asset path and toggle the A Head-to-logo size lock instead of forcing linked sizing at all times
+- Selected-element, grid, and halo control rows now rely on `portable-vertical-rhythm`'s shared `grid-row` and compact number-input styling instead of preview-local `overlay-control-grid` CSS overrides
+- Overlay pointer interactions now require a small movement threshold before drag or resize mutates text or logo items, so tap jitter does not accidentally move or resize fields
+- The docked config editor no longer wraps its accordion stack in a nested `u-fixed-width` container, so the PVR panel shell owns the control-surface spacing directly instead of double-padding the aside content
+- Source-default snapshot typing, built-in fallback construction, clone paths, and sanitization now also route through shared `operator-overlay-layout` helpers instead of preview-local snapshot structs in `main.ts`
+- Halo-field sliders in the preview now stack the range track above the numeric input, so narrow inspector columns stay usable even though PVR still only exposes the shared horizontal slider pair
+- Preview checkbox and metadata controls now use denser grid-row packing instead of leaving multiple full-height standalone form groups outside the shared panel grid
+
 ## Current sprint TODO (do in order)
 
 ### A. Per-profile document defaults
@@ -153,6 +181,7 @@ If you want the shortest high-level snapshot, read this file first.
   - Landed early by explicit user request so the broken Halo Field slider rendering could be fixed in the live preview
   - Uses the sibling repo package as a local dependency and keeps the existing alias-based markup for now
 - [ ] Continue anti-drift refactors that reduce preview-shell ownership of canonical product behavior
+  - **Next extraction prerequisite**: design a state-sharing protocol (context object, extracted state module, or dependency-injected callbacks) so section builders, authoring controller, and export controller can leave main.ts without simply moving closure coupling to a different file
   - Move remaining source-default writeback orchestration, export-state, and scene-family document rules toward shared layout or operator paths where parity permits
   - Replace preview-owned section definitions with package-registered or manifest-driven panels on top of the shared `parameter-ui` registry instead of expanding bespoke shell code indefinitely
   - Continue trimming preview-local control-surface CSS so `portable-vertical-rhythm` remains the styling owner and only genuinely preview-specific rules stay in `apps/overlay-preview/src/styles.scss`
@@ -192,6 +221,8 @@ If you want the shortest high-level snapshot, read this file first.
 | Output profiles, types | `packages/core-types/src/index.ts` |
 | Halo config + per-profile overrides | `packages/operator-halo-field/src/index.ts` |
 | App state, UI, profile switching | `apps/overlay-preview/src/main.ts` |
+| Extracted form helpers (accordion builders, inputs) | `packages/parameter-ui/src/accordion-form-helpers.ts` |
+| Extracted SVG overlay adapter (guide, text, logo, safe-area markup) | `apps/overlay-preview/src/svg-overlay-adapter.ts` |
 | Preview-side document compatibility layer + preview extras on top of the shared document envelope | `apps/overlay-preview/src/preview-document.ts` |
 | Preview-side snapshot plus document build/apply/reset bridge | `apps/overlay-preview/src/preview-document-bridge.ts` |
 | Scene-family point-field preview adapter for non-halo backgrounds | `apps/overlay-preview/src/scene-family-preview.ts` |
