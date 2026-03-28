@@ -60,7 +60,7 @@ All scoped under `@brand-layout-ops/`.
 - `operator-ubuntu-summit-animation` now computes scene phase, runtime timing, loop timing, mascot-box metadata, reveal geometry, screensaver pulse counts, and transient spoke-transition state, and the preview renderer plus automation state now consume that descriptor path
 - `operator-ubuntu-summit-animation` now also emits mascot motion timing and motion-state metadata (blink, head turn, eye closure, sneeze/nose bob) through the scene descriptor and automation bridge
 - The preview renderer now draws the local mascot face asset, optional reference halo asset, and simple eye or nose motion on the overlay canvas using the scene-family operator's mascot box and motion state
-- Linked title-to-logo sizing now normalizes through shared layout-engine helpers plus preview-state params, so profile switches and loaded snapshots keep the A Head/logo lock intact while the canonical rule is no longer only preview-local
+- Linked title-to-logo sizing now normalizes through shared layout-engine helpers plus the shared overlay-layout path, so profile switches and loaded snapshots keep the A Head/logo lock intact while the canonical rule is no longer only preview-local
 - MP4 export verification now covers both straight encode and fade-in/fade-out flags against a real 48-frame headless export on Windows
 - The preview control surface now imports the sibling `portable-vertical-rhythm` package instead of `vanilla-framework`, and Halo Field range controls render as real themed sliders again rather than bare native thumbs
 - The preview config editor now builds its accordion from a registry-style section factory list instead of one fixed append sequence, as the first step back toward operator-registered control surfaces
@@ -113,7 +113,7 @@ All scoped under `@brand-layout-ops/`.
   - Landed early by explicit user request so the broken Halo Field slider rendering could be fixed in the live preview
   - Uses the sibling repo package as a local dependency and keeps the existing alias-based markup for now
 - [ ] Continue anti-drift refactors that reduce preview-shell ownership of canonical product behavior
-  - Move remaining title/logo coupling and other document rules toward shared layout or operator paths where parity permits
+  - Move remaining document rules beyond title/logo coupling toward shared layout or operator paths where parity permits
   - Replace more hardcoded preview accordion ownership with registry or manifest-driven section registration instead of expanding bespoke shell code indefinitely
 
 ### D. UI parity quick wins (done)

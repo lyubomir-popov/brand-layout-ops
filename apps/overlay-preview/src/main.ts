@@ -44,6 +44,7 @@ import {
 import {
   createOverlayLayoutOperator,
   inspectOverlayCsvDraft,
+  normalizeOverlayLinkedTitleLogoParams,
   OVERLAY_LAYOUT_OPERATOR_KEY,
   resolveOverlayTextValue,
   setOverlayTextValue,
@@ -668,32 +669,8 @@ function normalizeTextFieldOffsetBaselines(
     : { ...field, offsetBaselines: nextOffsetBaselines };
 }
 
-function normalizeLinkedTitleLogoParams(params: OverlayLayoutOperatorParams): OverlayLayoutOperatorParams {
-  const titleStyle = params.textStyles.find((style) => style.key === "title");
-  const logo = params.logo;
-  if (!titleStyle || !logo || logo.widthPx <= 0 || logo.heightPx <= 0) {
-    return params;
-  }
-
-  const aspectRatio = logo.widthPx / Math.max(1, logo.heightPx);
-  const linkedDimensions = getLinkedLogoDimensionsPx(titleStyle.fontSizePx, aspectRatio);
-
-  if (linkedDimensions.widthPx === logo.widthPx && linkedDimensions.heightPx === logo.heightPx) {
-    return params;
-  }
-
-  return {
-    ...params,
-    logo: {
-      ...logo,
-      widthPx: linkedDimensions.widthPx,
-      heightPx: linkedDimensions.heightPx
-    }
-  };
-}
-
 function normalizeParamsTextFieldOffsets(params: OverlayLayoutOperatorParams): OverlayLayoutOperatorParams {
-  const linkedParams = normalizeLinkedTitleLogoParams(params);
+  const linkedParams = normalizeOverlayLinkedTitleLogoParams(params);
   let didChange = false;
   const textFields = linkedParams.textFields.map((field) => {
     const normalizedField = normalizeTextFieldOffsetBaselines(linkedParams, field);

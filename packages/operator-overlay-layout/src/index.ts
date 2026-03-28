@@ -12,7 +12,7 @@ import {
   type TextFieldPlacementSpec,
   type TextStyleSpec
 } from "@brand-layout-ops/core-types";
-import { resolveLayerScene } from "@brand-layout-ops/layout-engine";
+import { getLinkedLogoDimensionsPx, resolveLayerScene } from "@brand-layout-ops/layout-engine";
 import { createApproximateTextMeasurer, type ApproximateTextMeasureOptions } from "@brand-layout-ops/layout-text";
 
 export const OVERLAY_LAYOUT_OPERATOR_KEY = "overlay.layout";
@@ -392,6 +392,32 @@ export function setOverlayTextValue(
       ...params.inlineTextByFieldId,
       [field.id]: value,
       [contentKey]: value
+    }
+  };
+}
+
+export function normalizeOverlayLinkedTitleLogoParams(
+  params: OverlayLayoutOperatorParams
+): OverlayLayoutOperatorParams {
+  const titleStyle = params.textStyles.find((style) => style.key === "title");
+  const logo = params.logo;
+  if (!titleStyle || !logo || logo.widthPx <= 0 || logo.heightPx <= 0) {
+    return params;
+  }
+
+  const aspectRatio = logo.widthPx / Math.max(1, logo.heightPx);
+  const linkedDimensions = getLinkedLogoDimensionsPx(titleStyle.fontSizePx, aspectRatio);
+
+  if (linkedDimensions.widthPx === logo.widthPx && linkedDimensions.heightPx === logo.heightPx) {
+    return params;
+  }
+
+  return {
+    ...params,
+    logo: {
+      ...logo,
+      widthPx: linkedDimensions.widthPx,
+      heightPx: linkedDimensions.heightPx
     }
   };
 }

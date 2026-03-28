@@ -207,7 +207,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 4. **Linked title-to-logo sizing (PARTIAL).**
 	`link_title_size_to_logo_height = true` scales title font size proportionally to `overlay_logo.height_px` using `LINKED_TITLE_BASE_FONT_SIZE_PX = 63` as the reference base. Current repo has no linked sizing logic.
 	Reference files: `rendering.js` (linked title font size calculation in text rendering).
-	Update 2026-03-27 late pass: a preview-side helper now exists. Update 2026-03-28: the preview now also normalizes loaded/switching params so title size remains the canonical driver for logo size in state. Latest anti-drift pass: the sizing helper now lives in `layout-engine`, but this still remains open until the full rule is consumed through shared document or operator paths instead of preview normalization alone.
+	Update 2026-03-27 late pass: a preview-side helper now exists. Update 2026-03-28: the preview now also normalizes loaded/switching params so title size remains the canonical driver for logo size in state. Latest anti-drift pass: the sizing helper lives in `layout-engine` and linked title/logo normalization now routes through `operator-overlay-layout`, but this still remains open until broader document normalization is no longer preview-driven.
 
 5. **Logo asset sizing and aspect ratio (DONE).**
 	Logo image is loaded via `Image`, `naturalWidth`/`naturalHeight` read for dynamic aspect ratio. Width derived from configured height via `getCurrentLogoAspectRatio()`. Logo drag and resize with aspect-ratio lock on corner handles.
