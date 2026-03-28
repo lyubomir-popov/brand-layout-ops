@@ -1,5 +1,7 @@
 import type { BoidField, BoidRecord, ColorRgba, PointField, PointRecord, Vector3 } from "@brand-layout-ops/core-types";
-import { resolveFuzzyBoidOutputs, type FuzzyBoidsBoundsParams } from "@brand-layout-ops/operator-fuzzy-boids";
+import { FuzzyBoidsSimulation, type FuzzyBoidsBoundsParams } from "@brand-layout-ops/operator-fuzzy-boids";
+
+const fuzzyBoidsSimulation = new FuzzyBoidsSimulation();
 import { resolvePhyllotaxisField } from "@brand-layout-ops/operator-phyllotaxis";
 import type { HaloFieldConfig } from "@brand-layout-ops/operator-halo-field";
 import type { OverlaySceneFamilyKey } from "@brand-layout-ops/operator-overlay-layout";
@@ -690,7 +692,7 @@ export function buildSceneFamilyPreviewState(
     angleOffsetDeg: options.playbackTimeSec * 8,
     origin: center
   });
-  const fuzzyBoids = resolveFuzzyBoidOutputs({
+  const fuzzyBoids = fuzzyBoidsSimulation.resolve({
     timeSeconds: options.playbackTimeSec,
     deltaTimeSeconds: 1 / 30,
     numBoids: 220,

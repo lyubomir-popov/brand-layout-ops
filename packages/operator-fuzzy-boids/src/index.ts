@@ -431,6 +431,96 @@ function toPointRecord(boid: BoidRecord, index: number): PointRecord {
   };
 }
 
+function buildOutputs(states: MutableBoidState[], center: Vector3, totalTimeSeconds: number, dt: number, stepCount: number, boundsKind: string): FuzzyBoidsOutputs {
+  const boids = states.map((state) => toBoidRecord(state, totalTimeSeconds));
+  const activeBoidCount = boids.filter((boid) => Boolean(boid.attributes.boid_active)).length;
+  const boidField: BoidField = {
+    boids,
+    simulation: {
+      timeSeconds: totalTimeSeconds,
+      deltaTimeSeconds: dt,
+      stepCount,
+      activeBoidCount
+    },
+    detail: {
+      center,
+      boid_count: boids.length,
+      active_boid_count: activeBoidCount,
+      bounds_kind: boundsKind
+    }
+  };
+
+  return {
+    boidField,
+    pointField: {
+      points: boids.map((boid, index) => toPointRecord(boid, index)),
+      detail: {
+        center,
+        boid_count: boids.length,
+        active_boid_count: activeBoidCount,
+        bounds_kind: boundsKind,
+        time_seconds: totalTimeSeconds
+      }
+    }
+  };
+}
+
+function buildCacheKey(params: FuzzyBoidsParams, centerInput?: Partial<Vector3> | null): string {
+  const { timeSeconds: _t, ...rest } = params;
+  return JSON.stringify({ p: rest, c: centerInput ?? null });
+}
+
+/**
+ * Incremental boid simulation that caches state across frames.
+ * Only steps forward from the last cached time instead of re-simulating
+ * from time 0 on every call.
+ */
+export class FuzzyBoidsSimulation {
+  private states: MutableBoidState[] | null = null;
+  private currentTimeSeconds = 0;
+  private totalSteps = 0;
+  private cacheKey = "";
+  private center: Vector3 = { x: 0, y: 0, z: 0 };
+
+  reset(): void {
+    this.states = null;
+    this.currentTimeSeconds = 0;
+    this.totalSteps = 0;
+    this.cacheKey = "";
+  }
+
+  resolve(params: FuzzyBoidsParams, centerInput?: Partial<Vector3> | null, seedField?: PointField | null): FuzzyBoidsOutputs {
+    const center = toVector3(params.center, toVector3(centerInput));
+    const totalTimeSeconds = Math.max(0, toNumber(params.timeSeconds, 0));
+    const dt = Math.max(0.001, toNumber(params.deltaTimeSeconds, 1 / 30));
+    const key = buildCacheKey(params, centerInput);
+
+    if (key !== this.cacheKey || !this.states || totalTimeSeconds < this.currentTimeSeconds - 0.0001) {
+      this.states = initializeBoids(params, center, seedField);
+      this.currentTimeSeconds = 0;
+      this.totalSteps = 0;
+      this.cacheKey = key;
+      this.center = center;
+    }
+
+    const stepsNeeded = Math.floor((totalTimeSeconds - this.currentTimeSeconds) / dt);
+    for (let i = 0; i < stepsNeeded; i += 1) {
+      this.currentTimeSeconds += dt;
+      this.totalSteps += 1;
+      stepBoids(this.states, params, this.center, this.currentTimeSeconds);
+    }
+
+    const remainderSeconds = totalTimeSeconds - this.currentTimeSeconds;
+    if (remainderSeconds > 0.00001) {
+      stepBoids(this.states, { ...params, deltaTimeSeconds: remainderSeconds }, this.center, totalTimeSeconds);
+      this.currentTimeSeconds = totalTimeSeconds;
+      this.totalSteps += 1;
+    }
+
+    return buildOutputs(this.states, this.center, totalTimeSeconds, dt, this.totalSteps, params.bounds?.kind ?? "none");
+  }
+}
+
 export function resolveFuzzyBoidOutputs(params: FuzzyBoidsParams, centerInput?: Partial<Vector3> | null, seedField?: PointField | null): FuzzyBoidsOutputs {
   const center = toVector3(params.center, toVector3(centerInput));
   const states = initializeBoids(params, center, seedField);
@@ -447,37 +537,7 @@ export function resolveFuzzyBoidOutputs(params: FuzzyBoidsParams, centerInput?: 
     stepBoids(states, { ...params, deltaTimeSeconds: remainderSeconds }, center, totalTimeSeconds);
   }
 
-  const boids = states.map((state) => toBoidRecord(state, totalTimeSeconds));
-  const activeBoidCount = boids.filter((boid) => Boolean(boid.attributes.boid_active)).length;
-  const boidField: BoidField = {
-    boids,
-    simulation: {
-      timeSeconds: totalTimeSeconds,
-      deltaTimeSeconds: dt,
-      stepCount: fullSteps + (remainderSeconds > 0.00001 ? 1 : 0),
-      activeBoidCount
-    },
-    detail: {
-      center,
-      boid_count: boids.length,
-      active_boid_count: activeBoidCount,
-      bounds_kind: params.bounds?.kind ?? "none"
-    }
-  };
-
-  return {
-    boidField,
-    pointField: {
-      points: boids.map((boid, index) => toPointRecord(boid, index)),
-      detail: {
-        center,
-        boid_count: boids.length,
-        active_boid_count: activeBoidCount,
-        bounds_kind: params.bounds?.kind ?? "none",
-        time_seconds: totalTimeSeconds
-      }
-    }
-  };
+  return buildOutputs(states, center, totalTimeSeconds, dt, fullSteps + (remainderSeconds > 0.00001 ? 1 : 0), params.bounds?.kind ?? "none");
 }
 
 export const fuzzyBoidsOperator: OperatorDefinition<FuzzyBoidsParams> = {
