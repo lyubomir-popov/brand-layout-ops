@@ -135,6 +135,12 @@ If you want the shortest high-level snapshot, read this file first.
 - Exported SVG/PNG now strips guide overlays (baseline grid, layout grid) so only text, logo, and safe area fill make it into exports (commit `47811ca`)
 - Overlay visibility now persists in localStorage across page refresh instead of resetting to hidden (commit `47811ca`)
 - Scene family is now selected only from the operator selector radio group; the redundant dropdown was removed from the Output Format section (commit `47811ca`)
+- Text fields can now be dragged above the safe area top edge; the `minimumOffsetBaselines` clamp was removed from `normalizeOverlayTextFieldOffsetBaselines` (commits `e8212a0` + `4c97dd3`)
+- Logo hit-test now uses resolved bounds (with safe-area offset) so selecting and dragging the logo works correctly after the SVG rendering fix (commit `ba00a20`)
+- Logo now appears in PNG export; `serializeExportSvgMarkup` inlines external `<image>` hrefs as data URLs before serialization (commit `4c97dd3`)
+- All overlay pixel coordinates (text anchors, logo bounds, grid keylines, column span widths) are now rounded to integer pixels at resolution time (commit `4c97dd3`)
+- Speaker highlight removed from content format order; only `generic_social` is selectable (commit `4c97dd3`)
+- Presets section removed from config panel — documents are the authoring unit (commit `4c97dd3`)
 
 ## Current sprint TODO (do in order)
 
@@ -147,8 +153,8 @@ Items EQ-1 through EQ-9 are the user-directed priorities in dependency order:
 3. **EQ-3** — Fuzzy boids parameter panel (numBoids, separation, alignment, cohesion, bounds, etc.). **← NEXT**
 4. **EQ-4** — Phyllotaxis parameter panel (numPoints, radius, radiusFalloff, angleOffsetDeg, animation).
 5. **EQ-5** — Scatter operator (`operator-scatter`, scatter points inside SVG shape).
-6. **EQ-6** — Resolve or remove presets (documents replaced presets — clarify architecture).
-7. **EQ-7** — Content format cleanup (speaker_highlight → document-owned, inline text is fine).
+6. **EQ-6** — ~~Resolve or remove presets (documents replaced presets — clarify architecture).~~ **DONE** (commit `4c97dd3`). Presets section removed from config panel.
+7. **EQ-7** — ~~Content format cleanup (speaker_highlight → document-owned, inline text is fine).~~ **DONE** (commit `4c97dd3`). Speaker highlight removed from content format order.
 8. **EQ-8** — Paragraph styles conditional visibility (only when layout grid is active).
 9. **EQ-9** — ~~Remove dead stat labels from scene-family preview canvas.~~ **DONE** (commit `fc35f96`). Removed `title`, `subtitle`, `stats` from preview state/snapshot, deleted `drawPreviewLabel`.
 
