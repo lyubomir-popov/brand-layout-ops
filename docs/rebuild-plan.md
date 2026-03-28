@@ -184,6 +184,8 @@ Only after parity is proven in this repo should new feature work resume.
 	Reason: the user explicitly requested the swap during active parity work, and the broken Halo Field slider rendering was caused by the preview still using the old Vanilla dependency path instead of the sibling package's themed range controls.
 - [x] 2026-03-28: Seeded overlay defaults were moved from `sample-document.ts` into `operator-overlay-layout` before the config-section registry refactor was complete.
 	Reason: document-owned defaults were a clearer anti-drift seam and reduced preview-shell ownership immediately without blocking the later UI-surface registration work.
+- [x] 2026-03-28: Profile-bucket normalization and the section-registry primitive were moved into shared packages before operator packages self-register their own panels.
+	Reason: the highest-value anti-drift seam was to stop reimplementing active bucket selection in `main.ts` and to move the registry primitive into `parameter-ui` first, even though operator-owned panel manifests are still a later step.
 
 ## Parity Gap Audit — 2026-03-27
 
@@ -200,7 +202,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 
 2. **Content format system (PARTIAL).**
 	Reference has 2 overlay content formats: `generic_social` (3 fields: body_intro, detail_primary, detail_secondary) and `speaker_highlight` (3 fields: session_title, speaker_name, speaker_role). Each field has id, label, style, legacy_slot, and aliases for CSV column matching. Per-format field layout overrides (keyline_index, column_span, y_row_index, y_offset_baselines) are stored in format buckets per profile. Format switching syncs runtime fields to/from the active format bucket.
-	Current repo now has format specs, per-format buckets, operator-side CSV alias matching, shared operator-owned seeded field layouts, logo defaults, sample CSV drafts, default overlay-param generation, and shared profile-scoped content-format resolution, but it still lacks reference-grade source-default bucket writeback and per-format pending CSV edit staging.
+	Current repo now has format specs, per-format buckets, shared bucket-state types and clone helpers, operator-side CSV alias matching, shared operator-owned seeded field layouts, logo defaults, sample CSV drafts, default overlay-param generation, and shared profile-scoped content-format resolution plus shared active-bucket normalization, but it still lacks reference-grade source-default bucket writeback and per-format pending CSV edit staging.
 	Reference files: `config-schema.js` (format specs, alias matching, format bucket sync), `default-config-source.js` (per-profile overlay_content_formats).
 
 3. **Text style parity (DONE).**
@@ -228,7 +230,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	Reference files: `index.js` (save_preset, delete_active_preset, export_current_preset, import_presets_from_file, apply_preset_by_id).
 
 9. **Source-default writeback (PARTIAL).**
-	The preview shell now loads a source-default snapshot on startup, resets back to that authored snapshot, exposes a Write Source Default button, and writes the current snapshot to `/__authoring/source-default-config` via `Ctrl/Cmd+S` or the button.
+	The preview shell now loads a source-default snapshot on startup, resets back to that authored snapshot, exposes a Write Source Default button, and writes the current snapshot to `/__authoring/source-default-config` via `Ctrl/Cmd+S` or the button. Active profile-format bucket normalization for those snapshots now routes through shared `operator-overlay-layout` helpers instead of preview-local code.
 	Reference files: `index.js` (write_source_default_snapshot, read_source_default_snapshot).
 
 10. **Export pipeline (PARTIAL).**
@@ -283,12 +285,13 @@ It reflects the current repo after the overlay-preview rebuild, reference-doc re
 1. **Output profiles are now scaffolded, and the preview now keeps per-profile overlay buckets.**
 	`core-types` now defines the 5 reference profile keys plus dimensions, safe areas, and default frame rates.
 	The preview shell now preserves overlay params per output profile instead of mutating one shared document when the profile changes.
-	The shared overlay-layout path now also owns profile-switch frame resync and carried-over heading or shared overlay-state normalization between per-format buckets, instead of leaving that document rule in preview-only helpers.
+	The shared overlay-layout path now also owns profile-switch frame resync, carried-over heading or shared overlay-state normalization between per-format buckets, and active bucket selection normalization for presets and source-default snapshots, instead of leaving those document rules in preview-only helpers.
 	Remaining gap: profile ownership still does not extend to source-default persistence, export state, or profile-owned motion and mascot defaults the way the reference app does.
 
 2. **Content-format structure exists, and the preview now keeps per-format buckets inside each profile.**
 	`core-types` now defines `generic_social` and `speaker_highlight` field specs, aliases, and legacy-slot mapping.
 	The preview shell now preserves format-specific field layouts, inline text, and CSV draft state per profile rather than rebuilding formats from scratch on each switch.
+	Shared `operator-overlay-layout` helpers now also own the bucket-state types, clone helpers, and active-format normalization used by profile switches, presets, and source-default snapshots.
 	Remaining gap: source-default persistence, reference-style bucket writeback, and fully canonical renderer/layout ownership are still missing.
 
 3. **Text-style parity is closer than the earlier audit suggested.**
@@ -383,7 +386,7 @@ These matter, but they are not approved active work until we discuss placement, 
 - [ ] Move beyond a strict background or overlay abstraction toward a proper layer stack with blend modes.
 	Working assumption: do not widen the abstraction until parity is proven, but keep the future compositor layer in mind.
 - [ ] Operator-registered accordion panels for the config editor UI.
-	Working assumption: each operator package self-registers an accordion tab+panel instead of the preview app hard-coding per-section builders. This keeps the UI organized as the control surface grows. Fits naturally into Stage 3 (operator surfaces) and the non-negotiable rule that parameter UI reads operator manifests. Update 2026-03-28: the preview now uses a keyed, ordered section registry with section-level post-render hooks instead of separate hardcoded core and append-only extension arrays plus manual follow-up wiring, but operator packages still do not self-register their own panels yet.
+	Working assumption: each operator package self-registers an accordion tab+panel instead of the preview app hard-coding per-section builders. This keeps the UI organized as the control surface grows. Fits naturally into Stage 3 (operator surfaces) and the non-negotiable rule that parameter UI reads operator manifests. Update 2026-03-28: the preview now uses a keyed, ordered section registry with section-level post-render hooks, and that registry primitive now lives in `packages/parameter-ui/src/index.ts` instead of `main.ts`, but operator packages still do not self-register their own panels yet.
 - [x] Incremental control-surface swap from Vanilla to the sibling `portable-vertical-rhythm` package for the overlay-preview shell.
 	Working assumption: landed through the package's compatibility aliases first, keeps the sibling repo as the source of truth, and leaves any later `vr-*` class renames optional rather than blocking parity work.
 

@@ -8,6 +8,21 @@ export interface SectionHandle {
   body: HTMLElement;
 }
 
+export type ParameterSectionFactory = () => HTMLElement;
+
+export interface ParameterSectionDefinition {
+  key: string;
+  order: number;
+  factory: ParameterSectionFactory;
+  afterRender?: (() => void) | undefined;
+}
+
+export interface ParameterSectionRegistry {
+  register(section: ParameterSectionDefinition): void;
+  registerMany(sections: Iterable<ParameterSectionDefinition>): void;
+  getSections(): ParameterSectionDefinition[];
+}
+
 interface BaseFieldOptions {
   label: string;
   hint?: string;
@@ -83,6 +98,30 @@ export function createSection(title: string, description?: string): SectionHandl
 
   root.append(header, body);
   return { root, body };
+}
+
+export function createParameterSectionRegistry(
+  initialSections: Iterable<ParameterSectionDefinition> = []
+): ParameterSectionRegistry {
+  const sections = new Map<string, ParameterSectionDefinition>();
+
+  const register = (section: ParameterSectionDefinition) => {
+    sections.set(section.key, section);
+  };
+
+  const registerMany = (entries: Iterable<ParameterSectionDefinition>) => {
+    for (const section of entries) {
+      register(section);
+    }
+  };
+
+  registerMany(initialSections);
+
+  return {
+    register,
+    registerMany,
+    getSections: () => [...sections.values()].sort((left, right) => left.order - right.order)
+  };
 }
 
 export function createNumberField(options: NumberFieldOptions): FieldHandle<HTMLInputElement> {

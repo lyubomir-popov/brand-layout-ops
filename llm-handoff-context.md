@@ -64,11 +64,13 @@ All scoped under `@brand-layout-ops/`.
 - Linked title-to-logo sizing now normalizes through shared layout-engine helpers plus the shared overlay-layout path, so profile switches and loaded snapshots keep the A Head/logo lock intact while the canonical rule is no longer only preview-local
 - Style labels and ordinal field labels now also route through shared overlay-layout helpers instead of preview-local label maps
 - Base overlay text styles, seeded field layouts, seeded logo placement, sample CSV drafts, and `createDefaultOverlayParams` now also live in `operator-overlay-layout` instead of `sample-document.ts`
+- Profile format-bucket types, clone helpers, and active-bucket normalization now also live in `operator-overlay-layout`, so profile switches, preset loads, and source-default snapshots all use one canonical bucket-selection path instead of reimplementing it in `main.ts`
 - Ascent-aware first-baseline inset normalization now also routes through shared overlay-layout editing helpers instead of preview-local code in `main.ts`
 - Profile-switch overlay carryover and frame resync now also route through shared overlay-layout helpers instead of preview-local sync logic in `main.ts`
 - MP4 export verification now covers both straight encode and fade-in/fade-out flags against a real 48-frame headless export on Windows
 - The preview control surface now imports the sibling `portable-vertical-rhythm` package instead of `vanilla-framework`, and Halo Field range controls render as real themed sliders again rather than bare native thumbs
 - The preview config editor now builds its accordion from a keyed, ordered registry of section definitions with section-level post-render hooks instead of one fixed append sequence plus hardcoded follow-up wiring, as the next step back toward operator-registered control surfaces
+- The shared keyed section-registry primitive now lives in `packages/parameter-ui/src/index.ts` instead of `main.ts`, so future operator panels can register through shared parameter-surface infrastructure rather than preview-local maps
 
 ## Current sprint TODO (do in order)
 
@@ -118,8 +120,8 @@ All scoped under `@brand-layout-ops/`.
   - Landed early by explicit user request so the broken Halo Field slider rendering could be fixed in the live preview
   - Uses the sibling repo package as a local dependency and keeps the existing alias-based markup for now
 - [ ] Continue anti-drift refactors that reduce preview-shell ownership of canonical product behavior
-  - Move remaining document rules beyond title/logo coupling toward shared layout or operator paths where parity permits
-  - Replace more hardcoded preview accordion ownership with registry or manifest-driven section registration instead of expanding bespoke shell code indefinitely
+  - Move remaining source-default, export-state, and scene-family document rules toward shared layout or operator paths where parity permits
+  - Replace preview-owned section definitions with package-registered or manifest-driven panels on top of the shared `parameter-ui` registry instead of expanding bespoke shell code indefinitely
 
 ### D. UI parity quick wins (done)
 
@@ -140,7 +142,8 @@ All scoped under `@brand-layout-ops/`.
 | Halo config + per-profile overrides | `packages/operator-halo-field/src/index.ts` |
 | App state, UI, profile switching | `apps/overlay-preview/src/main.ts` |
 | Preset persistence + export defaults | `apps/overlay-preview/src/sample-document.ts` |
-| Shared overlay defaults + content resolution | `packages/operator-overlay-layout/src/index.ts` |
+| Shared overlay defaults + bucket normalization | `packages/operator-overlay-layout/src/index.ts` |
+| Shared parameter section registry | `packages/parameter-ui/src/index.ts` |
 | Three.js halo renderer | `apps/overlay-preview/src/halo-renderer.ts` |
 
 ## Reference file map (for parity work)

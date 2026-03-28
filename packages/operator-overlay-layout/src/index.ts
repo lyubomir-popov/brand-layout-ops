@@ -61,6 +61,16 @@ export interface OverlayLayoutOperatorParams {
   csvContent?: OverlayCsvContent;
 }
 
+export type ProfileFormatBuckets = Record<string, Record<string, OverlayLayoutOperatorParams>>;
+export type ProfileContentFormatMap = Record<string, string>;
+
+export interface OverlayProfileBucketState {
+  outputProfileKey: string;
+  contentFormatKey: string;
+  profileFormatBuckets: ProfileFormatBuckets;
+  contentFormatKeyByProfile: ProfileContentFormatMap;
+}
+
 export interface OverlayLayoutOperatorOutputs {
   scene: LayerScene;
   grid: LayoutGridMetrics;
@@ -77,6 +87,10 @@ export interface OverlayProfileTextStyleOverrides {
   title: { fontSizePx: number; lineHeightPx: number };
   b_head: { fontSizePx: number; lineHeightPx: number };
   paragraph: { fontSizePx: number; lineHeightPx: number };
+}
+
+function cloneOverlayJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value));
 }
 
 export interface ContentFormatFieldOverride {
@@ -492,6 +506,14 @@ export function syncOverlaySharedProfileParams(
   return synced;
 }
 
+export function cloneProfileFormatBuckets(buckets: ProfileFormatBuckets): ProfileFormatBuckets {
+  return cloneOverlayJson(buckets);
+}
+
+export function cloneProfileContentFormatMap(contentFormatKeyByProfile: ProfileContentFormatMap): ProfileContentFormatMap {
+  return cloneOverlayJson(contentFormatKeyByProfile);
+}
+
 function createLandscapeOverlayTextFields(): TextFieldPlacementSpec[] {
   return [
     {
@@ -641,6 +663,43 @@ export function createDefaultOverlayParams(
       draft: formatKey === "speaker_highlight" ? SPEAKER_OVERLAY_CSV_DRAFT : DEFAULT_OVERLAY_CSV_DRAFT,
       rowIndex: 1
     }
+  };
+}
+
+export function normalizeOverlayProfileBucketState(
+  state: OverlayProfileBucketState
+): OverlayProfileBucketState {
+  const profileFormatBuckets = cloneProfileFormatBuckets(state.profileFormatBuckets);
+  const contentFormatKeyByProfile = cloneProfileContentFormatMap(state.contentFormatKeyByProfile);
+
+  for (const profileKey of Object.keys(profileFormatBuckets)) {
+    contentFormatKeyByProfile[profileKey] = resolveOverlayContentFormatKeyForProfile(
+      profileKey,
+      contentFormatKeyByProfile,
+      profileFormatBuckets,
+      state.contentFormatKey
+    );
+  }
+
+  const activeContentFormatKey = resolveOverlayContentFormatKeyForProfile(
+    state.outputProfileKey,
+    contentFormatKeyByProfile,
+    profileFormatBuckets,
+    state.contentFormatKey
+  );
+  contentFormatKeyByProfile[state.outputProfileKey] = activeContentFormatKey;
+
+  const activeProfileBucket = profileFormatBuckets[state.outputProfileKey] ??= {};
+  activeProfileBucket[activeContentFormatKey] ??= createDefaultOverlayParams(
+    state.outputProfileKey,
+    activeContentFormatKey
+  );
+
+  return {
+    outputProfileKey: state.outputProfileKey,
+    contentFormatKey: activeContentFormatKey,
+    profileFormatBuckets,
+    contentFormatKeyByProfile
   };
 }
 

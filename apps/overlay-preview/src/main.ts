@@ -43,12 +43,15 @@ import {
 } from "@brand-layout-ops/operator-ubuntu-summit-animation";
 import {
   buildOverlayVariableItemLabel,
+  cloneProfileContentFormatMap,
+  cloneProfileFormatBuckets,
   createDefaultOverlayParams,
   createOverlayLayoutOperator,
   getOverlayFieldDisplayLabel,
   getOverlayMainHeadingField,
   getOverlayStyleDisplayLabel,
   inspectOverlayCsvDraft,
+  normalizeOverlayProfileBucketState,
   normalizeOverlayParamsForEditing,
   normalizeOverlayTextFieldOffsetBaselines,
   OVERLAY_LAYOUT_OPERATOR_KEY,
@@ -58,19 +61,23 @@ import {
   syncOverlayParamsFrameToProfile,
   syncOverlaySharedProfileParams,
   type OverlayContentSource,
-  type OverlayLayoutOperatorParams
+  type OverlayLayoutOperatorParams,
+  type ProfileContentFormatMap,
+  type ProfileFormatBuckets
 } from "@brand-layout-ops/operator-overlay-layout";
 import {
   createDefaultHaloFieldConfig,
   createHaloFieldConfigForProfile,
   type HaloFieldConfig
 } from "@brand-layout-ops/operator-halo-field";
+import {
+  createParameterSectionRegistry,
+  type ParameterSectionDefinition
+} from "@brand-layout-ops/parameter-ui";
 
 import { createHaloRenderer, type HaloRenderer } from "./halo-renderer.js";
 import {
   cloneOverlayParams,
-  cloneProfileContentFormatMap,
-  cloneProfileFormatBuckets,
   createDefaultExportSettings,
   createPresetId,
   denormalizePresetFromPersistence,
@@ -83,9 +90,7 @@ import {
   savePresets,
   saveOutputFormatKey,
   type ExportSettings,
-  type ProfileContentFormatMap,
   type PersistedPreset,
-  type ProfileFormatBuckets,
   type Preset
 } from "./sample-document.js";
 
@@ -114,12 +119,7 @@ interface DragState {
 
 type ConfigSectionFactory = () => HTMLElement;
 
-interface ConfigSectionDefinition {
-  key: string;
-  order: number;
-  factory: ConfigSectionFactory;
-  afterRender?: (() => void) | undefined;
-}
+type ConfigSectionDefinition = ParameterSectionDefinition;
 
 // ─── Operator registry ────────────────────────────────────────────────
 
@@ -769,18 +769,20 @@ function switchOutputProfile(profileKey: string) {
   persistActiveExportSettings();
   persistActiveHaloConfig();
   state.contentFormatKeyByProfile[state.outputProfileKey] = state.contentFormatKey;
-  state.outputProfileKey = profileKey;
-  state.contentFormatKey = resolveOverlayContentFormatKeyForProfile(
-    profileKey,
-    state.contentFormatKeyByProfile,
-    state.profileFormatBuckets,
-    state.contentFormatKey
-  );
-  state.contentFormatKeyByProfile[profileKey] = state.contentFormatKey;
+  const normalizedProfileState = normalizeOverlayProfileBucketState({
+    outputProfileKey: profileKey,
+    contentFormatKey: state.contentFormatKey,
+    profileFormatBuckets: state.profileFormatBuckets,
+    contentFormatKeyByProfile: state.contentFormatKeyByProfile
+  });
+  state.outputProfileKey = normalizedProfileState.outputProfileKey;
+  state.contentFormatKey = normalizedProfileState.contentFormatKey;
+  state.profileFormatBuckets = normalizedProfileState.profileFormatBuckets;
+  state.contentFormatKeyByProfile = normalizedProfileState.contentFormatKeyByProfile;
   state.params = normalizeParamsTextFieldOffsets(
-    cloneOverlayParams(getOrCreateProfileFormatParams(profileKey, state.contentFormatKey))
+    cloneOverlayParams(getOrCreateProfileFormatParams(state.outputProfileKey, state.contentFormatKey))
   );
-  state.exportSettings = getOrCreateExportSettingsForProfile(profileKey);
+  state.exportSettings = getOrCreateExportSettingsForProfile(state.outputProfileKey);
   normalizeSelection();
   syncHaloConfigToProfile(state.outputProfileKey);
   resizeRenderer();
@@ -966,24 +968,22 @@ async function importPresetsFromFiles(files: FileList | null): Promise<void> {
 }
 
 function loadPreset(preset: Preset) {
-  state.outputProfileKey = preset.outputProfileKey ?? DEFAULT_OUTPUT_PROFILE_KEY;
-  state.profileFormatBuckets = preset.profileFormatBuckets
-    ? cloneProfileFormatBuckets(preset.profileFormatBuckets)
-    : {
-      [state.outputProfileKey]: {
+  const normalizedProfileState = normalizeOverlayProfileBucketState({
+    outputProfileKey: preset.outputProfileKey ?? DEFAULT_OUTPUT_PROFILE_KEY,
+    contentFormatKey: preset.contentFormatKey ?? INITIAL_FORMAT_KEY,
+    profileFormatBuckets: preset.profileFormatBuckets ?? {
+      [preset.outputProfileKey ?? DEFAULT_OUTPUT_PROFILE_KEY]: {
         [preset.contentFormatKey ?? INITIAL_FORMAT_KEY]: cloneOverlayParams(preset.config)
       }
-    };
-  state.contentFormatKeyByProfile = cloneProfileContentFormatMap(preset.contentFormatKeyByProfile ?? {
-    [state.outputProfileKey]: preset.contentFormatKey ?? INITIAL_FORMAT_KEY
+    },
+    contentFormatKeyByProfile: preset.contentFormatKeyByProfile ?? {
+      [preset.outputProfileKey ?? DEFAULT_OUTPUT_PROFILE_KEY]: preset.contentFormatKey ?? INITIAL_FORMAT_KEY
+    }
   });
-  state.contentFormatKey = resolveOverlayContentFormatKeyForProfile(
-    state.outputProfileKey,
-    state.contentFormatKeyByProfile,
-    state.profileFormatBuckets,
-    preset.contentFormatKey ?? INITIAL_FORMAT_KEY
-  );
-  state.contentFormatKeyByProfile[state.outputProfileKey] = state.contentFormatKey;
+  state.outputProfileKey = normalizedProfileState.outputProfileKey;
+  state.profileFormatBuckets = normalizedProfileState.profileFormatBuckets;
+  state.contentFormatKeyByProfile = normalizedProfileState.contentFormatKeyByProfile;
+  state.contentFormatKey = normalizedProfileState.contentFormatKey;
   state.params = normalizeParamsTextFieldOffsets(cloneOverlayParams(
     getOrCreateProfileFormatParams(state.outputProfileKey, state.contentFormatKey)
   ));
@@ -1036,41 +1036,21 @@ function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnaps
   const outputProfileKey = typeof rawSnapshot.outputProfileKey === "string"
     ? rawSnapshot.outputProfileKey
     : INITIAL_PROFILE_KEY;
-  const contentFormatKey = typeof rawSnapshot.contentFormatKey === "string"
-    ? rawSnapshot.contentFormatKey
-    : INITIAL_FORMAT_KEY;
-  const profileFormatBuckets = isRecord(rawSnapshot.profileFormatBuckets)
-    ? cloneProfileFormatBuckets(rawSnapshot.profileFormatBuckets as ProfileFormatBuckets)
-    : cloneProfileFormatBuckets(INITIAL_SOURCE_DEFAULTS.profileFormatBuckets);
-
-  const contentFormatKeyByProfile: ProfileContentFormatMap = {};
-  if (isRecord(rawSnapshot.contentFormatKeyByProfile)) {
-    for (const [profileKey, rawFormatKey] of Object.entries(rawSnapshot.contentFormatKeyByProfile)) {
-      if (typeof rawFormatKey === "string") {
-        contentFormatKeyByProfile[profileKey] = rawFormatKey;
-      }
-    }
-  }
-
-  for (const profileKey of Object.keys(profileFormatBuckets)) {
-    contentFormatKeyByProfile[profileKey] = resolveOverlayContentFormatKeyForProfile(
-      profileKey,
-      contentFormatKeyByProfile,
-      profileFormatBuckets,
-      contentFormatKey
-    );
-  }
-
-  const activeContentFormatKey = resolveOverlayContentFormatKeyForProfile(
+  const normalizedProfileState = normalizeOverlayProfileBucketState({
     outputProfileKey,
-    contentFormatKeyByProfile,
-    profileFormatBuckets,
-    contentFormatKey
-  );
-  contentFormatKeyByProfile[outputProfileKey] = activeContentFormatKey;
-
-  const activeProfileBucket = profileFormatBuckets[outputProfileKey] ??= {};
-  activeProfileBucket[activeContentFormatKey] ??= createDefaultOverlayParams(outputProfileKey, activeContentFormatKey);
+    contentFormatKey: typeof rawSnapshot.contentFormatKey === "string"
+      ? rawSnapshot.contentFormatKey
+      : INITIAL_FORMAT_KEY,
+    profileFormatBuckets: isRecord(rawSnapshot.profileFormatBuckets)
+    ? cloneProfileFormatBuckets(rawSnapshot.profileFormatBuckets as ProfileFormatBuckets)
+      : cloneProfileFormatBuckets(INITIAL_SOURCE_DEFAULTS.profileFormatBuckets),
+    contentFormatKeyByProfile: isRecord(rawSnapshot.contentFormatKeyByProfile)
+      ? Object.fromEntries(
+        Object.entries(rawSnapshot.contentFormatKeyByProfile)
+          .filter(([, rawFormatKey]) => typeof rawFormatKey === "string")
+      ) as ProfileContentFormatMap
+      : cloneProfileContentFormatMap(INITIAL_SOURCE_DEFAULTS.contentFormatKeyByProfile)
+  });
 
   const exportSettingsByProfile: Record<string, ExportSettings> = {};
   if (isRecord(rawSnapshot.exportSettingsByProfile)) {
@@ -1086,12 +1066,13 @@ function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnaps
 
   const exportSettings = isRecord(rawSnapshot.exportSettings)
     ? {
-      ...createDefaultExportSettings(outputProfileKey),
+      ...createDefaultExportSettings(normalizedProfileState.outputProfileKey),
       ...rawSnapshot.exportSettings
     }
-    : exportSettingsByProfile[outputProfileKey] ?? createDefaultExportSettings(outputProfileKey);
+    : exportSettingsByProfile[normalizedProfileState.outputProfileKey]
+      ?? createDefaultExportSettings(normalizedProfileState.outputProfileKey);
 
-  exportSettingsByProfile[outputProfileKey] ??= JSON.parse(JSON.stringify(exportSettings)) as ExportSettings;
+  exportSettingsByProfile[normalizedProfileState.outputProfileKey] ??= JSON.parse(JSON.stringify(exportSettings)) as ExportSettings;
   const haloConfigByProfile: Record<string, HaloFieldConfig> = {};
   if (isRecord(rawSnapshot.haloConfigByProfile)) {
     for (const [profileKey, rawHaloConfig] of Object.entries(rawSnapshot.haloConfigByProfile)) {
@@ -1099,17 +1080,18 @@ function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnaps
     }
   }
 
-  const haloConfig = haloConfigByProfile[outputProfileKey] ?? getHaloConfigForProfile(outputProfileKey, rawSnapshot.haloConfig);
-  haloConfigByProfile[outputProfileKey] ??= JSON.parse(JSON.stringify(haloConfig)) as HaloFieldConfig;
+  const haloConfig = haloConfigByProfile[normalizedProfileState.outputProfileKey]
+    ?? getHaloConfigForProfile(normalizedProfileState.outputProfileKey, rawSnapshot.haloConfig);
+  haloConfigByProfile[normalizedProfileState.outputProfileKey] ??= JSON.parse(JSON.stringify(haloConfig)) as HaloFieldConfig;
   const guideMode = rawSnapshot.guideMode === "off" || rawSnapshot.guideMode === "baseline"
     ? rawSnapshot.guideMode
     : "composition";
 
   return {
-    outputProfileKey,
-    contentFormatKey: activeContentFormatKey,
-    profileFormatBuckets,
-    contentFormatKeyByProfile,
+    outputProfileKey: normalizedProfileState.outputProfileKey,
+    contentFormatKey: normalizedProfileState.contentFormatKey,
+    profileFormatBuckets: normalizedProfileState.profileFormatBuckets,
+    contentFormatKeyByProfile: normalizedProfileState.contentFormatKeyByProfile,
     exportSettings,
     exportSettingsByProfile,
     haloConfig,
@@ -1122,12 +1104,17 @@ function createCurrentSourceDefaultSnapshot(): SourceDefaultSnapshot {
   persistActiveProfileBuckets();
   persistActiveExportSettings();
   persistActiveHaloConfig();
-  state.contentFormatKeyByProfile[state.outputProfileKey] = state.contentFormatKey;
-  return {
+  const normalizedProfileState = normalizeOverlayProfileBucketState({
     outputProfileKey: state.outputProfileKey,
     contentFormatKey: state.contentFormatKey,
-    profileFormatBuckets: cloneProfileFormatBuckets(state.profileFormatBuckets),
-    contentFormatKeyByProfile: cloneProfileContentFormatMap(state.contentFormatKeyByProfile),
+    profileFormatBuckets: state.profileFormatBuckets,
+    contentFormatKeyByProfile: state.contentFormatKeyByProfile
+  });
+  return {
+    outputProfileKey: normalizedProfileState.outputProfileKey,
+    contentFormatKey: normalizedProfileState.contentFormatKey,
+    profileFormatBuckets: normalizedProfileState.profileFormatBuckets,
+    contentFormatKeyByProfile: normalizedProfileState.contentFormatKeyByProfile,
     exportSettings: JSON.parse(JSON.stringify(state.exportSettings)) as ExportSettings,
     exportSettingsByProfile: cloneExportSettingsByProfile(state.exportSettingsByProfile),
     haloConfig: JSON.parse(JSON.stringify(state.haloConfig)) as HaloFieldConfig,
@@ -1137,17 +1124,17 @@ function createCurrentSourceDefaultSnapshot(): SourceDefaultSnapshot {
 }
 
 function applySourceDefaultSnapshot(snapshot: SourceDefaultSnapshot) {
+  const normalizedProfileState = normalizeOverlayProfileBucketState({
+    outputProfileKey: snapshot.outputProfileKey,
+    contentFormatKey: snapshot.contentFormatKey,
+    profileFormatBuckets: snapshot.profileFormatBuckets,
+    contentFormatKeyByProfile: snapshot.contentFormatKeyByProfile
+  });
   state.sourceDefaults = cloneSourceDefaultSnapshot(snapshot);
-  state.outputProfileKey = snapshot.outputProfileKey;
-  state.profileFormatBuckets = cloneProfileFormatBuckets(snapshot.profileFormatBuckets);
-  state.contentFormatKeyByProfile = cloneProfileContentFormatMap(snapshot.contentFormatKeyByProfile);
-  state.contentFormatKey = resolveOverlayContentFormatKeyForProfile(
-    state.outputProfileKey,
-    state.contentFormatKeyByProfile,
-    state.profileFormatBuckets,
-    snapshot.contentFormatKey
-  );
-  state.contentFormatKeyByProfile[state.outputProfileKey] = state.contentFormatKey;
+  state.outputProfileKey = normalizedProfileState.outputProfileKey;
+  state.profileFormatBuckets = normalizedProfileState.profileFormatBuckets;
+  state.contentFormatKeyByProfile = normalizedProfileState.contentFormatKeyByProfile;
+  state.contentFormatKey = normalizedProfileState.contentFormatKey;
   state.params = normalizeParamsTextFieldOffsets(cloneOverlayParams(
     getOrCreateProfileFormatParams(state.outputProfileKey, state.contentFormatKey)
   ));
@@ -1868,24 +1855,19 @@ const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
   { key: "halo-config", order: 800, factory: buildHaloConfigSection }
 ];
 
-const registeredConfigSections = new Map<string, ConfigSectionDefinition>();
+const configSectionRegistry = createParameterSectionRegistry(CORE_CONFIG_SECTION_DEFINITIONS);
 
 function registerConfigSection(section: ConfigSectionDefinition) {
-  registeredConfigSections.set(section.key, section);
+  configSectionRegistry.register(section);
 }
 
 function registerConfigSections(sections: ConfigSectionDefinition[]) {
-  for (const section of sections) {
-    registerConfigSection(section);
-  }
+  configSectionRegistry.registerMany(sections);
 }
 
 function getConfigSections(): ConfigSectionDefinition[] {
-  return [...registeredConfigSections.values()]
-    .sort((left, right) => left.order - right.order);
+  return configSectionRegistry.getSections();
 }
-
-registerConfigSections(CORE_CONFIG_SECTION_DEFINITIONS);
 
 function buildConfigEditor() {
   const container = getConfigEditor();

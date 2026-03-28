@@ -5,7 +5,11 @@ import {
   OVERLAY_CONTENT_FORMAT_ORDER
 } from "@brand-layout-ops/core-types";
 import {
+  cloneProfileContentFormatMap,
+  cloneProfileFormatBuckets,
   createDefaultOverlayParams,
+  type ProfileContentFormatMap,
+  type ProfileFormatBuckets,
   type OverlayLayoutOperatorParams
 } from "@brand-layout-ops/operator-overlay-layout";
 
@@ -24,9 +28,6 @@ export interface Preset {
   exportSettingsByProfile?: Record<string, ExportSettings>;
   haloConfigByProfile?: Record<string, unknown>;
 }
-
-export type ProfileFormatBuckets = Record<string, Record<string, OverlayLayoutOperatorParams>>;
-export type ProfileContentFormatMap = Record<string, string>;
 
 export interface PersistedPreset {
   id: string;
@@ -101,14 +102,6 @@ function mergeWithDefaults<T>(defaults: T, partial: unknown): T {
 
 export function cloneOverlayParams(params: OverlayLayoutOperatorParams): OverlayLayoutOperatorParams {
   return cloneJson(params);
-}
-
-export function cloneProfileFormatBuckets(buckets: ProfileFormatBuckets): ProfileFormatBuckets {
-  return cloneJson(buckets);
-}
-
-export function cloneProfileContentFormatMap(contentFormatKeyByProfile: ProfileContentFormatMap): ProfileContentFormatMap {
-  return cloneJson(contentFormatKeyByProfile);
 }
 
 function normalizeOverlayParams(
