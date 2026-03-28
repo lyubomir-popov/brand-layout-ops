@@ -186,6 +186,8 @@ Only after parity is proven in this repo should new feature work resume.
 	Reason: document-owned defaults were a clearer anti-drift seam and reduced preview-shell ownership immediately without blocking the later UI-surface registration work.
 - [x] 2026-03-28: Profile-bucket normalization and the section-registry primitive were moved into shared packages before operator packages self-register their own panels.
 	Reason: the highest-value anti-drift seam was to stop reimplementing active bucket selection in `main.ts` and to move the registry primitive into `parameter-ui` first, even though operator-owned panel manifests are still a later step.
+- [x] 2026-03-28: The preview's docked control shell was moved back onto `portable-vertical-rhythm`'s pinned-aside application layout before broader panel-registration work landed.
+	Reason: the preview had drifted into a local reserved-width and fixed-position dock that created empty panel space and fought the sibling package's shell ownership, so restoring the shared app-shell path was the higher-value anti-drift move.
 
 ## Parity Gap Audit — 2026-03-27
 

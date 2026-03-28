@@ -1,11 +1,5 @@
 :root {
   color-scheme: dark;
-  --editor-panel-space: 0px;
-  --editor-panel-max-width: 56rem;
-}
-
-body.editor-docked {
-  --editor-panel-space: min(var(--editor-panel-max-width), 72vw);
 }
 
 html,
@@ -37,27 +31,16 @@ body {
   --vf-color-border-default: #4b4b4b;
   --vf-color-border-high-contrast: #6a6a6a;
   --vf-color-border-low-contrast: #3a3a3a;
+  --vr-application-aside-width: 30rem;
+  --vr-application-aside-width-wide: min(100vw, 30rem);
   background: #202020;
-  height: 100%;
+  min-height: 100%;
   position: relative;
   width: 100%;
 }
 
-.mascot-app .l-main {
-  overflow: hidden;
-  transition: padding-right 180ms ease;
-}
-
 .mascot-app .l-aside {
-  inline-size: min(var(--editor-panel-max-width), calc(100vw - 1.5rem));
-  max-inline-size: calc(100vw - 1.5rem);
   overscroll-behavior: contain;
-}
-
-.mascot-app .p-panel,
-.mascot-app .p-panel__header.is-sticky,
-.mascot-app .p-panel__content {
-  background: var(--vf-color-background-default);
 }
 
 .drawer-toggle {
@@ -69,7 +52,7 @@ body {
 
 .drawer-backdrop {
   appearance: none;
-  background: transparent;
+  background: rgba(0, 0, 0, 0.32);
   border: 0;
   box-shadow: none;
   inset: 0;
@@ -96,17 +79,13 @@ body.editor-docked [data-drawer-close] {
   align-items: center;
   display: grid;
   gap: 0.75rem;
-  min-height: 100dvh;
-  padding: 1rem;
+  min-block-size: 100dvh;
+  padding-block: 1rem;
   place-items: center;
 }
 
-body.editor-docked .mascot-app .l-main {
-  padding-right: var(--editor-panel-space);
-}
-
-body.editor-docked .stage {
-  width: min(calc(100vw - var(--editor-panel-space) - 3rem), calc((100svh - 5.5rem) * var(--stage-aspect-ratio)));
+body.editor-docked .viewer-panel__content {
+  min-block-size: 100%;
 }
 
 .stage {
@@ -119,7 +98,7 @@ body.editor-docked .stage {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  width: min(calc(100vw - 3rem), calc((100svh - 5.5rem) * var(--stage-aspect-ratio)));
+  width: min(100%, calc((100dvh - 2rem) * var(--stage-aspect-ratio)));
 }
 
 .stage > canvas {
@@ -224,39 +203,10 @@ body.editor-docked .stage {
 .drawer-panel {
   display: flex;
   flex-direction: column;
+  inline-size: 100%;
+  max-inline-size: none;
   min-height: 100%;
-}
-
-body.editor-docked .mascot-app .l-aside {
-  border: 1px solid var(--vf-color-border-default);
-  border-radius: 0.75rem;
-  bottom: 1rem;
-  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.38);
-  overflow: hidden;
-  position: fixed;
-  right: 1rem;
-  top: 1rem;
-  width: calc(var(--editor-panel-space) - 2rem);
-  z-index: 105;
-}
-
-body.editor-docked .mascot-app .l-aside.is-collapsed {
-  pointer-events: auto;
-  transform: none;
-  visibility: visible;
-}
-
-body.editor-docked .drawer-panel {
-  height: 100%;
-  min-height: 100%;
-}
-
-.drawer-panel__content {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  padding-bottom: 0;
-  padding-top: 0;
+  resize: none;
 }
 
 .slider-pair input[type="range"] {
@@ -267,19 +217,6 @@ body.editor-docked .drawer-panel {
 .slider-pair .p-slider__input {
   flex: 0 0 auto;
   inline-size: 4.5rem;
-}
-
-.drawer-content {
-  display: grid;
-  gap: 0.75rem;
-  max-width: none;
-  padding-bottom: 1rem;
-  padding-top: 1rem;
-  width: 100%;
-}
-
-.u-fixed-width.drawer-content {
-  max-width: none;
 }
 
 .preset-panel-content,
@@ -505,10 +442,10 @@ body.editor-docked .drawer-panel {
   }
 
   .stage {
-    width: min(calc(100vw - 1.5rem), calc((100svh - 4.5rem) * 1.7777778));
+    width: min(100%, calc((100dvh - 1.5rem) * var(--stage-aspect-ratio)));
   }
 
   .viewer-panel__content {
-    padding: 3rem 0.75rem 0.75rem;
+    padding-block: 3rem 0.75rem;
   }
 }

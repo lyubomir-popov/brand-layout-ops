@@ -3542,6 +3542,12 @@ function cycleGuideMode() {
 function setDrawerOpen(isOpen: boolean) {
   const toggleBtn = $<HTMLElement>("[data-drawer-toggle]");
   const aside = $<HTMLElement>("[data-control-panel]");
+  if (document.body.classList.contains("editor-docked")) {
+    aside?.classList.remove("is-collapsed");
+    toggleBtn?.setAttribute("aria-expanded", "true");
+    document.body.classList.remove("drawer-open");
+    return;
+  }
 
   if (isOpen) {
     aside?.classList.remove("is-collapsed");
@@ -3948,12 +3954,25 @@ function setupButtons() {
 // ─── Window resize ───────────────────────────────────────────────────
 
 function setupResize() {
+  const appShell = document.querySelector<HTMLElement>(".mascot-app");
+  const aside = $<HTMLElement>("[data-control-panel]");
+  const toggleBtn = $<HTMLElement>("[data-drawer-toggle]");
+
   function checkDock() {
-    if (window.innerWidth >= 1200) {
-      document.body.classList.add("editor-docked");
-    } else {
-      document.body.classList.remove("editor-docked");
+    const isDocked = window.innerWidth >= 1200;
+    document.body.classList.toggle("editor-docked", isDocked);
+    appShell?.classList.toggle("has-pinned-aside", isDocked);
+    aside?.classList.toggle("is-pinned", isDocked);
+
+    if (isDocked) {
+      aside?.classList.remove("is-collapsed");
+      document.body.classList.remove("drawer-open");
+      toggleBtn?.setAttribute("aria-expanded", "true");
+      return;
     }
+
+    aside?.classList.add("is-collapsed");
+    toggleBtn?.setAttribute("aria-expanded", "false");
   }
   checkDock();
   window.addEventListener("resize", checkDock);

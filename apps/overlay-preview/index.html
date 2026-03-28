@@ -6,20 +6,18 @@
   <meta name="theme-color" content="#202020">
   <title>Brand Layout Ops Preview</title>
 </head>
-<body class="vr-theme is-dark" style="background:#202020;">
+<body class="vr-theme is-dark">
   <button class="p-button is-dense drawer-toggle" type="button" data-drawer-toggle aria-expanded="false" aria-controls="control-drawer">Controls</button>
   <button class="drawer-backdrop" type="button" data-drawer-backdrop aria-label="Close controls"></button>
   <div class="l-application mascot-app is-dark">
     <main class="l-main">
-      <div class="p-panel">
-        <div class="p-panel__content viewer-panel__content">
-          <section class="stage" data-stage aria-label="Animated halo field">
-            <canvas data-stage-canvas aria-hidden="true"></canvas>
-            <canvas class="stage__text-overlay" data-text-overlay aria-hidden="true"></canvas>
-            <svg class="stage__svg-overlay" data-svg-overlay aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></svg>
-            <div class="stage__authoring-layer" data-authoring-layer></div>
-          </section>
-        </div>
+      <div class="u-fixed-width viewer-panel__content">
+        <section class="stage" data-stage aria-label="Animated halo field">
+          <canvas data-stage-canvas aria-hidden="true"></canvas>
+          <canvas class="stage__text-overlay" data-text-overlay aria-hidden="true"></canvas>
+          <svg class="stage__svg-overlay" data-svg-overlay aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></svg>
+          <div class="stage__authoring-layer" data-authoring-layer></div>
+        </section>
       </div>
     </main>
 
@@ -31,8 +29,8 @@
             <button class="p-button--base is-dense" type="button" data-drawer-close>Close</button>
           </div>
         </div>
-        <div class="p-panel__content drawer-panel__content">
-          <div class="u-fixed-width drawer-content">
+        <div class="p-panel__content">
+          <div class="u-fixed-width">
             <div class="config-sections" data-config-editor></div>
           </div>
         </div>

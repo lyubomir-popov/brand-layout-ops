@@ -69,6 +69,7 @@ All scoped under `@brand-layout-ops/`.
 - Profile-switch overlay carryover and frame resync now also route through shared overlay-layout helpers instead of preview-local sync logic in `main.ts`
 - MP4 export verification now covers both straight encode and fade-in/fade-out flags against a real 48-frame headless export on Windows
 - The preview control surface now imports the sibling `portable-vertical-rhythm` package instead of `vanilla-framework`, and Halo Field range controls render as real themed sliders again rather than bare native thumbs
+- The preview shell now uses `portable-vertical-rhythm`'s pinned-aside application layout with a 30rem dock cap instead of preview-local reserved-width dock CSS, and the stage is no longer wrapped in a fixed-width panel shell
 - The preview config editor now builds its accordion from a keyed, ordered registry of section definitions with section-level post-render hooks instead of one fixed append sequence plus hardcoded follow-up wiring, as the next step back toward operator-registered control surfaces
 - The shared keyed section-registry primitive now lives in `packages/parameter-ui/src/index.ts` instead of `main.ts`, so future operator panels can register through shared parameter-surface infrastructure rather than preview-local maps
 - Overlay selection now starts empty and clears when the selected element disappears, so resize handles only arm after an explicit user selection instead of always falling back to another field
@@ -130,6 +131,7 @@ All scoped under `@brand-layout-ops/`.
   - Move remaining source-default, export-state, and scene-family document rules toward shared layout or operator paths where parity permits
   - Replace preview-owned section definitions with package-registered or manifest-driven panels on top of the shared `parameter-ui` registry instead of expanding bespoke shell code indefinitely
   - Continue trimming preview-local control-surface CSS so `portable-vertical-rhythm` remains the styling owner and only genuinely preview-specific rules stay in `apps/overlay-preview/src/styles.scss`
+  - Keep the docked shell on PVR's app-shell primitives; avoid reintroducing preview-local reserved-width or fixed-position aside hacks now that the 30rem docked panel cap lives in the shared layout path
 
 ### D. UI parity quick wins (done)
 
