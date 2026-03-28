@@ -52,6 +52,7 @@ import {
   normalizeOverlayParamsForEditing,
   normalizeOverlayTextFieldOffsetBaselines,
   OVERLAY_LAYOUT_OPERATOR_KEY,
+  resolveOverlayContentFormatKeyForProfile,
   resolveOverlayTextValue,
   setOverlayTextValue,
   syncOverlayParamsFrameToProfile,
@@ -185,30 +186,6 @@ function cloneHaloConfigByProfile(
   haloConfigByProfile: Record<string, HaloFieldConfig>
 ): Record<string, HaloFieldConfig> {
   return JSON.parse(JSON.stringify(haloConfigByProfile));
-}
-
-function resolveContentFormatKeyForProfile(
-  profileKey: string,
-  contentFormatKeyByProfile: ProfileContentFormatMap,
-  profileFormatBuckets: ProfileFormatBuckets,
-  fallbackFormatKey: string = INITIAL_FORMAT_KEY
-): string {
-  const profileBucket = profileFormatBuckets[profileKey] ?? {};
-  const profileBucketKeys = Object.keys(profileBucket);
-  const candidates = [
-    contentFormatKeyByProfile[profileKey],
-    fallbackFormatKey,
-    ...profileBucketKeys,
-    OVERLAY_CONTENT_FORMAT_ORDER[0]
-  ];
-
-  for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.length > 0 && OVERLAY_CONTENT_FORMATS[candidate]) {
-      return candidate;
-    }
-  }
-
-  return OVERLAY_CONTENT_FORMAT_ORDER[0];
 }
 
 function createDebugHaloFieldConfig(baseConfig: HaloFieldConfig = createDefaultHaloFieldConfig()): HaloFieldConfig {
@@ -793,7 +770,7 @@ function switchOutputProfile(profileKey: string) {
   persistActiveHaloConfig();
   state.contentFormatKeyByProfile[state.outputProfileKey] = state.contentFormatKey;
   state.outputProfileKey = profileKey;
-  state.contentFormatKey = resolveContentFormatKeyForProfile(
+  state.contentFormatKey = resolveOverlayContentFormatKeyForProfile(
     profileKey,
     state.contentFormatKeyByProfile,
     state.profileFormatBuckets,
@@ -1000,7 +977,7 @@ function loadPreset(preset: Preset) {
   state.contentFormatKeyByProfile = cloneProfileContentFormatMap(preset.contentFormatKeyByProfile ?? {
     [state.outputProfileKey]: preset.contentFormatKey ?? INITIAL_FORMAT_KEY
   });
-  state.contentFormatKey = resolveContentFormatKeyForProfile(
+  state.contentFormatKey = resolveOverlayContentFormatKeyForProfile(
     state.outputProfileKey,
     state.contentFormatKeyByProfile,
     state.profileFormatBuckets,
@@ -1076,7 +1053,7 @@ function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnaps
   }
 
   for (const profileKey of Object.keys(profileFormatBuckets)) {
-    contentFormatKeyByProfile[profileKey] = resolveContentFormatKeyForProfile(
+    contentFormatKeyByProfile[profileKey] = resolveOverlayContentFormatKeyForProfile(
       profileKey,
       contentFormatKeyByProfile,
       profileFormatBuckets,
@@ -1084,7 +1061,7 @@ function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnaps
     );
   }
 
-  const activeContentFormatKey = resolveContentFormatKeyForProfile(
+  const activeContentFormatKey = resolveOverlayContentFormatKeyForProfile(
     outputProfileKey,
     contentFormatKeyByProfile,
     profileFormatBuckets,
@@ -1164,7 +1141,7 @@ function applySourceDefaultSnapshot(snapshot: SourceDefaultSnapshot) {
   state.outputProfileKey = snapshot.outputProfileKey;
   state.profileFormatBuckets = cloneProfileFormatBuckets(snapshot.profileFormatBuckets);
   state.contentFormatKeyByProfile = cloneProfileContentFormatMap(snapshot.contentFormatKeyByProfile);
-  state.contentFormatKey = resolveContentFormatKeyForProfile(
+  state.contentFormatKey = resolveOverlayContentFormatKeyForProfile(
     state.outputProfileKey,
     state.contentFormatKeyByProfile,
     state.profileFormatBuckets,

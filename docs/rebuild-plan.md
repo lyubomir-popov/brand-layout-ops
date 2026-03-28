@@ -200,7 +200,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 
 2. **Content format system (PARTIAL).**
 	Reference has 2 overlay content formats: `generic_social` (3 fields: body_intro, detail_primary, detail_secondary) and `speaker_highlight` (3 fields: session_title, speaker_name, speaker_role). Each field has id, label, style, legacy_slot, and aliases for CSV column matching. Per-format field layout overrides (keyline_index, column_span, y_row_index, y_offset_baselines) are stored in format buckets per profile. Format switching syncs runtime fields to/from the active format bucket.
-	Current repo now has format specs, per-format buckets, operator-side CSV alias matching, and shared operator-owned seeded field layouts, logo defaults, sample CSV drafts, and default overlay-param generation, but it still lacks reference-grade source-default bucket writeback and per-format pending CSV edit staging.
+	Current repo now has format specs, per-format buckets, operator-side CSV alias matching, shared operator-owned seeded field layouts, logo defaults, sample CSV drafts, default overlay-param generation, and shared profile-scoped content-format resolution, but it still lacks reference-grade source-default bucket writeback and per-format pending CSV edit staging.
 	Reference files: `config-schema.js` (format specs, alias matching, format bucket sync), `default-config-source.js` (per-profile overlay_content_formats).
 
 3. **Text style parity (DONE).**

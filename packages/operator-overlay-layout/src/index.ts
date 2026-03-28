@@ -367,6 +367,30 @@ export function getOverlayStyleDisplayLabel(styleKey: string): string {
   return OVERLAY_TEXT_STYLE_DISPLAY_LABELS[styleKey] ?? styleKey;
 }
 
+export function resolveOverlayContentFormatKeyForProfile(
+  profileKey: string,
+  contentFormatKeyByProfile: Record<string, string>,
+  profileFormatBuckets: Record<string, Record<string, unknown>>,
+  fallbackFormatKey: string = OVERLAY_CONTENT_FORMAT_ORDER[0]
+): string {
+  const profileBucket = profileFormatBuckets[profileKey] ?? {};
+  const profileBucketKeys = Object.keys(profileBucket);
+  const candidates = [
+    contentFormatKeyByProfile[profileKey],
+    fallbackFormatKey,
+    ...profileBucketKeys,
+    OVERLAY_CONTENT_FORMAT_ORDER[0]
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.length > 0 && OVERLAY_CONTENT_FORMATS[candidate]) {
+      return candidate;
+    }
+  }
+
+  return OVERLAY_CONTENT_FORMAT_ORDER[0];
+}
+
 export function buildOverlayVariableItemLabel(styleKey: string, ordinal: number, total: number): string {
   const styleLabel = getOverlayStyleDisplayLabel(styleKey);
   return total > 1 ? `${styleLabel} ${ordinal}` : styleLabel;
