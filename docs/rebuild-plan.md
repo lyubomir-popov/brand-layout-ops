@@ -120,7 +120,8 @@ Port the current interaction model into `overlay-interaction` and `parameter-ui`
 	Near-term persistence rule: the active background operator, its typed parameters, and the first saved operator handoff are now document-owned state through shared `project.sceneFamilyConfigs` plus `project.backgroundGraph`, so save/save-as, duplicate, reopen, and source-default writeback preserve whether the document is using halo, phyllotaxis, fuzzy-boids, scatter, or a future solver instead of rebuilding that choice from preview-local state.
 - [x] Baseline guide showing at first baseline of text field, to aid alignment across columns.
 - [x] Text-box inset parity: text fields now clamp their first baseline to an ascent-aware minimum offset so the first line stays visibly inside the field bounds while remaining baseline-grid aligned.
-- [ ] Output-profile parity: named screen sizes, seeded safe areas, and reference frame-rate defaults.
+- [x] Output-profile parity: named screen sizes, seeded safe areas, and reference frame-rate defaults.
+	Shared `OUTPUT_PROFILES` now match the reference app's named size list, seeded safe areas, and default frame rates, and the authored source-default document now carries those same safe-area values for the live startup path. The portrait-vs-landscape startup default remains a separate product choice rather than part of this parity checkbox.
 - [ ] Overlay content-format parity: `generic_social` and `speaker_highlight` field buckets with alias-based CSV matching.
 - [ ] Selected-element authoring parity: add text blocks, style assignment, and richer selected-item controls.
 - [x] Preset workflow parity: save, update, delete, import, and export presets.
@@ -320,6 +321,7 @@ It reflects the current repo after the overlay-preview rebuild, reference-doc re
 	`core-types` now defines the 5 reference profile keys plus dimensions, safe areas, and default frame rates.
 	The preview shell now preserves overlay params per output profile instead of mutating one shared document when the profile changes.
 	The shared overlay-layout path now also owns profile-switch frame resync, carried-over heading or shared overlay-state normalization between per-format buckets, and active bucket selection normalization for presets and source-default snapshots, instead of leaving those document rules in preview-only helpers.
+	Landed follow-up: the shared `OUTPUT_PROFILES` constants and the authored source-default document now also match the reference safe-area defaults for `instagram_1080x1350`, `screen_3840x2160`, and `tablet_2560x1600`, while the default frame rates were already aligned.
 	Remaining gap: profile ownership still does not extend to full reference-style motion and mascot defaults the way the reference app does, even though source-default persistence now round-trips shared document project metadata and background-operator configs.
 
 2. **Content-format structure exists, and the preview now keeps per-format buckets inside each profile.**

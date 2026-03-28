@@ -58,6 +58,7 @@ If you want the shortest high-level snapshot, read this file first.
 - Logo intrinsic aspect ratio loading via `Image.naturalWidth/naturalHeight`
 - Column gutter, safe area override inputs, release label and screensaver pulse controls
 - Per-profile defaults: safe area and halo center Y offset plus shared overlay-layout-owned grid and font-size defaults
+- Shared output-profile defaults now match the reference app's named sizes, seeded safe areas, and default frame rates, and the authored source-default document carries the same safe-area values for the live startup path
 - Canvas scale-to-fit with `--stage-aspect-ratio` CSS variable (supports portrait/landscape)
 - Accordion mutual exclusion (one open section at a time)
 - Text north-corner resize now snaps vertically on the baseline grid instead of discarding vertical drag
@@ -182,7 +183,7 @@ Items EQ-1 through EQ-12 are the user-directed priorities in dependency order:
 
 ### Immediate next steps
 
-**Next parity slice** — close the remaining output-profile parity gap: verify the named sizes, seeded safe areas, and reference frame-rate defaults against the `racoon-anim` reference app, then move any remaining preview-local mismatches into shared overlay defaults instead of burying them in shell state.
+**Next parity slice** — close the remaining overlay content-format parity gap: re-audit `generic_social` plus `speaker_highlight` against the `racoon-anim` reference app, then decide whether the missing parity is only format exposure or whether more of the seeded bucket data still needs to move back into the shared overlay defaults.
 
 **After EQ-12** — decide whether the background preview adapter should call further into shared graph evaluation primitives or continue as a thin typed renderer adapter over the persisted chain.
 
