@@ -1,5 +1,5 @@
-/**
- * main.ts — Overlay-preview application entry point.
+﻿/**
+ * main.ts â€” Overlay-preview application entry point.
  *
  * Architecture:
  * 1. Three.js WebGL canvas renders the halo field animation (bottom layer)
@@ -80,11 +80,28 @@ import {
   type HaloFieldConfig
 } from "@brand-layout-ops/operator-halo-field";
 import {
+  buildAccordionSectionEl,
+  createCheckboxFormGroup,
+  createCheckboxInput,
+  createFormGroup,
+  createNumberInput,
   createParameterSectionRegistry,
+  createReadonlySpan,
+  createSelectInput,
+  createSliderInput,
+  setupAccordion,
+  wrapCol,
   type ParameterSectionDefinition
 } from "@brand-layout-ops/parameter-ui";
 
 import { createHaloRenderer, type HaloRenderer } from "./halo-renderer.js";
+import {
+  createGuideMarkup,
+  createLogoMarkup,
+  createSafeAreaMarkup,
+  createTextMarkup,
+  escapeXml
+} from "./svg-overlay-adapter.js";
 import {
   buildSceneFamilyPreviewState,
   clearSceneFamilyPreviewCanvas,
@@ -125,7 +142,7 @@ import {
   renderDocumentWorkspaceUi
 } from "./document-workspace.js";
 
-// ─── Types ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type Selection =
   | { kind: "text"; id: string }
@@ -153,13 +170,13 @@ type ConfigSectionFactory = () => HTMLElement;
 
 type ConfigSectionDefinition = ParameterSectionDefinition;
 
-// ─── Operator registry ────────────────────────────────────────────────
+// â”€â”€â”€ Operator registry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const PREVIEW_NODE_ID = "overlay-preview";
 const registry = new OperatorRegistry();
 registry.register(createOverlayLayoutOperator());
 
-// ─── State ────────────────────────────────────────────────────────────
+// â”€â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface PreviewState {
   params: OverlayLayoutOperatorParams;
@@ -352,7 +369,7 @@ let logoIntrinsicHeight = 0;
 // Sync halo config to the initial profile
 syncHaloConfigToProfile(state.outputProfileKey);
 
-// ─── Logo intrinsic dimension loading ─────────────────────────────────
+// â”€â”€â”€ Logo intrinsic dimension loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function loadLogoIntrinsicDimensions(assetPath: string): Promise<void> {
   return new Promise<void>((resolve) => {
@@ -386,7 +403,7 @@ let authoringSelectedLabel: HTMLElement | null = null;
 let authoringBaselineGuide: HTMLElement | null = null;
 let authoringHandles: Map<ResizeEdge, HTMLElement> = new Map();
 
-// ─── DOM references ───────────────────────────────────────────────────
+// â”€â”€â”€ DOM references â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const $ = <T extends Element>(sel: string): T | null => document.querySelector<T>(sel);
 
@@ -407,7 +424,7 @@ function getDocumentSummaryEl(): HTMLElement | null { return $("[data-document-s
 function getDocumentStatusEl(): HTMLElement | null { return $("[data-document-status]"); }
 function getDocumentRecentListEl(): HTMLElement | null { return $("[data-document-recent-list]"); }
 
-// ─── Helper utilities ─────────────────────────────────────────────────
+// â”€â”€â”€ Helper utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -538,15 +555,6 @@ function updateDocumentUi(): void {
   });
 }
 
-function escapeXml(s: string): string {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 function getCsvDraftBucketKey(
   profileKey: string = state.outputProfileKey,
   formatKey: string = state.contentFormatKey
@@ -578,7 +586,7 @@ function setStagedCsvDraft(
   state.pendingCsvDraftsByBucket[bucketKey] = draft;
 }
 
-// ─── Operator graph evaluation ────────────────────────────────────────
+// â”€â”€â”€ Operator graph evaluation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function buildGraph(params: OverlayLayoutOperatorParams): OperatorGraph {
   return {
@@ -602,7 +610,7 @@ function getEffectiveParams(): OverlayLayoutOperatorParams {
   });
 }
 
-// ─── Content source accessors ─────────────────────────────────────────
+// â”€â”€â”€ Content source accessors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function getContentSource(): OverlayContentSource {
   return state.params.contentSource === "csv" ? "csv" : "inline";
@@ -827,7 +835,7 @@ function createOverlayItemActionRow(): HTMLElement {
   return actions;
 }
 
-// ─── State mutators ───────────────────────────────────────────────────
+// â”€â”€â”€ State mutators â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function updateTextField(
   id: string,
@@ -916,7 +924,7 @@ function discardStagedCsvDraft() {
   markDocumentDirty();
 }
 
-// ─── Profile / format / preset ────────────────────────────────────────
+// â”€â”€â”€ Profile / format / preset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function getDefaultDocumentTargetLabel(profileKey: string): string {
   return OUTPUT_PROFILES[profileKey]?.label ?? profileKey;
@@ -1552,7 +1560,7 @@ function getUbuntuSummitSceneDescriptor() {
   return sceneDescriptor;
 }
 
-// ─── Halo field rendering (Three.js) ──────────────────────────────────
+// â”€â”€â”€ Halo field rendering (Three.js) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function initHaloRenderer() {
   const canvas = getCanvasEl();
@@ -1713,7 +1721,7 @@ function togglePlayback() {
   setPlaybackPlaying(!state.isPlaying);
 }
 
-// ─── SVG overlay rendering (text, logo, guides) ──────────────────────
+// â”€â”€â”€ SVG overlay rendering (text, logo, guides) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function renderSvgOverlay(scene: LayerScene) {
   const svg = getSvgOverlay();
@@ -1727,156 +1735,29 @@ function renderSvgOverlay(scene: LayerScene) {
 
   svg.style.display = "block";
 
-  const { widthPx, heightPx } = state.params.frame;
-  svg.setAttribute("viewBox", `0 0 ${widthPx} ${heightPx}`);
+  const frame = state.params.frame;
+  svg.setAttribute("viewBox", `0 0 ${frame.widthPx} ${frame.heightPx}`);
 
   const styleByKey = new Map(state.params.textStyles.map(s => [s.key, s]));
   const parts: string[] = [];
 
   if (state.guideMode !== "off") {
-    parts.push(createGuideMarkup(scene.grid));
+    parts.push(createGuideMarkup(scene.grid, frame, state.guideMode));
   }
 
-  parts.push(createSafeAreaMarkup());
+  parts.push(createSafeAreaMarkup(frame, state.params.safeArea, state.haloConfig.composition.background_color));
 
   for (const text of scene.texts) {
     const style = styleByKey.get(text.styleKey);
     if (style) parts.push(createTextMarkup(text, style));
   }
 
-  parts.push(createLogoMarkup());
+  parts.push(createLogoMarkup(state.params.logo));
 
   svg.innerHTML = parts.join("");
 }
 
-function createSafeAreaMarkup(): string {
-  const { widthPx, heightPx } = state.params.frame;
-  const sa = state.params.safeArea;
-  if (!sa) return "";
-
-  const top = sa.top ?? 0;
-  const right = sa.right ?? 0;
-  const bottom = sa.bottom ?? 0;
-  const left = sa.left ?? 0;
-
-  if (top <= 0 && right <= 0 && bottom <= 0 && left <= 0) return "";
-
-  const bgColor = state.haloConfig.composition.background_color || "#202020";
-  const bars: string[] = [];
-
-  if (top > 0) bars.push(`<rect x="0" y="0" width="${widthPx}" height="${top}" fill="${bgColor}" opacity="0.85"/>`);
-  if (bottom > 0) bars.push(`<rect x="0" y="${heightPx - bottom}" width="${widthPx}" height="${bottom}" fill="${bgColor}" opacity="0.85"/>`);
-  if (left > 0) bars.push(`<rect x="0" y="${top}" width="${left}" height="${heightPx - top - bottom}" fill="${bgColor}" opacity="0.85"/>`);
-  if (right > 0) bars.push(`<rect x="${widthPx - right}" y="${top}" width="${right}" height="${heightPx - top - bottom}" fill="${bgColor}" opacity="0.85"/>`);
-
-  return `<g class="safe-area-fill">${bars.join("")}</g>`;
-}
-
-function createGuideMarkup(grid: LayoutGridMetrics): string {
-  if (state.guideMode === "off") return "";
-
-  const { widthPx, heightPx } = state.params.frame;
-  const lines: string[] = [];
-  const guideColor = "rgba(255,255,255,0.12)";
-  const accentColor = "rgba(255,255,255,0.22)";
-  const labelColor = "rgba(255,255,255,0.35)";
-  const marginColor = "rgba(235,180,65,0.06)";
-  const columnFillColor = "rgba(100,160,255,0.04)";
-  const boundaryColor = "rgba(255,255,255,0.18)";
-
-  // Content area boundary
-  const cW = grid.contentRightPx - grid.contentLeftPx;
-  const cH = grid.contentBottomPx - grid.contentTopPx;
-  if (cW > 0 && cH > 0) {
-    lines.push(`<rect x="${grid.contentLeftPx}" y="${grid.contentTopPx}" width="${cW}" height="${cH}" fill="none" stroke="${boundaryColor}" stroke-width="0.5" stroke-dasharray="6 4"/>`);
-  }
-
-  // Margin zones (tinted overlays)
-  if (grid.topMarginPx > 0) {
-    lines.push(`<rect x="${grid.layoutLeftPx}" y="${grid.layoutTopPx}" width="${grid.layoutRightPx - grid.layoutLeftPx}" height="${grid.topMarginPx}" fill="${marginColor}"/>`);
-    lines.push(`<text x="${grid.contentLeftPx + 4}" y="${grid.layoutTopPx + grid.topMarginPx - 4}" fill="${labelColor}" font-size="9" font-family="monospace" opacity="0.6">margin-top</text>`);
-  }
-  if (grid.bottomMarginPx > 0) {
-    lines.push(`<rect x="${grid.layoutLeftPx}" y="${grid.contentBottomPx}" width="${grid.layoutRightPx - grid.layoutLeftPx}" height="${grid.bottomMarginPx}" fill="${marginColor}"/>`);
-  }
-  if (grid.leftMarginPx > 0) {
-    lines.push(`<rect x="${grid.layoutLeftPx}" y="${grid.contentTopPx}" width="${grid.leftMarginPx}" height="${cH}" fill="${marginColor}"/>`);
-  }
-  if (grid.rightMarginPx > 0) {
-    lines.push(`<rect x="${grid.contentRightPx}" y="${grid.contentTopPx}" width="${grid.rightMarginPx}" height="${cH}" fill="${marginColor}"/>`);
-  }
-
-  // Column fills and keylines
-  for (let ki = 1; ki <= grid.columnCount; ki++) {
-    const x = getKeylineXPx(grid, ki);
-    const spanW = getColumnSpanWidthPx(grid, ki, 1);
-
-    // Column fill
-    if (spanW > 0) {
-      lines.push(`<rect x="${x}" y="${grid.contentTopPx}" width="${spanW}" height="${cH}" fill="${columnFillColor}"/>`);
-    }
-
-    // Keyline (left edge of column)
-    lines.push(`<line x1="${x}" y1="${grid.contentTopPx}" x2="${x}" y2="${grid.contentBottomPx}" stroke="${accentColor}" stroke-width="1"/>`);
-    lines.push(`<text x="${x + 4}" y="${grid.contentTopPx + 12}" fill="${labelColor}" font-size="10" font-family="monospace">K${ki}</text>`);
-
-    // Right edge of column (dashed)
-    const endX = x + spanW;
-    if (Math.abs(endX - x) > 2) {
-      lines.push(`<line x1="${endX}" y1="${grid.contentTopPx}" x2="${endX}" y2="${grid.contentBottomPx}" stroke="${guideColor}" stroke-width="0.5" stroke-dasharray="4 4"/>`);
-    }
-  }
-
-  // Row bands
-  if (grid.rowCount > 0) {
-    const rowStepPx = grid.rowHeightPx + grid.rowGutterPx;
-    for (let ri = 0; ri < grid.rowCount; ri++) {
-      const y = grid.contentTopPx + ri * rowStepPx;
-      lines.push(`<rect x="${grid.contentLeftPx}" y="${y}" width="${cW}" height="${grid.rowHeightPx}" fill="rgba(255,255,255,0.03)" stroke="${guideColor}" stroke-width="0.5"/>`);
-      // Row gutter
-      if (ri < grid.rowCount - 1 && grid.rowGutterPx > 0) {
-        const gutterY = y + grid.rowHeightPx;
-        lines.push(`<rect x="${grid.contentLeftPx}" y="${gutterY}" width="${cW}" height="${grid.rowGutterPx}" fill="rgba(255,100,100,0.03)"/>`);
-      }
-    }
-  }
-
-  // Baseline grid
-  if (state.guideMode === "baseline" && grid.baselineStepPx > 0) {
-    for (let y = grid.contentTopPx; y < grid.contentBottomPx; y += grid.baselineStepPx) {
-      lines.push(`<line x1="${grid.contentLeftPx}" y1="${y}" x2="${grid.contentRightPx}" y2="${y}" stroke="rgba(255,79,79,0.15)" stroke-width="0.5"/>`);
-    }
-  }
-
-  return `<g class="guides">${lines.join("")}</g>`;
-}
-
-function createTextMarkup(text: ResolvedTextPlacement, style: TextStyleSpec): string {
-  const displayLines = text.wrappedLines;
-  const fontWeight = style.fontWeight ?? 400;
-
-  const tspans = displayLines.map((line, i) =>
-    `<tspan x="${text.anchorXPx}" dy="${i === 0 ? 0 : style.lineHeightPx}">${escapeXml(line)}</tspan>`
-  ).join("");
-
-  return `<g data-field-id="${escapeXml(text.id)}">
-    <text x="${text.anchorXPx}" y="${text.anchorBaselineYPx}" fill="#ffffff" font-size="${style.fontSizePx}" font-weight="${fontWeight}" font-family="'Ubuntu Sans', 'Ubuntu', sans-serif">
-      ${tspans}
-    </text>
-  </g>`;
-}
-
-function createLogoMarkup(): string {
-  const logo = state.params.logo;
-  if (!logo) return "";
-
-  const assetHref = logo.assetPath ?? "";
-  return `<g data-logo-id="${escapeXml(logo.id ?? "logo")}">
-    <image href="${escapeXml(assetHref)}" x="${logo.xPx}" y="${logo.yPx}" width="${logo.widthPx}" height="${logo.heightPx}"/>
-  </g>`;
-}
-
-// ─── Full render pipeline ─────────────────────────────────────────────
+// â”€â”€â”€ Full render pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function renderStage() {
   const myToken = ++renderToken;
@@ -1894,7 +1775,7 @@ async function renderStage() {
   renderAuthoringUI();
 }
 
-// ─── Aside panel: output profiles ─────────────────────────────────────
+// â”€â”€â”€ Aside panel: output profiles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function buildOutputProfileOptions() {
   const container = getOutputProfileOptions();
@@ -1999,9 +1880,9 @@ function buildOutputProfileOptions() {
     const metaSpan = document.createElement("span");
     metaSpan.className = "preset-radio-status";
     const profileMeta = profile
-      ? `${profile.label} • ${profile.widthPx}x${profile.heightPx}`
+      ? `${profile.label} â€¢ ${profile.widthPx}x${profile.heightPx}`
       : target.outputProfileKey;
-    metaSpan.textContent = radio.checked ? `${profileMeta} • Active` : profileMeta;
+    metaSpan.textContent = radio.checked ? `${profileMeta} â€¢ Active` : profileMeta;
 
     row.append(radio, nameSpan, metaSpan);
     list.append(row);
@@ -2032,7 +1913,7 @@ function buildOutputProfileOptions() {
       getUnusedDocumentTargetProfileKeys(activeTarget.outputProfileKey).map((profileKey) => {
         const profile = OUTPUT_PROFILES[profileKey];
         return {
-          label: profile ? `${profile.label} • ${profile.widthPx}x${profile.heightPx}` : profileKey,
+          label: profile ? `${profile.label} â€¢ ${profile.widthPx}x${profile.heightPx}` : profileKey,
           value: profileKey
         };
       }),
@@ -2048,7 +1929,7 @@ function buildOutputProfileOptions() {
   container.append(details);
 }
 
-// ─── Aside panel: preset tabs ─────────────────────────────────────────
+// â”€â”€â”€ Aside panel: preset tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function buildPresetTabs() {
   const container = getPresetTabs();
@@ -2093,7 +1974,7 @@ function buildPresetTabs() {
     const statusSpan = document.createElement("span");
     statusSpan.className = "preset-radio-status";
     if (preset.id === state.activePresetId) {
-      statusSpan.textContent = isActivePresetDirty() ? "Active • Dirty" : "Active";
+      statusSpan.textContent = isActivePresetDirty() ? "Active â€¢ Dirty" : "Active";
     } else {
       statusSpan.textContent = "";
     }
@@ -2118,10 +1999,10 @@ function updatePresetToolbarState() {
   if (deleteButton) deleteButton.disabled = !hasActivePreset;
 }
 
-// ─── Aside panel: config editor ───────────────────────────────────────
+// â”€â”€â”€ Aside panel: config editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function buildPlaybackExportSection(): HTMLElement {
-  const { root, body } = buildSectionEl("Playback & Export");
+  const { root, body } = buildAccordionSectionEl("Playback & Export");
 
   const row = document.createElement("div");
   row.className = "row";
@@ -2209,7 +2090,7 @@ function buildPlaybackExportSection(): HTMLElement {
 }
 
 function buildDocumentSection(): HTMLElement {
-  const { root, body } = buildSectionEl("Document");
+  const { root, body } = buildAccordionSectionEl("Document");
 
   const helpText = document.createElement("p");
   helpText.className = "p-form-help-text u-no-margin--bottom";
@@ -2271,7 +2152,7 @@ function buildDocumentSection(): HTMLElement {
 }
 
 function buildOutputFormatSection(): HTMLElement {
-  const { root, body } = buildSectionEl("Output Format");
+  const { root, body } = buildAccordionSectionEl("Output Format");
 
   const helpText = document.createElement("p");
   helpText.className = "p-form-help-text u-no-margin--bottom";
@@ -2286,7 +2167,7 @@ function buildOutputFormatSection(): HTMLElement {
 }
 
 function buildPresetsSection(): HTMLElement {
-  const { root, body } = buildSectionEl("Presets");
+  const { root, body } = buildAccordionSectionEl("Presets");
 
   const helpText = document.createElement("p");
   helpText.className = "p-form-help-text u-no-margin--bottom";
@@ -2428,213 +2309,6 @@ function buildConfigEditor() {
   }
 }
 
-/* shared form helpers */
-
-function createFormGroup(label: string, control: HTMLElement): HTMLElement {
-  const group = document.createElement("div");
-  group.className = "p-form__group";
-
-  const lbl = document.createElement("label");
-  lbl.className = "p-form__label u-no-margin--bottom";
-  lbl.textContent = label;
-
-  const ctrl = document.createElement("div");
-  ctrl.className = "p-form__control";
-  ctrl.append(control);
-
-  group.append(lbl, ctrl);
-  return group;
-}
-
-function createCheckboxFormGroup(
-  label: string,
-  checked: boolean,
-  onChange: (v: boolean) => void,
-  configureInput?: (input: HTMLInputElement) => void
-): HTMLElement {
-  const group = document.createElement("div");
-  group.className = "p-form__group p-form__group--checkbox";
-
-  const ctrl = document.createElement("div");
-  ctrl.className = "p-form__control";
-
-  const checkbox = document.createElement("div");
-  checkbox.className = "p-checkbox";
-
-  const inputId = `preview-checkbox-${++checkboxFieldIdCounter}`;
-  const input = createCheckboxInput(checked, onChange);
-  input.id = inputId;
-  input.className = "p-checkbox__input";
-  configureInput?.(input);
-
-  const inputLabel = document.createElement("label");
-  inputLabel.className = "p-checkbox__label";
-  inputLabel.htmlFor = inputId;
-  inputLabel.textContent = label;
-
-  checkbox.append(input, inputLabel);
-  ctrl.append(checkbox);
-  group.append(ctrl);
-  return group;
-}
-
-function createNumberInput(
-  value: number,
-  opts: { min?: number; max?: number; step?: number },
-  onChange: (v: number) => void
-): HTMLInputElement {
-  const input = document.createElement("input");
-  input.type = "number";
-  input.className = "p-form-validation__input vr-input--number is-dense";
-  input.value = String(value);
-  if (opts.min !== undefined) input.min = String(opts.min);
-  if (opts.max !== undefined) input.max = String(opts.max);
-  if (opts.step !== undefined) input.step = String(opts.step);
-  input.addEventListener("change", () => {
-    const v = parseFloat(input.value);
-    if (Number.isFinite(v)) onChange(v);
-  });
-  return input;
-}
-
-function createSliderInput(
-  value: number,
-  opts: { min: number; max: number; step: number },
-  onChange: (v: number) => void
-): HTMLElement {
-  const wrap = document.createElement("div");
-  wrap.className = "slider-pair slider-pair--stacked p-slider__wrapper";
-
-  const range = document.createElement("input");
-  range.type = "range";
-  range.min = String(opts.min);
-  range.max = String(opts.max);
-  range.step = String(opts.step);
-  range.value = String(value);
-
-  const num = document.createElement("input");
-  num.type = "number";
-  num.className = "p-form-validation__input p-slider__input is-dense";
-  num.min = String(opts.min);
-  num.max = String(opts.max);
-  num.step = String(opts.step);
-  num.value = String(value);
-
-  range.addEventListener("input", () => {
-    const v = parseFloat(range.value);
-    if (Number.isFinite(v)) { num.value = String(v); onChange(v); }
-  });
-  num.addEventListener("change", () => {
-    const v = parseFloat(num.value);
-    if (Number.isFinite(v)) { range.value = String(v); onChange(v); }
-  });
-
-  wrap.append(range, num);
-  return wrap;
-}
-
-function createSelectInput(
-  value: string,
-  options: Array<{ label: string; value: string }>,
-  onChange: (v: string) => void
-): HTMLSelectElement {
-  const sel = document.createElement("select");
-  sel.className = "p-form-validation__input is-dense";
-  for (const opt of options) {
-    const o = document.createElement("option");
-    o.value = opt.value;
-    o.textContent = opt.label;
-    o.selected = opt.value === value;
-    sel.append(o);
-  }
-  sel.addEventListener("change", () => onChange(sel.value));
-  return sel;
-}
-
-function createCheckboxInput(checked: boolean, onChange: (v: boolean) => void): HTMLInputElement {
-  const input = document.createElement("input");
-  input.type = "checkbox";
-  input.checked = checked;
-  input.addEventListener("change", () => onChange(input.checked));
-  return input;
-}
-
-let accordionIdCounter = 0;
-let checkboxFieldIdCounter = 0;
-
-function buildSectionEl(title: string): { root: HTMLElement; body: HTMLElement } {
-  const id = `accordion-tab-${++accordionIdCounter}`;
-  const sectionId = `${id}-section`;
-
-  const root = document.createElement("li");
-  root.className = "p-accordion__group";
-
-  const heading = document.createElement("div");
-  heading.setAttribute("role", "heading");
-  heading.setAttribute("aria-level", "3");
-  heading.className = "p-accordion__heading";
-
-  const tab = document.createElement("button");
-  tab.type = "button";
-  tab.className = "p-accordion__tab";
-  tab.id = id;
-  tab.setAttribute("aria-controls", sectionId);
-  tab.setAttribute("aria-expanded", "false");
-  tab.textContent = title;
-  heading.append(tab);
-
-  const body = document.createElement("section");
-  body.className = "p-accordion__panel config-group";
-  body.id = sectionId;
-  body.setAttribute("aria-hidden", "true");
-  body.setAttribute("aria-labelledby", id);
-
-  root.append(heading, body);
-  return { root, body };
-}
-
-function setupAccordion(accordionContainer: HTMLElement) {
-  accordionContainer.addEventListener("click", (event) => {
-    const target = (event.target as HTMLElement).closest<HTMLElement>(".p-accordion__tab");
-    if (!target) return;
-
-    const panelId = target.getAttribute("aria-controls");
-    const panel = panelId ? document.getElementById(panelId) : null;
-    if (!panel) return;
-
-    const isOpen = target.getAttribute("aria-expanded") === "true";
-
-    // Mutual exclusion: close all other sections when opening one
-    if (!isOpen) {
-      accordionContainer.querySelectorAll<HTMLElement>(".p-accordion__tab").forEach((tab) => {
-        if (tab !== target) {
-          const otherPanelId = tab.getAttribute("aria-controls");
-          const otherPanel = otherPanelId ? document.getElementById(otherPanelId) : null;
-          tab.setAttribute("aria-expanded", "false");
-          otherPanel?.setAttribute("aria-hidden", "true");
-        }
-      });
-    }
-
-    target.setAttribute("aria-expanded", String(!isOpen));
-    panel.setAttribute("aria-hidden", String(isOpen));
-  });
-}
-
-function wrapCol(span: number, el: HTMLElement): HTMLElement {
-  const wrapper = document.createElement("div");
-  wrapper.className = `col-${span}`;
-  wrapper.append(el);
-  return wrapper;
-}
-
-function createReadonlySpan(value: string): HTMLElement {
-  const span = document.createElement("span");
-  span.className = "p-form-help-text";
-  span.textContent = value;
-  return span;
-}
-
 function getSelectedOverlaySectionTitle(): string {
   if (!state.selected) {
     return "Selected Element";
@@ -2664,10 +2338,10 @@ function applySelectedTextStyle(styleKey: string) {
   void renderStage();
 }
 
-// ── Content format section
+// â”€â”€ Content format section
 
 function buildContentFormatSection(): HTMLElement {
-  const { root, body } = buildSectionEl("Content Format");
+  const { root, body } = buildAccordionSectionEl("Content Format");
 
   const formatFields = document.createElement("div");
   formatFields.className = "grid-row";
@@ -2810,10 +2484,10 @@ function buildContentFormatSection(): HTMLElement {
   return root;
 }
 
-// ── Selected overlay item
+// â”€â”€ Selected overlay item
 
 function buildOverlaySection(): HTMLElement {
-  const { root, body } = buildSectionEl(getSelectedOverlaySectionTitle());
+  const { root, body } = buildAccordionSectionEl(getSelectedOverlaySectionTitle());
 
   body.append(createOverlayItemActionRow());
 
@@ -3021,10 +2695,10 @@ function buildOverlaySection(): HTMLElement {
   return root;
 }
 
-// ── Paragraph style palette
+// â”€â”€ Paragraph style palette
 
 function buildParagraphStylesSection(): HTMLElement {
-  const { root, body } = buildSectionEl("Paragraph Styles");
+  const { root, body } = buildAccordionSectionEl("Paragraph Styles");
   const selectedField = getSelectedTextField();
 
   if (!selectedField) {
@@ -3073,10 +2747,10 @@ function buildParagraphStylesSection(): HTMLElement {
   return root;
 }
 
-// ── Grid settings
+// â”€â”€ Grid settings
 
 function buildGridSection(): HTMLElement {
-  const { root, body } = buildSectionEl("Layout Grid");
+  const { root, body } = buildAccordionSectionEl("Layout Grid");
   const grid = state.params.grid;
 
   const displayFields = document.createElement("div");
@@ -3218,12 +2892,12 @@ function buildGridSection(): HTMLElement {
   return root;
 }
 
-// ── Halo field config
+// â”€â”€ Halo field config
 
 function buildHaloConfigSection(): HTMLElement {
   if (state.documentProject.sceneFamilyKey !== "halo") {
     const previewState = getSceneFamilyPreviewState();
-    const { root, body } = buildSectionEl(`${getSceneFamilyLabel(state.documentProject.sceneFamilyKey)} Preview`);
+    const { root, body } = buildAccordionSectionEl(`${getSceneFamilyLabel(state.documentProject.sceneFamilyKey)} Preview`);
 
     const helpText = document.createElement("p");
     helpText.className = "p-form-help-text u-no-margin--bottom";
@@ -3257,7 +2931,7 @@ function buildHaloConfigSection(): HTMLElement {
     return root;
   }
 
-  const { root, body } = buildSectionEl("Halo Field");
+  const { root, body } = buildAccordionSectionEl("Halo Field");
   const hc = state.haloConfig;
 
   const compositionFields = document.createElement("div");
@@ -3584,7 +3258,7 @@ function buildHaloConfigSection(): HTMLElement {
   return root;
 }
 
-// ─── DOM authoring layer ──────────────────────────────────────────────
+// â”€â”€â”€ DOM authoring layer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function createAuthoringBox(className: string): { box: HTMLElement; label: HTMLElement } {
   const box = document.createElement("div");
@@ -3803,7 +3477,7 @@ function renderAuthoringUI() {
   }
 }
 
-// ─── Inline editor ────────────────────────────────────────────────────
+// â”€â”€â”€ Inline editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function openInlineEditor(fieldId: string) {
   if (!state.overlayVisible) return;
@@ -3880,7 +3554,7 @@ function closeInlineEditor() {
   editSession = null;
 }
 
-// ─── Pointer event handling ───────────────────────────────────────────
+// â”€â”€â”€ Pointer event handling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function clientToFrame(clientX: number, clientY: number): { frameX: number; frameY: number } | null {
   const stage = getStageEl();
@@ -4068,7 +3742,7 @@ function handlePointerMove(e: PointerEvent) {
     const delta = getFrameDelta(e.clientX, e.clientY);
 
     if (currentDrag.mode === "resize") {
-      // Resize mode — adjust columnSpan (text) or dimensions (logo)
+      // Resize mode â€” adjust columnSpan (text) or dimensions (logo)
       if (currentDrag.selection.kind === "text" && currentDrag.initialField) {
         const metrics = currentDrag.metrics;
         const colW = metrics.columnWidthPx + metrics.columnGutterPx;
@@ -4219,7 +3893,7 @@ function setDrawerOpen(isOpen: boolean) {
   toggleBtn?.setAttribute("aria-expanded", "false");
 }
 
-// ─── Keyboard shortcuts ───────────────────────────────────────────────
+// â”€â”€â”€ Keyboard shortcuts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function handleKeyDown(e: KeyboardEvent) {
   if (editSession && e.key === "Escape") {
@@ -4292,7 +3966,7 @@ function handleKeyDown(e: KeyboardEvent) {
   }
 }
 
-// ─── Drawer toggle (mobile) ──────────────────────────────────────────
+// â”€â”€â”€ Drawer toggle (mobile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function setupDrawerToggle() {
   const toggleBtn = $<HTMLElement>("[data-drawer-toggle]");
@@ -4307,7 +3981,7 @@ function setupDrawerToggle() {
   backdrop?.addEventListener("click", () => setDrawerOpen(false));
 }
 
-// ─── Button handlers ──────────────────────────────────────────────────
+// â”€â”€â”€ Button handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -4384,7 +4058,7 @@ async function exportComposedFramePng() {
   }, "image/png");
 }
 
-// ─── Export modal + sequence export ───────────────────────────────────
+// â”€â”€â”€ Export modal + sequence export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface ExportOptions {
   startFrame: number;
@@ -4599,7 +4273,7 @@ async function exportPngSequence() {
     }
 
     const exported = f - startFrame + 1;
-    // Update progress periodically — every 12 frames or at start/end
+    // Update progress periodically â€” every 12 frames or at start/end
     if (exported === 1 || exported === frameCount || exported % 12 === 0) {
       setSourceDefaultStatus(`Exporting PNG sequence: ${exported}/${frameCount}...`);
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -4730,7 +4404,7 @@ function setupControlPanelResize() {
   });
 }
 
-// ─── Window resize ───────────────────────────────────────────────────
+// â”€â”€â”€ Window resize â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function setupResize() {
   const appShell = getAppShellEl();
@@ -4758,7 +4432,7 @@ function setupResize() {
   window.addEventListener("resize", checkDock);
 }
 
-// ─── Initialization ──────────────────────────────────────────────────
+// â”€â”€â”€ Initialization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function init() {
   setSourceDefaultStatus("Loading source default...");
@@ -4782,7 +4456,7 @@ async function init() {
   setupResize();
   initAuthoringLayer();
 
-  // Pointer events on the stage element (not the SVG — SVG is pointer-events:none)
+  // Pointer events on the stage element (not the SVG â€” SVG is pointer-events:none)
   const stage = getStageEl();
   if (stage) {
     stage.addEventListener("pointerdown", handlePointerDown);
@@ -4801,7 +4475,7 @@ async function init() {
 
 const initPromise = init();
 
-// ─── Headless automation API ──────────────────────────────────────────
+// â”€â”€â”€ Headless automation API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Matches the reference repo's window.__mascotAutomation pattern.
 // Used by scripts/export_frames.py (Playwright) to drive headless rendering.
 
