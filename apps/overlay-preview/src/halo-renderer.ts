@@ -8,6 +8,7 @@
  */
 import * as THREE from "three";
 import { createCircleLayer, createSegmentLayer, type CircleLayer, type SegmentLayer } from "./three-primitives.js";
+import type { UbuntuSummitAnimationSceneDescriptor } from "@brand-layout-ops/operator-ubuntu-summit-animation";
 import {
   type HaloFieldConfig,
   type IntroFieldState,
@@ -21,14 +22,10 @@ import {
   clamp,
   lerp,
   smoothstep,
-  radians,
   wrapPositive,
   getEchoMarkerVariant,
   buildIntroHaloFieldState,
-  buildPostFinaleHaloFieldState,
-  buildRuntimeTiming,
   buildRuntimePoints,
-  createDefaultHaloFieldConfig,
   UBUNTU_RELEASE_LABELS
 } from "@brand-layout-ops/operator-halo-field";
 
@@ -82,7 +79,7 @@ export interface HaloRenderer {
   /** Resize stage to the given pixel dimensions. */
   resize(widthPx: number, heightPx: number): void;
   /** Render one frame with the current field config. */
-  renderFrame(config: HaloFieldConfig, mascotBox: MascotBox | null, timeSec: number): void;
+  renderFrame(sceneDescriptor: UbuntuSummitAnimationSceneDescriptor): void;
   /** Dispose all GPU resources. */
   dispose(): void;
   /** Access to the canvas element. */
@@ -163,21 +160,17 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
   let cachedConfigJSON = "";
   let introField: IntroFieldState | null = null;
   let runtimePoints: RuntimePoint[] = [];
-  let runtimeTiming: RuntimeTiming | null = null;
-
-  // Screensaver state
-  let spokeWidthPhaseUBySource = new Map<number, number>();
-  let spokeClipCenterXBySource = new Map<number, number>();
-  let lastWidthTransitionTimeSec: number | null = null;
-  let previousPlaybackTimeSec: number | null = null;
 
   /** Rebuild intro field + runtime points when config changes. */
-  function ensureSceneData(config: HaloFieldConfig, mascotBox: MascotBox | null) {
+  function ensureSceneData(
+    config: HaloFieldConfig,
+    mascotBox: MascotBox | null,
+    runtimeTiming: RuntimeTiming
+  ) {
     const key = JSON.stringify(config);
     if (key !== cachedConfigJSON) {
       cachedConfigJSON = key;
       introField = buildIntroHaloFieldState(config, mascotBox);
-      runtimeTiming = buildRuntimeTiming(config);
       runtimePoints = buildRuntimePoints(config, introField, runtimeTiming);
     }
   }
@@ -210,12 +203,6 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     return box ? box.draw_size_px / 600 : 1;
   }
 
-  function getFullFrameOuterRadius(cx: number, cy: number): number {
-    const dx = Math.max(cx, stageW - cx);
-    const dy = Math.max(cy, stageH - cy);
-    return Math.hypot(dx, dy);
-  }
-
   function getRadialFadeAlpha(radius: number, fullR: number, config: HaloFieldConfig): number {
     const strength = clamp(config.vignette?.shape_fade ?? 1, 0, 1);
     if (strength <= 0 || fullR <= 0) return 1;
@@ -225,90 +212,6 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     const outerR = fullR * endU;
     const fadeU = clamp((radius - innerR) / Math.max(1, outerR - innerR), 0, 1);
     return 1 - strength * fadeU;
-  }
-
-  function getScreensaverStartTimeSec(config: HaloFieldConfig): number {
-    return Math.max(0, Number(config.transition_wrangle?.duration_sec || 0));
-  }
-
-  function hasDynamicScreensaverMotion(config: HaloFieldConfig): boolean {
-    const maxOrbitCount = Math.max(1, Number(config.generator_wrangle.num_orbits || 1));
-    const minOrbitCount = clamp(
-      Number(config.generator_wrangle.min_active_orbits || 1),
-      1,
-      maxOrbitCount
-    );
-    const orbitMotion = config.screensaver?.pulse_orbits !== false && maxOrbitCount - minOrbitCount > 0.001;
-    const maxSpokeCount = Math.max(1, Number(config.generator_wrangle.spoke_count || 1));
-    const minSpokeCount = clamp(
-      Number(config.screensaver?.min_spoke_count ?? maxSpokeCount),
-      1,
-      maxSpokeCount
-    );
-    const spokeMotion = Boolean(config.screensaver?.pulse_spokes) && maxSpokeCount - minSpokeCount > 0.001;
-    return orbitMotion || spokeMotion;
-  }
-
-  function getScreensaverPulseU(config: HaloFieldConfig, timeSec: number, screensaverStartTimeSec: number): number {
-    const safeCycleSec = Math.max(0.001, Number(config.screensaver?.cycle_sec || 60));
-    if (timeSec <= screensaverStartTimeSec) {
-      return 1;
-    }
-
-    const loopTimeSec = timeSec - screensaverStartTimeSec;
-    const rawPulseU = 0.5 + 0.5 * Math.cos((loopTimeSec / safeCycleSec) * TAU);
-    const rampInSec = Math.max(0, Number(config.screensaver?.ramp_in_sec ?? 0));
-    if (rampInSec <= 0) {
-      return rawPulseU;
-    }
-
-    return lerp(1, rawPulseU, smoothstep(0, rampInSec, loopTimeSec));
-  }
-
-  function getEffectiveOrbitCount(
-    config: HaloFieldConfig,
-    timeSec: number,
-    screensaverStartTimeSec: number
-  ): number {
-    const maxOrbitCount = Math.max(1, Number(config.generator_wrangle.num_orbits || 1));
-    const minOrbitCount = clamp(
-      Number(config.generator_wrangle.min_active_orbits || 1),
-      1,
-      maxOrbitCount
-    );
-    if (
-      !config.screensaver?.pulse_orbits ||
-      !hasDynamicScreensaverMotion(config) ||
-      timeSec <= screensaverStartTimeSec
-    ) {
-      return maxOrbitCount;
-    }
-
-    const pulseU = getScreensaverPulseU(config, timeSec, screensaverStartTimeSec);
-    return clamp(lerp(minOrbitCount, maxOrbitCount, pulseU), minOrbitCount, maxOrbitCount);
-  }
-
-  function getEffectiveSpokeCount(
-    config: HaloFieldConfig,
-    timeSec: number,
-    screensaverStartTimeSec: number
-  ): number {
-    const maxSpokeCount = Math.max(1, Number(config.generator_wrangle.spoke_count || 1));
-    const minSpokeCount = clamp(
-      Number(config.screensaver?.min_spoke_count ?? maxSpokeCount),
-      1,
-      maxSpokeCount
-    );
-    if (
-      !config.screensaver?.pulse_spokes ||
-      !hasDynamicScreensaverMotion(config) ||
-      timeSec <= screensaverStartTimeSec
-    ) {
-      return maxSpokeCount;
-    }
-
-    const pulseU = getScreensaverPulseU(config, timeSec, screensaverStartTimeSec);
-    return clamp(lerp(minSpokeCount, maxSpokeCount, pulseU), minSpokeCount, maxSpokeCount);
   }
 
   // ── background spokes ───────────────────────────────────────────────
@@ -420,41 +323,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
 
   // ── finale reveal state ──────────────────────────────────────────────
 
-  interface RevealState {
-    haloU: number;
-    startAngleRad: number;
-    innerRadiusPx: number;
-    outerRadiusPx: number;
-  }
-
-  function getFinaleHaloU(
-    playbackTimeSec: number,
-    timing: RuntimeTiming,
-    config: HaloFieldConfig,
-    forceFinal: boolean
-  ): number {
-    if (!config.finale?.enabled) return 0;
-    if (forceFinal) return 1;
-    return smoothstep(timing.finale_start_sec, timing.finale_end_sec, playbackTimeSec);
-  }
-
-  function getRevealState(
-    config: HaloFieldConfig,
-    box: MascotBox | null,
-    fullFrameR: number,
-    haloU: number,
-    forceFinal: boolean
-  ): RevealState | null {
-    if (!box) return null;
-    return {
-      haloU: config.finale?.enabled ? (forceFinal ? 1 : haloU) : 1,
-      startAngleRad:
-        radians((config.finale?.start_angle_deg ?? 0) + (config.finale?.mask_angle_offset_deg ?? 0)) +
-        radians(config.composition.global_rotation_deg || 0),
-      innerRadiusPx: box.draw_size_px * clamp(config.finale?.halo_inner_radius_u ?? 0.2, 0.01, 0.5),
-      outerRadiusPx: fullFrameR
-    };
-  }
+  type RevealState = NonNullable<UbuntuSummitAnimationSceneDescriptor["frameState"]["reveal"]>;
 
   /** Soft-edged angle sweep reveal alpha (for echo dots). */
   function getRevealLocalAlpha(
@@ -1001,7 +870,11 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
 
   // ── main render ─────────────────────────────────────────────────────
 
-  function renderFrame(config: HaloFieldConfig, mascotBox: MascotBox | null, timeSec: number) {
+  function renderFrame(sceneDescriptor: UbuntuSummitAnimationSceneDescriptor) {
+    const config = sceneDescriptor.haloConfig;
+    const mascotBox = sceneDescriptor.mascotBox;
+    const frameState = sceneDescriptor.frameState;
+
     // Background + clear
     const bgHex = config.composition.background_color || "#202020";
     renderer.setClearColor(new THREE.Color(bgHex), 1);
@@ -1019,74 +892,15 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     }
 
     // Rebuild scene data when config changes
-    ensureSceneData(config, mascotBox);
+    ensureSceneData(config, mascotBox, sceneDescriptor.runtimeTiming);
 
-    const fullFrameR = getFullFrameOuterRadius(
-      config.composition.center_x_px,
-      config.composition.center_y_px
-    );
-
-    // Reset transition state on time rewind
-    if (previousPlaybackTimeSec !== null && timeSec < previousPlaybackTimeSec) {
-      spokeWidthPhaseUBySource = new Map();
-      spokeClipCenterXBySource = new Map();
-      lastWidthTransitionTimeSec = null;
-      cachedConfigJSON = ""; // Force scene rebuild on rewind
-      ensureSceneData(config, mascotBox);
-    }
-    previousPlaybackTimeSec = timeSec;
-
-    const timing = runtimeTiming!;
-    const effectivePlaybackTime = Math.max(0, timeSec);
-
-    // ── Determine active phase ────────────────────────────────────────
-    // Phase 1 (dot intro):     0 ≤ t ≤ dot_end_sec
-    // Phase 2 (finale sweep):  dot_end_sec < t ≤ playback_end_sec
-    // Phase 3 (screensaver):   t > playback_end_sec
-
-    const isDotComplete = effectivePlaybackTime >= timing.dot_end_sec;
-    const isPlaybackComplete = effectivePlaybackTime >= timing.playback_end_sec;
-    const useScreensaverField = isPlaybackComplete &&
-      Boolean(config.screensaver) &&
-      hasDynamicScreensaverMotion(config);
-
-    // Dot time is clamped to dot_end_sec (dots freeze after phase 1)
-    const dotTimeSec = Math.min(effectivePlaybackTime, timing.dot_end_sec);
-
-    // Finale halo_u: 0 during phase 1, 0→1 during phase 2, 1 during phase 3
-    const haloU = getFinaleHaloU(effectivePlaybackTime, timing, config, isPlaybackComplete);
-
-    // ── Build field state ─────────────────────────────────────────────
-
-    let screensaverFieldState: PostFinaleFieldState | null = null;
-
-    if (useScreensaverField) {
-      const screensaverStartSec = timing.playback_end_sec;
-      screensaverFieldState = buildPostFinaleHaloFieldState({
-        config,
-        mascotBox,
-        playbackTimeSec: effectivePlaybackTime,
-        effectiveSpokeCount: getEffectiveSpokeCount(config, effectivePlaybackTime, screensaverStartSec),
-        effectiveOrbitCount: getEffectiveOrbitCount(config, effectivePlaybackTime, screensaverStartSec),
-        previousWidthPhaseUBySource: spokeWidthPhaseUBySource,
-        previousClipCenterXBySource: spokeClipCenterXBySource,
-        lastWidthTransitionTimeSec,
-        fullFrameOuterRadiusPx: fullFrameR
-      });
-      spokeWidthPhaseUBySource = screensaverFieldState.next_spoke_width_phase_u_by_source;
-      spokeClipCenterXBySource = screensaverFieldState.next_spoke_clip_center_x_by_source;
-      lastWidthTransitionTimeSec = screensaverFieldState.spoke_width_transition_playback_time_sec;
-    }
-
-    const haloOuterR = screensaverFieldState
-      ? screensaverFieldState.halo_outer_radius_px
-      : mascotBox ? mascotBox.draw_size_px * 0.5 : 0;
+    const fullFrameR = frameState.fullFrameOuterRadiusPx;
+    const screensaverFieldState = frameState.screensaverFieldState;
+    const haloOuterR = frameState.haloOuterRadiusPx;
     const spokes = screensaverFieldState?.spokes ?? introField?.spokes ?? [];
     const visibleSpokeCount = screensaverFieldState?.visible_spoke_count
       ?? introField?.visible_spoke_count ?? 0;
-
-    // Reveal state for the finale sweep (null during phase 1, active during phase 2, forced-final during phase 3)
-    const reveal = getRevealState(config, mascotBox, fullFrameR, haloU, isPlaybackComplete);
+    const reveal = frameState.reveal;
 
     // ── Render ────────────────────────────────────────────────────────
 
@@ -1098,7 +912,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     if (screensaverFieldState) {
       pushPostFinalePoints(screensaverFieldState, config);
     } else {
-      pushAnimatedIntroPoints(dotTimeSec, isDotComplete, config, timing);
+      pushAnimatedIntroPoints(frameState.dotTimeSec, frameState.isDotComplete, config, sceneDescriptor.runtimeTiming);
     }
 
     pushHaloLayers(

@@ -230,8 +230,9 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 
 ### Medium — needed for visual fidelity on the animation layer
 
-13. **Halo-field renderer (MISSING).**
-	Phase masks with dual-lobe geometry (50px center offset × geometry_scale). Spoke width transitions with `fill_u`-based thickness interpolation (`phase_start_width_px` → `phase_end_width_px`). Echo ring system: 16 echoes, mixed style, plus/circle variant markers, opacity/width/wave modulation. Screensaver pulsing: orbit and spoke count breathing over `cycle_sec` (60s default).
+13. **Halo-field renderer (PARTIAL).**
+	Three.js halo rendering, phase-mask geometry, spoke width interpolation, echo ring variants, release-label drawing, and screensaver pulse controls are now implemented in the preview shell, and the coarse frame-state handoff for intro/finale/screensaver motion now routes through `operator-ubuntu-summit-animation`.
+	Remaining gap: reference-grade mascot-linked choreography, finale-detail passes, and any remaining visual-timing polish still need to be ported.
 	Reference files: `halo-field.js` (full module), `rendering.js` (spoke rendering pipeline).
 
 14. **Mascot composition (MISSING).**
@@ -293,13 +294,13 @@ It reflects the current repo after the overlay-preview rebuild, reference-doc re
 0. **Whole-scene Ubuntu Summit animation port is now the top explicit parity strategy.**
 	User decision on 2026-03-27: import the entire reference animation as one finished scene-family generator operator first, so parity can be achieved before any attempt to generalize. This should include mascot motion, blink, head shake, dot splash, spokes, radio lines, Ubuntu release labels, construction lines, finale behavior, and the screensaver loop.
 	Architectural rule: keep this as one coarse operator boundary for now, with rendering/orientation details still handled in adapters.
-	Incremental progress: `operator-ubuntu-summit-animation` now owns phase classification, runtime timing, loop timing, and mascot-box descriptor data, and the preview plus automation API now route through that descriptor instead of bypassing the package entirely.
+	Incremental progress: `operator-ubuntu-summit-animation` now owns phase classification, runtime timing, loop timing, mascot-box descriptor data, reveal geometry, screensaver pulse counts, and transient spoke-transition maps, and the preview renderer plus automation API now route through that descriptor instead of bypassing the package entirely.
 
 1. **Animation timeline state is still fundamentally missing.**
-	The current preview now has a coarse time-driven post-finale screensaver loop in the Three adapter, but not the full reference sequence.
+	The current preview now has an operator-owned frame-state builder for intro/finale/screensaver handoff, but not the full reference sequence.
 	What is missing from the reference behavior:
-	- intro dot/orbit splash timing
-	- finale halo shrink timing
+	- intro dot/orbit splash nuance beyond the current coarse phase timing
+	- finale halo shrink and mascot-specific choreography details
 	- blink/sneeze cadence and head-turn-linked timing state
 
 2. **Ubuntu release labels are now rotated in the adapter, but still need reference-grade finesse.**
@@ -307,10 +308,10 @@ It reflects the current repo after the overlay-preview rebuild, reference-doc re
 	Remaining gap: spacing, exact anchor placement, and any reference-specific collision tuning still need refinement in the adapter.
 
 3. **The halo-field system is still adapter-scaffold parity, not behavioral parity.**
-	The current repo has a strong coarse visual approximation, but not the reference state machine:
-	- no real intro-to-finale-to-screensaver handoff
-	- no phase-boundary transition timing for spoke count/width changes
+	The current repo now has operator-owned intro-to-finale-to-screensaver handoff plus phase-boundary timing for post-finale spoke count and width changes, but it still falls short of the reference behavior:
 	- no full mascot-linked reveal choreography
+	- no face, blink, or head-turn scene timing inside the coarse operator
+	- no reference-grade radio-line or finale-detail pass yet
 
 4. **Output profiles still do not own the whole scene.**
 	The reference app stores per-profile text, logo, layout, motion, mascot, safe area, and content-format buckets.

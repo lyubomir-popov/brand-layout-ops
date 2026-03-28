@@ -33,7 +33,10 @@ import { getColumnSpanWidthPx, getKeylineXPx, snapBaselineToGrid } from "@brand-
 import { createApproximateTextMeasurer, getMinimumFirstBaselineInsetBaselines } from "@brand-layout-ops/layout-text";
 import type { DragAxisLock } from "@brand-layout-ops/overlay-interaction";
 import { moveLogo, moveTextField } from "@brand-layout-ops/overlay-interaction";
-import { buildUbuntuSummitAnimationSceneDescriptor } from "@brand-layout-ops/operator-ubuntu-summit-animation";
+import {
+  buildUbuntuSummitAnimationSceneDescriptor,
+  type UbuntuSummitAnimationTransitionState
+} from "@brand-layout-ops/operator-ubuntu-summit-animation";
 import {
   createOverlayLayoutOperator,
   inspectOverlayCsvDraft,
@@ -293,6 +296,7 @@ let renderToken = 0;
 let haloRendererInstance: HaloRenderer | null = null;
 let playbackFrameHandle: number | null = null;
 let lastPlaybackFrameMs: number | null = null;
+let ubuntuSummitTransitionState: UbuntuSummitAnimationTransitionState | null = null;
 let logoIntrinsicWidth = 0;
 let logoIntrinsicHeight = 0;
 
@@ -1281,10 +1285,24 @@ async function writeCurrentAsSourceDefault(): Promise<void> {
 }
 
 function getUbuntuSummitSceneDescriptor() {
-  return buildUbuntuSummitAnimationSceneDescriptor({
-    haloConfig: state.haloConfig,
-    playbackTimeSec: state.playbackTimeSec
-  });
+  const sceneDescriptor = buildUbuntuSummitAnimationSceneDescriptor(
+    ubuntuSummitTransitionState
+      ? {
+          haloConfig: state.haloConfig,
+          playbackTimeSec: state.playbackTimeSec,
+          frameWidthPx: state.params.frame.widthPx,
+          frameHeightPx: state.params.frame.heightPx,
+          previousTransitionState: ubuntuSummitTransitionState
+        }
+      : {
+          haloConfig: state.haloConfig,
+          playbackTimeSec: state.playbackTimeSec,
+          frameWidthPx: state.params.frame.widthPx,
+          frameHeightPx: state.params.frame.heightPx
+        }
+  );
+  ubuntuSummitTransitionState = sceneDescriptor.frameState.nextTransitionState;
+  return sceneDescriptor;
 }
 
 // ─── Halo field rendering (Three.js) ──────────────────────────────────
@@ -1321,7 +1339,7 @@ function updateStageAspectRatio() {
 function renderHaloFrame() {
   if (!haloRendererInstance) return;
   const sceneDescriptor = getUbuntuSummitSceneDescriptor();
-  haloRendererInstance.renderFrame(sceneDescriptor.haloConfig, sceneDescriptor.mascotBox, sceneDescriptor.playbackTimeSec);
+  haloRendererInstance.renderFrame(sceneDescriptor);
 }
 
 function getPlaybackToggleButton(): HTMLButtonElement | null {
@@ -4005,7 +4023,11 @@ function getAutomationState() {
     transparent_background: state.exportSettings.transparentBackground,
     scene_phase: sceneDescriptor.phase,
     scene_timing: sceneDescriptor.runtimeTiming,
-    scene_loop_time_sec: sceneDescriptor.loopTimeSec
+    scene_loop_time_sec: sceneDescriptor.loopTimeSec,
+    scene_effective_orbit_count: sceneDescriptor.frameState.effectiveOrbitCount,
+    scene_effective_spoke_count: sceneDescriptor.frameState.effectiveSpokeCount,
+    scene_halo_reveal_u: sceneDescriptor.frameState.haloU,
+    scene_screensaver_active: sceneDescriptor.frameState.useScreensaverField
   };
 }
 
