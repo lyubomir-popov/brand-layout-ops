@@ -74,6 +74,7 @@ All scoped under `@brand-layout-ops/`.
 - Overlay selection now starts empty and clears when the selected element disappears, so resize handles only arm after an explicit user selection instead of always falling back to another field
 - The logo panel now lets the user swap the logo asset path and toggle the A Head-to-logo size lock instead of forcing linked sizing at all times
 - Selected-element, grid, and halo control rows now rely on `portable-vertical-rhythm`'s shared `grid-row` and compact number-input styling instead of preview-local `overlay-control-grid` CSS overrides
+- Overlay pointer interactions now require a small movement threshold before drag or resize mutates text or logo items, so tap jitter does not accidentally move or resize fields
 
 ## Current sprint TODO (do in order)
 
@@ -118,6 +119,7 @@ All scoped under `@brand-layout-ops/`.
 - [x] Text resize bug — north-corner text resize now preserves vertical snapping instead of collapsing the top edge toward the safe area
 - [x] Overlay selection no longer starts with a forced selected text field or auto-falls back to another item after deletes or source-default resets
 - [x] Logo sizing lock is now toggleable in the selected-logo section, and the logo asset path is editable there as well
+- [x] Tap jitter no longer immediately drags or resizes overlay items; pointer movement now has to cross a small activation threshold first
 
 ### G. After current parity priorities
 

@@ -111,6 +111,7 @@ interface DragState {
   metrics: LayoutGridMetrics;
   startClientX: number;
   startClientY: number;
+  hasMoved: boolean;
   mode: DragMode;
   resizeEdge?: ResizeEdge | undefined;
   initialField?: TextFieldPlacementSpec | undefined;
@@ -3118,7 +3119,7 @@ function renderAuthoringUI() {
 
   // Baseline guide (only during drag of text)
   if (authoringBaselineGuide) {
-    if (currentDrag && currentDrag.selection.kind === "text") {
+    if (currentDrag?.hasMoved && currentDrag.selection.kind === "text") {
       const draggedItem = items.find(i => i.id === currentDrag!.selection.id);
       if (draggedItem?.baselineYPx !== undefined) {
         authoringBaselineGuide.hidden = false;
@@ -3242,6 +3243,11 @@ function clientToFrame(clientX: number, clientY: number): { frameX: number; fram
 
 const HIT_SLOP_PX = 10;
 const RESIZE_HANDLE_HIT_RADIUS_PX = 12;
+const DRAG_ACTIVATION_DISTANCE_PX = 4;
+
+function hasDragActivationDistance(current: DragState, clientX: number, clientY: number): boolean {
+  return Math.hypot(clientX - current.startClientX, clientY - current.startClientY) >= DRAG_ACTIVATION_DISTANCE_PX;
+}
 
 function getResizeHandleAtPoint(clientX: number, clientY: number): ResizeEdge | null {
   if (!state.selected) return null;
@@ -3340,6 +3346,7 @@ function handlePointerDown(e: PointerEvent) {
       metrics: currentScene.grid,
       startClientX: e.clientX,
       startClientY: e.clientY,
+      hasMoved: false,
       mode: "resize",
       resizeEdge
     };
@@ -3368,6 +3375,7 @@ function handlePointerDown(e: PointerEvent) {
     metrics: currentScene.grid,
     startClientX: e.clientX,
     startClientY: e.clientY,
+    hasMoved: false,
     mode: "move"
   };
 
@@ -3396,6 +3404,13 @@ function handlePointerMove(e: PointerEvent) {
   }
 
   if (currentDrag && currentScene) {
+    if (!currentDrag.hasMoved) {
+      if (!hasDragActivationDistance(currentDrag, e.clientX, e.clientY)) {
+        return;
+      }
+      currentDrag.hasMoved = true;
+    }
+
     const delta = getFrameDelta(e.clientX, e.clientY);
 
     if (currentDrag.mode === "resize") {
