@@ -712,11 +712,11 @@ function updateSelectedTextValue(id: string, value: string) {
 }
 
 function normalizeParamsTextFieldOffsets(params: OverlayLayoutOperatorParams): OverlayLayoutOperatorParams {
-  return normalizeOverlayParamsForEditing(params, previewTextMeasurer);
+  return normalizeOverlayParamsForEditing(params);
 }
 
 function getDisplayedTextFieldOffsetBaselines(field: TextFieldPlacementSpec): number {
-  return normalizeOverlayTextFieldOffsetBaselines(state.params, field, previewTextMeasurer).offsetBaselines;
+  return normalizeOverlayTextFieldOffsetBaselines(field).offsetBaselines;
 }
 
 function createTextFieldId(): string {

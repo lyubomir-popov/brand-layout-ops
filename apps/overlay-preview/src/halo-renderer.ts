@@ -250,8 +250,9 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     layers.haloEchoMarks.setColor(echoColor);
   }
 
-  function getGeometryScale(box: MascotBox | null): number {
-    return box ? box.draw_size_px / 600 : 1;
+  function getGeometryScale(box: MascotBox | null, config: HaloFieldConfig): number {
+    if (box) return box.draw_size_px / MASCOT_VIEWBOX_SIZE;
+    return Math.max(0.01, config.composition.scale || 1);
   }
 
   function getRadialFadeAlpha(radius: number, fullR: number, config: HaloFieldConfig): number {
@@ -272,7 +273,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     fullFrameR: number,
     config: HaloFieldConfig
   ) {
-    const bgWidth = BACKGROUND_SPOKE_WIDTH_PX * getGeometryScale(null);
+    const bgWidth = BACKGROUND_SPOKE_WIDTH_PX * getGeometryScale(null, config);
     const cx = config.composition.center_x_px;
     const cy = config.composition.center_y_px;
 
@@ -556,7 +557,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
 
     const cx = config.composition.center_x_px;
     const cy = config.composition.center_y_px;
-    const geoScale = getGeometryScale(box);
+    const geoScale = getGeometryScale(box, config);
     const outerWidthPx = Math.max(0, config.spoke_lines.width_px || 0) * geoScale;
     const thickEnabled =
       (config.spoke_lines.phase_start_width_px ?? 0) > 0 ||
@@ -866,7 +867,8 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
       const label = UBUNTU_RELEASE_LABELS[labelSlotId];
       if (!label) continue;
 
-      const spokeAlpha = clamp(spoke.alpha ?? 1, 0, 1);
+      const foldSeam = getFoldSeamAlpha(spoke.angle, config);
+      const spokeAlpha = clamp(spoke.alpha ?? 1, 0, 1) * foldSeam;
       if (spokeAlpha <= 0) continue;
 
       const textMetrics = getTextLabelRadiusMetrics(

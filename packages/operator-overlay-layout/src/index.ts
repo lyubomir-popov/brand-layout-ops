@@ -1531,9 +1531,7 @@ export function normalizeOverlayLinkedTitleLogoParams(
 }
 
 export function normalizeOverlayTextFieldOffsetBaselines(
-  params: OverlayLayoutOperatorParams,
-  field: TextFieldPlacementSpec,
-  measurer: TextMeasurer
+  field: TextFieldPlacementSpec
 ): TextFieldPlacementSpec {
   const nextOffsetBaselines = Math.round(field.offsetBaselines);
   return nextOffsetBaselines === field.offsetBaselines
@@ -1542,13 +1540,12 @@ export function normalizeOverlayTextFieldOffsetBaselines(
 }
 
 export function normalizeOverlayParamsForEditing(
-  params: OverlayLayoutOperatorParams,
-  measurer: TextMeasurer
+  params: OverlayLayoutOperatorParams
 ): OverlayLayoutOperatorParams {
   const linkedParams = normalizeOverlayLinkedTitleLogoParams(params);
   let didChange = false;
   const textFields = linkedParams.textFields.map((field) => {
-    const normalizedField = normalizeOverlayTextFieldOffsetBaselines(linkedParams, field, measurer);
+    const normalizedField = normalizeOverlayTextFieldOffsetBaselines(field);
     if (normalizedField !== field) {
       didChange = true;
     }

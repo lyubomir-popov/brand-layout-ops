@@ -230,24 +230,6 @@ function getPointAlpha(point: PointRecord, pointIndex: number, pointCount: numbe
 
 
 
-function drawSoftGlow(
-  ctx: CanvasRenderingContext2D,
-  center: Vector3,
-  radiusPx: number,
-  color: ColorRgba | string,
-  innerAlpha: number,
-  outerAlpha = 0
-): void {
-  const gradient = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, radiusPx);
-  gradient.addColorStop(0, toCanvasColor(color, innerAlpha));
-  gradient.addColorStop(1, toCanvasColor(color, outerAlpha));
-
-  ctx.save();
-  ctx.fillStyle = gradient;
-  ctx.fillRect(center.x - radiusPx, center.y - radiusPx, radiusPx * 2, radiusPx * 2);
-  ctx.restore();
-}
-
 function drawGuideRing(
   ctx: CanvasRenderingContext2D,
   center: Vector3,
@@ -343,9 +325,6 @@ function drawPhyllotaxisPreview(
   heightPx: number
 ): void {
   const palette = buildPreviewPalette(haloConfig);
-
-  drawSoftGlow(ctx, previewState.center, previewState.maxRadiusPx * 1.18, palette.reference, 0.14);
-  drawSoftGlow(ctx, previewState.center, previewState.maxRadiusPx * 0.48, palette.accent, 0.12);
 
   [0.25, 0.5, 0.75, 1].forEach((ratio, index) => {
     drawGuideRing(
@@ -575,8 +554,6 @@ function drawFuzzyBoidsPreview(
   heightPx: number
 ): void {
   const palette = buildPreviewPalette(haloConfig);
-  drawSoftGlow(ctx, previewState.center, previewState.linkRadiusPx * 2.4, palette.accent, 0.16);
-  drawSoftGlow(ctx, previewState.center, previewState.linkRadiusPx * 1.15, palette.reference, 0.1);
 
   drawBoundsGuide(ctx, previewState.center, previewState.bounds, palette);
   drawSeedField(ctx, previewState.seedField, palette);
@@ -724,13 +701,6 @@ export function renderSceneFamilyPreviewFrame(
   }
 
   const palette = buildPreviewPalette(options.haloConfig);
-  const center = options.previewState.center;
-  const gradientRadiusPx = Math.min(options.widthPx, options.heightPx) * 0.42;
-  const gradient = context.createRadialGradient(center.x, center.y, 0, center.x, center.y, gradientRadiusPx);
-  gradient.addColorStop(0, toCanvasColor(palette.reference, 0.12));
-  gradient.addColorStop(1, "rgba(0,0,0,0)");
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, options.widthPx, options.heightPx);
 
   if (options.previewState.sceneFamilyKey === "phyllotaxis") {
     drawPhyllotaxisPreview(context, options.previewState, options.haloConfig, options.widthPx, options.heightPx);
