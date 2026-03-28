@@ -26,6 +26,9 @@ export type ParameterSectionFactory = () => HTMLElement;
 export interface ParameterSectionDefinition {
   key: string;
   order: number;
+  /** Optional group tag. Sections with no group are always visible.
+   *  Sections tagged with an operator key are only shown when that operator is selected. */
+  group?: string | undefined;
   factory: ParameterSectionFactory;
   afterRender?: (() => void) | undefined;
 }

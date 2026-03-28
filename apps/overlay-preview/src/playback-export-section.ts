@@ -25,16 +25,22 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
 
   const exportBtn = document.createElement("button");
   exportBtn.className = "bf-button--base is-dense";
+  exportBtn.type = "button";
+  exportBtn.textContent = "Export PNG";
   exportBtn.addEventListener("click", () => { void ctx.exportComposedFramePng(); });
   row.append(wrapCol(2, exportBtn));
 
   const seqBtn = document.createElement("button");
   seqBtn.className = "bf-button--base is-dense";
+  seqBtn.type = "button";
+  seqBtn.textContent = "Export Sequence";
   seqBtn.addEventListener("click", () => { void ctx.exportPngSequence(); });
   row.append(wrapCol(2, seqBtn));
 
   const resetBtn = document.createElement("button");
   resetBtn.className = "bf-button--base is-dense";
+  resetBtn.type = "button";
+  resetBtn.textContent = "Reset to Default";
   resetBtn.addEventListener("click", () => {
     ctx.applySourceDefaultSnapshot(state.sourceDefaults);
     ctx.markDocumentDirty();
@@ -50,6 +56,8 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
 
   const writeBtn = document.createElement("button");
   writeBtn.className = "bf-button--base is-dense";
+  writeBtn.type = "button";
+  writeBtn.textContent = "Save as Default";
   writeBtn.addEventListener("click", () => {
     void (async () => {
       writeBtn.disabled = true;

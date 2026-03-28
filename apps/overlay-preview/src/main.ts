@@ -9,7 +9,7 @@
  * 5. Baseline Foundry themed aside panel provides all controls (dense panel preset)
  */
 import "baseline-foundry/presets/panel.css";
-import "./styles.scss";
+import "./styles.css";
 
 import { initRangeControls } from "baseline-foundry";
 
@@ -491,6 +491,7 @@ function applyDockedControlPanelWidth(widthPx: number, persist: boolean = true):
   const { minPx, maxPx } = getControlPanelWidthBounds();
   const nextWidthPx = clamp(widthPx, minPx, maxPx);
   appShell.style.setProperty("--bf-app-aside-width", `${nextWidthPx}px`);
+  appShell.style.setProperty("--vr-application-aside-width", `${nextWidthPx}px`);
   updateControlPanelResizeHandleA11y(nextWidthPx);
 
   if (persist) {
@@ -1823,6 +1824,7 @@ function buildOutputProfileOptions() {
   const removeButton = document.createElement("button");
   removeButton.type = "button";
   removeButton.className = "bf-button--base is-dense";
+  removeButton.textContent = "Remove Size";
   removeButton.disabled = state.documentProject.targets.length <= 1;
   removeButton.addEventListener("click", () => {
     if (!removeActiveDocumentTarget()) {
@@ -2066,7 +2068,7 @@ const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
   { key: "selected-overlay", order: 500, factory: () => buildOverlaySection(ctx) },
   { key: "paragraph-styles", order: 600, factory: () => buildParagraphStylesSection(ctx) },
   { key: "layout-grid", order: 700, factory: () => buildGridSection(ctx), afterRender: syncOverlayVisibilityUi },
-  { key: "halo-config", order: 800, factory: () => buildHaloConfigSection(ctx) }
+  { key: "halo-config", order: 800, group: "halo", factory: () => buildHaloConfigSection(ctx) }
 ];
 
 const configSectionRegistry = createParameterSectionRegistry(CORE_CONFIG_SECTION_DEFINITIONS);
@@ -2083,9 +2085,62 @@ function getConfigSections(): ConfigSectionDefinition[] {
   return configSectionRegistry.getSections();
 }
 
+function buildOperatorSelectorEl(): HTMLElement {
+  const section = document.createElement("li");
+  section.className = "bf-accordion__group operator-selector";
+
+  const heading = document.createElement("div");
+  heading.className = "operator-selector__heading";
+
+  const label = document.createElement("span");
+  label.className = "bf-form__label";
+  label.textContent = "Background Operator";
+  heading.append(label);
+
+  const radioGroup = document.createElement("div");
+  radioGroup.className = "operator-selector__options";
+
+  for (const sceneFamilyKey of OVERLAY_SCENE_FAMILY_ORDER) {
+    const radioLabel = document.createElement("label");
+    radioLabel.className = "operator-selector__option";
+
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "operator-selector";
+    radio.value = sceneFamilyKey;
+    radio.checked = sceneFamilyKey === state.documentProject.sceneFamilyKey;
+    radio.addEventListener("change", () => {
+      if (!radio.checked) return;
+      state.documentProject = {
+        ...state.documentProject,
+        sceneFamilyKey: sceneFamilyKey as OverlaySceneFamilyKey
+      };
+      markDocumentDirty();
+      buildConfigEditor();
+      syncBackgroundRendererVisibility();
+      renderStage();
+    });
+
+    const text = document.createElement("span");
+    text.textContent = getSceneFamilyLabel(sceneFamilyKey);
+
+    radioLabel.append(radio, text);
+    radioGroup.append(radioLabel);
+  }
+
+  section.append(heading, radioGroup);
+  return section;
+}
+
 function buildConfigEditor() {
   const container = getConfigEditor();
   if (!container) return;
+
+  // Preserve which accordion section is open across rebuilds
+  const expandedTab = container.querySelector<HTMLElement>('.bf-accordion__tab[aria-expanded="true"]');
+  const expandedGroup = expandedTab?.closest<HTMLElement>("[data-section-key]");
+  const previouslyOpenKey = expandedGroup?.dataset.sectionKey ?? null;
+
   container.innerHTML = "";
 
   const accordion = document.createElement("aside");
@@ -2095,8 +2150,25 @@ function buildConfigEditor() {
   list.className = "bf-accordion__list";
 
   const sections = getConfigSections();
-  for (const section of sections) {
-    list.append(section.factory());
+  const activeGroup = state.documentProject.sceneFamilyKey;
+
+  // Shell sections (no group) — always visible
+  const shellSections = sections.filter((section) => !section.group);
+  for (const section of shellSections) {
+    const el = section.factory();
+    el.dataset.sectionKey = section.key;
+    list.append(el);
+  }
+
+  // Operator selector radio group
+  list.append(buildOperatorSelectorEl());
+
+  // Operator-owned sections — only the active group
+  const operatorSections = sections.filter((section) => section.group === activeGroup);
+  for (const section of operatorSections) {
+    const el = section.factory();
+    el.dataset.sectionKey = section.key;
+    list.append(el);
   }
 
   accordion.append(list);
@@ -2104,7 +2176,20 @@ function buildConfigEditor() {
   setupAccordion(accordion);
   initRangeControls({ root: container });
 
-  for (const section of sections) {
+  // Restore previously open section
+  if (previouslyOpenKey) {
+    const targetGroup = list.querySelector<HTMLElement>(`[data-section-key="${CSS.escape(previouslyOpenKey)}"]`);
+    const targetTab = targetGroup?.querySelector<HTMLElement>(".bf-accordion__tab");
+    const panelId = targetTab?.getAttribute("aria-controls");
+    const targetPanel = panelId ? document.getElementById(panelId) : null;
+    if (targetTab && targetPanel) {
+      targetTab.setAttribute("aria-expanded", "true");
+      targetPanel.setAttribute("aria-hidden", "false");
+    }
+  }
+
+  const activeSections = [...shellSections, ...operatorSections];
+  for (const section of activeSections) {
     section.afterRender?.();
   }
 }
@@ -2569,7 +2654,8 @@ function handlePointerDown(e: PointerEvent) {
       resizeEdge
     };
     if (state.selected.kind === "text") {
-      dragState.initialField = state.params.textFields.find(f => f.id === state.selected!.id);
+      const rawField = state.params.textFields.find(f => f.id === state.selected!.id);
+      dragState.initialField = rawField ? normalizeOverlayTextFieldOffsetBaselines(state.params, rawField, previewTextMeasurer) : undefined;
     } else if (state.selected.kind === "logo") {
       dragState.initialLogo = state.params.logo ? { ...state.params.logo } : undefined;
     }
@@ -2598,7 +2684,8 @@ function handlePointerDown(e: PointerEvent) {
   };
 
   if (hit.kind === "text") {
-    dragState.initialField = state.params.textFields.find(f => f.id === hit.id);
+    const rawField = state.params.textFields.find(f => f.id === hit.id);
+    dragState.initialField = rawField ? normalizeOverlayTextFieldOffsetBaselines(state.params, rawField, previewTextMeasurer) : undefined;
   } else if (hit.kind === "logo") {
     dragState.initialLogo = state.params.logo ? { ...state.params.logo } : undefined;
   }
@@ -2663,7 +2750,9 @@ function handlePointerMove(e: PointerEvent) {
           const initialRowTopPx = metrics.contentTopPx + (currentDrag.initialField.rowIndex - 1) * rowStepPx;
           const initialBaselineYPx = initialRowTopPx + currentDrag.initialField.offsetBaselines * metrics.baselineStepPx;
           const snapped = snapBaselineToGrid(metrics, initialBaselineYPx + delta.deltaYPx);
-          verticalUpdate = { rowIndex: snapped.rowIndex, offsetBaselines: snapped.offsetBaselines };
+          const tempField = { ...currentDrag.initialField, rowIndex: snapped.rowIndex, offsetBaselines: snapped.offsetBaselines };
+          const normalizedField = normalizeOverlayTextFieldOffsetBaselines(state.params, tempField, previewTextMeasurer);
+          verticalUpdate = { rowIndex: normalizedField.rowIndex, offsetBaselines: normalizedField.offsetBaselines };
         }
 
         updateTextField(currentDrag.selection.id, f => ({ ...f, ...horizontalUpdate, ...verticalUpdate }));
@@ -2703,7 +2792,8 @@ function handlePointerMove(e: PointerEvent) {
 
       if (currentDrag.selection.kind === "text" && currentDrag.initialField) {
         const result = moveTextField(currentDrag.initialField, currentDrag.metrics, { ...delta, axisLock });
-        updateTextField(currentDrag.selection.id, () => result);
+        const normalized = normalizeOverlayTextFieldOffsetBaselines(state.params, result, previewTextMeasurer);
+        updateTextField(currentDrag.selection.id, () => normalized);
         void renderStage();
       }
 
@@ -3229,6 +3319,7 @@ function setupControlPanelResize() {
   handle.addEventListener("dblclick", () => {
     localStorage.removeItem(CONTROL_PANEL_WIDTH_STORAGE_KEY);
     appShell.style.removeProperty("--bf-app-aside-width");
+    appShell.style.removeProperty("--vr-application-aside-width");
     updateControlPanelResizeHandleA11y();
   });
 
