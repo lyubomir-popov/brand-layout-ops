@@ -199,6 +199,7 @@ const INITIAL_PARAMS = createDefaultOverlayParams(_startProfileKey, _startFormat
 const SOURCE_DEFAULT_AUTHORING_ENDPOINT = "/__authoring/source-default-config";
 const SOURCE_DEFAULT_ASSET_PATH = "/assets/source-default-config.json";
 const CONTROL_PANEL_WIDTH_STORAGE_KEY = "brand-layout-ops-control-panel-width-v1";
+const OVERLAY_VISIBLE_STORAGE_KEY = "brand-layout-ops-overlay-visible-v1";
 const CONTROL_PANEL_WIDTH_STEP_PX = 16;
 const previewTextMeasurer = createApproximateTextMeasurer();
 
@@ -289,7 +290,7 @@ const state: PreviewState = {
   params: cloneOverlayParams(INITIAL_PARAMS),
   selected: null,
   guideMode: "composition",
-  overlayVisible: false,
+  overlayVisible: localStorage.getItem(OVERLAY_VISIBLE_STORAGE_KEY) === "1",
   pendingCsvDraftsByBucket: {},
   outputProfileKey: _startProfileKey,
   contentFormatKey: _startFormatKey,
@@ -1459,6 +1460,8 @@ function setOverlayVisible(nextVisible: boolean) {
 
   state.overlayVisible = nextVisible;
 
+  try { localStorage.setItem(OVERLAY_VISIBLE_STORAGE_KEY, nextVisible ? "1" : "0"); } catch { /* quota */ }
+
   if (!nextVisible) {
     hoverId = null;
     hoverHandle = null;
@@ -1739,7 +1742,7 @@ function renderSvgOverlay(scene: LayerScene) {
     if (style) parts.push(createTextMarkup(text, style));
   }
 
-  parts.push(createLogoMarkup(state.params.logo));
+  parts.push(createLogoMarkup(scene.logo));
 
   svg.innerHTML = parts.join("");
 }
@@ -1773,24 +1776,6 @@ function buildOutputProfileOptions() {
 
   const sceneFields = document.createElement("div");
   sceneFields.className = "grid-row";
-
-  sceneFields.append(wrapCol(2, createFormGroup("Scene Family",
-    createSelectInput(
-      state.documentProject.sceneFamilyKey,
-      OVERLAY_SCENE_FAMILY_ORDER.map((sceneFamilyKey) => ({
-        label: getSceneFamilyLabel(sceneFamilyKey),
-        value: sceneFamilyKey
-      })),
-      (value) => {
-        state.documentProject = {
-          ...state.documentProject,
-          sceneFamilyKey: value as OverlaySceneFamilyKey
-        };
-        markDocumentDirty();
-        buildOutputProfileOptions();
-      }
-    )
-  )));
 
   sceneFields.append(wrapCol(2, createFormGroup(
     "Document Sizes",
@@ -2118,7 +2103,7 @@ function buildOperatorSelectorEl(): HTMLElement {
       markDocumentDirty();
       buildConfigEditor();
       syncBackgroundRendererVisibility();
-      renderStage();
+      void renderStage();
     });
 
     const text = document.createElement("span");
@@ -2988,6 +2973,9 @@ function serializeExportSvgMarkup(transparentBackground: boolean): string | null
   if (transparentBackground) {
     clone.querySelectorAll(".safe-area-fill").forEach((node) => node.remove());
   }
+
+  // Strip guide overlays (baseline grid, layout grid) — these are authoring aids, not export content
+  clone.querySelectorAll(".guides").forEach((node) => node.remove());
 
   return new XMLSerializer().serializeToString(clone);
 }

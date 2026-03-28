@@ -8,7 +8,7 @@
 
 import type {
   LayoutGridMetrics,
-  LogoPlacementSpec,
+  LogoPlacement,
   ResolvedTextPlacement,
   TextStyleSpec
 } from "@brand-layout-ops/core-types";
@@ -166,11 +166,11 @@ export function createTextMarkup(text: ResolvedTextPlacement, style: TextStyleSp
   </g>`;
 }
 
-export function createLogoMarkup(logo: LogoPlacementSpec | null | undefined): string {
+export function createLogoMarkup(logo: LogoPlacement | null | undefined): string {
   if (!logo) return "";
 
   const assetHref = logo.assetPath ?? "";
   return `<g data-logo-id="${escapeXml(logo.id ?? "logo")}">
-    <image href="${escapeXml(assetHref)}" x="${logo.xPx}" y="${logo.yPx}" width="${logo.widthPx}" height="${logo.heightPx}"/>
+    <image href="${escapeXml(assetHref)}" x="${logo.bounds.left}" y="${logo.bounds.top}" width="${logo.bounds.width}" height="${logo.bounds.height}"/>
   </g>`;
 }

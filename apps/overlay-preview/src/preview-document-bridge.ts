@@ -147,7 +147,7 @@ export function applySourceDefaultSnapshotToState<
     state.haloConfigByProfile[state.outputProfileKey] ?? snapshot.haloConfig
   );
   state.guideMode = snapshot.guideMode;
-  state.overlayVisible = false;
+  // Preserve overlayVisible across document loads — it's a UI display preference, not document state
   state.selected = null;
   state.pendingCsvDraftsByBucket = {};
   adapter.syncHaloConfigToProfile(state.outputProfileKey);
