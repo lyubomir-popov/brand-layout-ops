@@ -45,7 +45,7 @@ Use this map before changing code so parity work stays anchored to the reference
 	- Current repo: `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/sample-motion.ts`, `packages/operator-orbits/src/index.ts`, `packages/operator-spokes/src/index.ts`
 - Seed content, field mapping, logo assets, and mascot assets:
 	- Reference repo: `c:\Users\lyubo\work\repos\racoon-anim\assets\content.csv`, `content-speaker-highlight.csv`, `UbuntuTagLogo.svg`, `racoon-mascot-face.svg`, `racoon-mascot-halo.svg`
-	- Current repo: `apps/overlay-preview/src/sample-document.ts`, `apps/overlay-preview/public/assets/`
+	- Current repo: `apps/overlay-preview/src/sample-document.ts`, `packages/operator-overlay-layout/src/index.ts`, `apps/overlay-preview/public/assets/`
 - Layout or export geometry questions:
 	- Reference repo: `c:\Users\lyubo\work\repos\racoon-anim\src\app\rendering.js`
 	- Current repo: `packages/operator-overlay-layout/src/index.ts`, `packages/layout-engine/src/index.ts`
@@ -182,6 +182,8 @@ Only after parity is proven in this repo should new feature work resume.
 	Reason: the repo is no longer at the same state as the first 18-gap audit. Output-profile scaffolding, content-format specs, 3 text styles, linked title-size helper logic, preset localStorage scaffolding, stronger guides, and direct authoring interactions now exist, so the remaining parity work is narrower and more architectural than the original snapshot suggests.
 - [x] 2026-03-28: The preview control-surface migration to `portable-vertical-rhythm` landed before parity signoff.
 	Reason: the user explicitly requested the swap during active parity work, and the broken Halo Field slider rendering was caused by the preview still using the old Vanilla dependency path instead of the sibling package's themed range controls.
+- [x] 2026-03-28: Seeded overlay defaults were moved from `sample-document.ts` into `operator-overlay-layout` before the config-section registry refactor was complete.
+	Reason: document-owned defaults were a clearer anti-drift seam and reduced preview-shell ownership immediately without blocking the later UI-surface registration work.
 
 ## Parity Gap Audit — 2026-03-27
 
@@ -198,11 +200,11 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 
 2. **Content format system (PARTIAL).**
 	Reference has 2 overlay content formats: `generic_social` (3 fields: body_intro, detail_primary, detail_secondary) and `speaker_highlight` (3 fields: session_title, speaker_name, speaker_role). Each field has id, label, style, legacy_slot, and aliases for CSV column matching. Per-format field layout overrides (keyline_index, column_span, y_row_index, y_offset_baselines) are stored in format buckets per profile. Format switching syncs runtime fields to/from the active format bucket.
-	Current repo now has format specs, per-format buckets, and operator-side CSV alias matching, but still lacks reference-grade source-default bucket writeback and per-format pending CSV edit staging.
+	Current repo now has format specs, per-format buckets, operator-side CSV alias matching, and shared operator-owned seeded field layouts, logo defaults, sample CSV drafts, and default overlay-param generation, but it still lacks reference-grade source-default bucket writeback and per-format pending CSV edit staging.
 	Reference files: `config-schema.js` (format specs, alias matching, format bucket sync), `default-config-source.js` (per-profile overlay_content_formats).
 
 3. **Text style parity (DONE).**
-	Reference has 3 distinct styles: `title` (A Head, 42px/48px, weight 200), `b_head` (B Head, 24px/32px, weight 400), `paragraph` (P, 24px/32px, weight 400). Current repo now has all 3 styles with per-profile font size overrides and shared overlay-layout display labels.
+	Reference has 3 distinct styles: `title` (A Head, 42px/48px, weight 200), `b_head` (B Head, 24px/32px, weight 400), `paragraph` (P, 24px/32px, weight 400). Current repo now has all 3 styles with shared base definitions, per-profile font size overrides, and shared overlay-layout display labels.
 
 4. **Linked title-to-logo sizing (PARTIAL).**
 	`link_title_size_to_logo_height = true` scales title font size proportionally to `overlay_logo.height_px` using `LINKED_TITLE_BASE_FONT_SIZE_PX = 63` as the reference base. Current repo has no linked sizing logic.

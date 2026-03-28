@@ -1,5 +1,9 @@
 import {
+  DEFAULT_OUTPUT_PROFILE_KEY,
+  getOutputProfile,
   OVERLAY_CONTENT_FORMATS,
+  OVERLAY_CONTENT_FORMAT_ORDER,
+  type OverlayContentFormatSpec,
   type FrameSize,
   type GridSettings,
   type LayerScene,
@@ -69,6 +73,41 @@ export interface OverlayProfileTextStyleOverrides {
   b_head: { fontSizePx: number; lineHeightPx: number };
   paragraph: { fontSizePx: number; lineHeightPx: number };
 }
+
+export interface ContentFormatFieldOverride {
+  style: string;
+  keylineIndex: number;
+  columnSpan: number;
+  rowIndex: number;
+  offsetBaselines: number;
+  label: string;
+}
+
+export interface ContentFormatOverrides {
+  csvPath: string;
+  fields: Record<string, ContentFormatFieldOverride>;
+}
+
+export const DEFAULT_OVERLAY_TEXT_STYLES: TextStyleSpec[] = [
+  {
+    key: "title",
+    fontSizePx: 42,
+    lineHeightPx: 48,
+    fontWeight: 200
+  },
+  {
+    key: "b_head",
+    fontSizePx: 24,
+    lineHeightPx: 32,
+    fontWeight: 400
+  },
+  {
+    key: "paragraph",
+    fontSizePx: 24,
+    lineHeightPx: 32,
+    fontWeight: 400
+  }
+];
 
 export const OVERLAY_PROFILE_GRID_DEFAULTS: Record<string, GridSettings> = {
   landscape_1280x720: {
@@ -167,6 +206,87 @@ export const OVERLAY_TEXT_STYLE_DISPLAY_LABELS: Record<string, string> = {
   paragraph: "P"
 };
 
+export const DEFAULT_OVERLAY_LOGO: LogoPlacementSpec = {
+  id: "brand-mark",
+  xPx: 41,
+  yPx: 0,
+  widthPx: 42,
+  heightPx: 72,
+  assetPath: "/assets/UbuntuTagLogo.svg"
+};
+
+export const DEFAULT_OVERLAY_FORMAT_OVERRIDES: Record<string, ContentFormatOverrides> = {
+  generic_social: {
+    csvPath: "./assets/content.csv",
+    fields: {
+      body_intro: {
+        style: "b_head",
+        keylineIndex: 3,
+        columnSpan: 2,
+        rowIndex: 1,
+        offsetBaselines: 0,
+        label: "B Head"
+      },
+      detail_primary: {
+        style: "paragraph",
+        keylineIndex: 2,
+        columnSpan: 1,
+        rowIndex: 4,
+        offsetBaselines: 15,
+        label: "Paragraph 1"
+      },
+      detail_secondary: {
+        style: "paragraph",
+        keylineIndex: 3,
+        columnSpan: 1,
+        rowIndex: 4,
+        offsetBaselines: 15,
+        label: "Paragraph 2"
+      }
+    }
+  },
+  speaker_highlight: {
+    csvPath: "./assets/content-speaker-highlight.csv",
+    fields: {
+      session_title: {
+        style: "b_head",
+        keylineIndex: 3,
+        columnSpan: 2,
+        rowIndex: 6,
+        offsetBaselines: 9,
+        label: "Session Title"
+      },
+      speaker_name: {
+        style: "paragraph",
+        keylineIndex: 3,
+        columnSpan: 2,
+        rowIndex: 7,
+        offsetBaselines: 4,
+        label: "Speaker Name"
+      },
+      speaker_role: {
+        style: "paragraph",
+        keylineIndex: 3,
+        columnSpan: 2,
+        rowIndex: 7,
+        offsetBaselines: 14,
+        label: "Speaker Role"
+      }
+    }
+  }
+};
+
+export const DEFAULT_OVERLAY_CSV_DRAFT = [
+  "main_heading,text_1,text_2,text_3",
+  '"Ubuntu\\nSummit\\n26.04","A showcase\\nfor the innovative\\nand the ambitious","May 27-28, 2026","Online"',
+  '"Ubuntu\\nSummit\\n26.04","Kernel rebuild, now with actual reference defaults.","Parity audit","In progress"'
+].join("\n");
+
+export const SPEAKER_OVERLAY_CSV_DRAFT = [
+  "session_title,speaker_name,speaker_role,speaker_photo",
+  '"Developer ready Ubuntu on Qualcomm IoT","Ameya Pandit","Software Engineering Lead, Qualcomm","./assets/speaker_photos/ameya_pandit.jpg"'
+].join("\n");
+
 export const OVERLAY_LAYOUT_PARAMETER_SCHEMA: OperatorParameterSchema = {
   sections: [
     {
@@ -259,6 +379,158 @@ export function getOverlayFieldDisplayLabel(
   const sameStyleFields = params.textFields.filter((candidate) => candidate.styleKey === field.styleKey);
   const ordinal = sameStyleFields.findIndex((candidate) => candidate.id === field.id) + 1;
   return buildOverlayVariableItemLabel(field.styleKey, Math.max(1, ordinal), sameStyleFields.length);
+}
+
+function createLandscapeOverlayTextFields(): TextFieldPlacementSpec[] {
+  return [
+    {
+      id: "main_heading",
+      contentFieldId: "main_heading",
+      styleKey: "title",
+      text: "Ubuntu\nSummit\n26.04",
+      keylineIndex: 2,
+      rowIndex: 1,
+      offsetBaselines: 0,
+      columnSpan: 1
+    },
+    {
+      id: "body_intro",
+      contentFieldId: "text_1",
+      styleKey: "b_head",
+      text: "A showcase\nfor the innovative\nand the ambitious",
+      keylineIndex: 3,
+      rowIndex: 1,
+      offsetBaselines: 0,
+      columnSpan: 2
+    },
+    {
+      id: "detail_primary",
+      contentFieldId: "text_2",
+      styleKey: "paragraph",
+      text: "May 27-28, 2026",
+      keylineIndex: 3,
+      rowIndex: 1,
+      offsetBaselines: 15,
+      columnSpan: 1
+    },
+    {
+      id: "detail_secondary",
+      contentFieldId: "text_3",
+      styleKey: "paragraph",
+      text: "Online",
+      keylineIndex: 3,
+      rowIndex: 1,
+      offsetBaselines: 15,
+      columnSpan: 1
+    }
+  ];
+}
+
+export function buildTextFieldsForFormat(
+  formatKey: string,
+  overrides: Record<string, ContentFormatOverrides> = DEFAULT_OVERLAY_FORMAT_OVERRIDES,
+  mainHeadingField?: TextFieldPlacementSpec
+): TextFieldPlacementSpec[] {
+  const formatSpec: OverlayContentFormatSpec =
+    OVERLAY_CONTENT_FORMATS[formatKey] ?? OVERLAY_CONTENT_FORMATS[OVERLAY_CONTENT_FORMAT_ORDER[0]];
+  const formatOverride = overrides[formatSpec.key];
+
+  const fields: TextFieldPlacementSpec[] = [];
+
+  if (mainHeadingField) {
+    fields.push({ ...mainHeadingField });
+  } else {
+    fields.push({
+      id: "main_heading",
+      contentFieldId: "main_heading",
+      styleKey: "title",
+      text: "Ubuntu\nSummit\n26.04",
+      keylineIndex: 2,
+      rowIndex: 1,
+      offsetBaselines: 0,
+      columnSpan: 1
+    });
+  }
+
+  for (const fieldSpec of formatSpec.fields) {
+    const override = formatOverride?.fields[fieldSpec.id];
+    fields.push({
+      id: fieldSpec.id,
+      contentFieldId: fieldSpec.id,
+      styleKey: override?.style ?? fieldSpec.style,
+      text: "",
+      keylineIndex: override?.keylineIndex ?? 3,
+      rowIndex: override?.rowIndex ?? 1,
+      offsetBaselines: override?.offsetBaselines ?? 0,
+      columnSpan: override?.columnSpan ?? 1
+    });
+  }
+
+  return fields;
+}
+
+export function findCsvHeaderForField(
+  headers: string[],
+  fieldId: string,
+  formatKey: string
+): string | undefined {
+  const formatSpec = OVERLAY_CONTENT_FORMATS[formatKey] ?? OVERLAY_CONTENT_FORMATS[OVERLAY_CONTENT_FORMAT_ORDER[0]];
+  const fieldSpec = formatSpec.fields.find((field) => field.id === fieldId);
+  const aliases = fieldSpec ? [fieldSpec.id, ...(fieldSpec.aliases ?? [])] : [fieldId];
+
+  for (const alias of aliases) {
+    const found = headers.find((header) => header === alias);
+    if (found) {
+      return found;
+    }
+  }
+
+  const legacySlot = fieldSpec?.legacySlot;
+  if (legacySlot) {
+    const found = headers.find((header) => header === legacySlot);
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
+}
+
+export function createDefaultOverlayParams(
+  profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY,
+  formatKey: string = "generic_social"
+): OverlayLayoutOperatorParams {
+  const profile = getOutputProfile(profileKey);
+  const textFields = buildTextFieldsForFormat(formatKey);
+  const landscapeTextByContentField = new Map(
+    createLandscapeOverlayTextFields().map((field) => [field.contentFieldId ?? field.id, field.text])
+  );
+  const formatSpec = OVERLAY_CONTENT_FORMATS[formatKey] ?? OVERLAY_CONTENT_FORMATS[OVERLAY_CONTENT_FORMAT_ORDER[0]];
+  const inlineTextByFieldId: Record<string, string> = {};
+
+  inlineTextByFieldId.main_heading = landscapeTextByContentField.get("main_heading") ?? "";
+  for (const fieldSpec of formatSpec.fields) {
+    const legacyText = fieldSpec.legacySlot ? landscapeTextByContentField.get(fieldSpec.legacySlot) : undefined;
+    inlineTextByFieldId[fieldSpec.id] = legacyText ?? "";
+  }
+
+  return {
+    frame: {
+      widthPx: profile.widthPx,
+      heightPx: profile.heightPx
+    },
+    safeArea: { ...profile.safeArea },
+    grid: getDefaultOverlayGridForProfile(profileKey),
+    textStyles: applyOverlayProfileTextStyleDefaults(DEFAULT_OVERLAY_TEXT_STYLES, profileKey),
+    textFields: textFields.map((field) => ({ ...field })),
+    logo: { ...DEFAULT_OVERLAY_LOGO },
+    contentSource: "inline",
+    inlineTextByFieldId,
+    csvContent: {
+      draft: formatKey === "speaker_highlight" ? SPEAKER_OVERLAY_CSV_DRAFT : DEFAULT_OVERLAY_CSV_DRAFT,
+      rowIndex: 1
+    }
+  };
 }
 
 function normalizeContentSource(contentSource?: OverlayContentSource): OverlayContentSource {

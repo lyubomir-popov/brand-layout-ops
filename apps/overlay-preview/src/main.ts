@@ -43,6 +43,7 @@ import {
 } from "@brand-layout-ops/operator-ubuntu-summit-animation";
 import {
   buildOverlayVariableItemLabel,
+  createDefaultOverlayParams,
   createOverlayLayoutOperator,
   getOverlayFieldDisplayLabel,
   getOverlayStyleDisplayLabel,
@@ -66,7 +67,6 @@ import {
   cloneProfileContentFormatMap,
   cloneProfileFormatBuckets,
   createDefaultExportSettings,
-  createDefaultOverlayParams,
   createPresetId,
   denormalizePresetFromPersistence,
   getNextPresetName,

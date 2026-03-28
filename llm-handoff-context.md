@@ -62,6 +62,7 @@ All scoped under `@brand-layout-ops/`.
 - The preview renderer now draws the local mascot face asset, optional reference halo asset, and simple eye or nose motion on the overlay canvas using the scene-family operator's mascot box and motion state
 - Linked title-to-logo sizing now normalizes through shared layout-engine helpers plus the shared overlay-layout path, so profile switches and loaded snapshots keep the A Head/logo lock intact while the canonical rule is no longer only preview-local
 - Style labels and ordinal field labels now also route through shared overlay-layout helpers instead of preview-local label maps
+- Base overlay text styles, seeded field layouts, seeded logo placement, sample CSV drafts, and `createDefaultOverlayParams` now also live in `operator-overlay-layout` instead of `sample-document.ts`
 - MP4 export verification now covers both straight encode and fade-in/fade-out flags against a real 48-frame headless export on Windows
 - The preview control surface now imports the sibling `portable-vertical-rhythm` package instead of `vanilla-framework`, and Halo Field range controls render as real themed sliders again rather than bare native thumbs
 - The preview config editor now builds its accordion from a registry-style section factory list instead of one fixed append sequence, as the first step back toward operator-registered control surfaces
@@ -135,8 +136,8 @@ All scoped under `@brand-layout-ops/`.
 | Output profiles, types | `packages/core-types/src/index.ts` |
 | Halo config + per-profile overrides | `packages/operator-halo-field/src/index.ts` |
 | App state, UI, profile switching | `apps/overlay-preview/src/main.ts` |
-| Default overlay/text params | `apps/overlay-preview/src/sample-document.ts` |
-| Shared profile defaults + content resolution | `packages/operator-overlay-layout/src/index.ts` |
+| Preset persistence + export defaults | `apps/overlay-preview/src/sample-document.ts` |
+| Shared overlay defaults + content resolution | `packages/operator-overlay-layout/src/index.ts` |
 | Three.js halo renderer | `apps/overlay-preview/src/halo-renderer.ts` |
 
 ## Reference file map (for parity work)
