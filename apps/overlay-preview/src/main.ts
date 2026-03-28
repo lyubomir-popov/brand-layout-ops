@@ -287,7 +287,7 @@ const INITIAL_SOURCE_DEFAULTS = createBuiltInSourceDefaultSnapshot();
 
 const state: PreviewState = {
   params: cloneOverlayParams(INITIAL_PARAMS),
-  selected: { kind: "text", id: "main_heading" },
+  selected: null,
   guideMode: "composition",
   overlayVisible: false,
   pendingCsvDraftsByBucket: {},
@@ -551,15 +551,7 @@ function normalizeSelection() {
     return;
   }
 
-  const fallbackField = getOverlayMainHeadingField(state.params) ?? state.params.textFields[0];
-  if (fallbackField) {
-    state.selected = { kind: "text", id: fallbackField.id };
-    return;
-  }
-
-  state.selected = state.params.logo
-    ? { kind: "logo", id: state.params.logo.id ?? "logo" }
-    : null;
+  state.selected = null;
 }
 
 function updateSelectedTextValue(id: string, value: string) {
@@ -644,13 +636,7 @@ function deleteSelectedTextField() {
     textFields: remainingFields,
     inlineTextByFieldId: nextInlineText
   };
-
-  const fallbackField = remainingFields[remainingFields.length - 1] ?? getOverlayMainHeadingField(state.params);
-  state.selected = fallbackField
-    ? { kind: "text", id: fallbackField.id }
-    : state.params.logo
-    ? { kind: "logo", id: state.params.logo.id ?? "logo" }
-    : null;
+  state.selected = null;
 }
 
 function createOverlayItemActionRow(): HTMLElement {
@@ -734,6 +720,15 @@ function syncTitleToLogoHeight(logoHeightPx: number) {
   const linkedFontSize = getLinkedTitleFontSizePx(logoHeightPx);
   updateTextStyle("title", style => ({ ...style, fontSizePx: linkedFontSize }));
   syncLogoToTitleFontSize(linkedFontSize);
+}
+
+function updateLogoSizeWithAspectRatio(nextHeightPx: number) {
+  const aspectRatio = getCurrentLogoAspectRatio();
+  updateLogo((logo) => ({
+    ...logo,
+    widthPx: Math.max(1, Math.round(nextHeightPx * Math.max(0.0001, aspectRatio))),
+    heightPx: Math.max(1, Math.round(nextHeightPx))
+  }));
 }
 
 function select(sel: Selection | null) {
@@ -1148,7 +1143,7 @@ function applySourceDefaultSnapshot(snapshot: SourceDefaultSnapshot) {
   )) as HaloFieldConfig;
   state.guideMode = snapshot.guideMode;
   state.overlayVisible = false;
-  state.selected = { kind: "text", id: "main_heading" };
+  state.selected = null;
   state.pendingCsvDraftsByBucket = {};
   normalizeSelection();
   syncHaloConfigToProfile(state.outputProfileKey);
@@ -2282,7 +2277,7 @@ function buildOverlaySection(): HTMLElement {
       styleGrid.append(wrapCol(1, createFormGroup("Font Size",
         createNumberInput(selectedStyle.fontSizePx, { min: 1, max: 512, step: 1 }, (value) => {
           updateTextStyle(selectedStyle.key, (style) => ({ ...style, fontSizePx: value }));
-          if (selectedStyle.key === "title" && state.params.logo) {
+          if (selectedStyle.key === "title" && state.params.logo?.linkTitleSizeToHeight !== false) {
             syncLogoToTitleFontSize(value);
           }
           buildConfigEditor();
@@ -2355,6 +2350,45 @@ function buildOverlaySection(): HTMLElement {
     const logo = state.params.logo;
     if (!logo) return root;
 
+    const assetInput = document.createElement("input");
+    assetInput.className = "p-form-validation__input is-dense";
+    assetInput.type = "text";
+    assetInput.value = logo.assetPath ?? "";
+    assetInput.placeholder = "/assets/UbuntuTagLogo.svg";
+    assetInput.addEventListener("change", () => {
+      const nextAssetPath = assetInput.value.trim();
+      updateLogo((currentLogo) => {
+        const nextLogo = { ...currentLogo };
+        if (nextAssetPath) {
+          nextLogo.assetPath = nextAssetPath;
+        } else {
+          delete nextLogo.assetPath;
+        }
+        return nextLogo;
+      });
+      void loadLogoIntrinsicDimensions(nextAssetPath);
+      buildConfigEditor();
+      void renderStage();
+    });
+    body.append(createFormGroup("Asset Path", assetInput));
+
+    body.append(createFormGroup("Lock A Head to Logo",
+      createCheckboxInput(logo.linkTitleSizeToHeight !== false, (checked) => {
+        updateLogo((currentLogo) => ({
+          ...currentLogo,
+          linkTitleSizeToHeight: checked
+        }));
+        if (checked) {
+          const titleStyle = state.params.textStyles.find((style) => style.key === "title");
+          if (titleStyle) {
+            syncLogoToTitleFontSize(titleStyle.fontSizePx);
+          }
+        }
+        buildConfigEditor();
+        void renderStage();
+      })
+    ));
+
     const grid = document.createElement("div");
     grid.className = "overlay-control-grid grid-row";
 
@@ -2369,10 +2403,16 @@ function buildOverlaySection(): HTMLElement {
     const widthInput = createNumberInput(logo.widthPx, { min: 1, step: 1 }, v => {
       const aspectRatio = logo.widthPx > 0 && logo.heightPx > 0 ? logo.widthPx / logo.heightPx : getCurrentLogoAspectRatio();
       const nextHeightPx = Math.max(1, Math.round(v / Math.max(0.0001, aspectRatio)));
-      syncTitleToLogoHeight(nextHeightPx);
+      if (logo.linkTitleSizeToHeight === false) {
+        updateLogoSizeWithAspectRatio(nextHeightPx);
+      } else {
+        syncTitleToLogoHeight(nextHeightPx);
+      }
       void renderStage();
     });
-    widthInput.title = "Derived from the locked A Head to logo scale.";
+    widthInput.title = logo.linkTitleSizeToHeight === false
+      ? "Width preserves the logo aspect ratio."
+      : "Derived from the locked A Head to logo scale.";
 
     grid.append(wrapCol(1, createFormGroup("Width",
       widthInput
@@ -2380,7 +2420,11 @@ function buildOverlaySection(): HTMLElement {
 
     grid.append(wrapCol(1, createFormGroup("Height",
       createNumberInput(logo.heightPx, { min: 1, step: 1 }, v => {
-        syncTitleToLogoHeight(v);
+        if (logo.linkTitleSizeToHeight === false) {
+          updateLogoSizeWithAspectRatio(v);
+        } else {
+          syncTitleToLogoHeight(v);
+        }
         void renderStage();
       })
     )));

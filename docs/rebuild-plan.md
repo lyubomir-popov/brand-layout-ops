@@ -211,7 +211,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 4. **Linked title-to-logo sizing (PARTIAL).**
 	`link_title_size_to_logo_height = true` scales title font size proportionally to `overlay_logo.height_px` using `LINKED_TITLE_BASE_FONT_SIZE_PX = 63` as the reference base. Current repo has no linked sizing logic.
 	Reference files: `rendering.js` (linked title font size calculation in text rendering).
-	Update 2026-03-27 late pass: a preview-side helper now exists. Update 2026-03-28: the preview now also normalizes loaded/switching params so title size remains the canonical driver for logo size in state. Latest anti-drift pass: the sizing helper lives in `layout-engine` and linked title/logo normalization now routes through `operator-overlay-layout`, but this still remains open until broader document normalization is no longer preview-driven.
+	Update 2026-03-27 late pass: a preview-side helper now exists. Update 2026-03-28: the preview now also normalizes loaded/switching params so title size remains the canonical driver for logo size in state. Latest anti-drift pass: the sizing helper lives in `layout-engine` and linked title/logo normalization now routes through `operator-overlay-layout`, and the selected-logo panel now lets the user toggle that lock on or off plus swap the logo asset path, but this still remains open until broader document normalization is no longer preview-driven.
 
 5. **Logo asset sizing and aspect ratio (DONE).**
 	Logo image is loaded via `Image`, `naturalWidth`/`naturalHeight` read for dynamic aspect ratio. Width derived from configured height via `getCurrentLogoAspectRatio()`. Logo drag and resize with aspect-ratio lock on corner handles.
@@ -222,7 +222,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	`getOverlayFieldDisplayLabel` produces "A Head", "B Head 1", "P 2" etc. with ordinal counting when multiple fields share a style. Logo is "Selected Logo". The label helpers now live in `packages/operator-overlay-layout/src/index.ts` instead of preview-local maps.
 
 7. **Selected-element authoring surface (PARTIAL).**
-	Missing: richer selected-item controls panel and full reference-grade per-style tab structure. The current repo now has selection + drag + resize + inline editing, direct style assignment, add/delete text blocks, and selected-text controls for font size, line height, and weight, but it still does not match the full editor-panel breadth of the reference app.
+	Missing: richer selected-item controls panel and full reference-grade per-style tab structure. The current repo now has selection + drag + resize + inline editing, direct style assignment, add/delete text blocks, selected-text controls for font size, line height, and weight, explicit no-default selection behavior, and selected-logo controls for toggling the title-size lock plus swapping the logo asset path, but it still does not match the full editor-panel breadth of the reference app.
 	Reference files: `editor-constants.js` (`OVERLAY_TEXT_STYLE_TAB_SPECS`, `OVERLAY_LOGO_CONTROL_ROWS`, `OVERLAY_GRID_CONTROL_ROWS`), `index.js` (editor panel architecture).
 
 8. **Preset workflow (PARTIAL).**

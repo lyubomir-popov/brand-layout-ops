@@ -231,7 +231,8 @@ export const DEFAULT_OVERLAY_LOGO: LogoPlacementSpec = {
   yPx: 0,
   widthPx: 42,
   heightPx: 72,
-  assetPath: "/assets/UbuntuTagLogo.svg"
+  assetPath: "/assets/UbuntuTagLogo.svg",
+  linkTitleSizeToHeight: true
 };
 
 export const DEFAULT_OVERLAY_FORMAT_OVERRIDES: Record<string, ContentFormatOverrides> = {
@@ -988,7 +989,7 @@ export function normalizeOverlayLinkedTitleLogoParams(
 ): OverlayLayoutOperatorParams {
   const titleStyle = params.textStyles.find((style) => style.key === "title");
   const logo = params.logo;
-  if (!titleStyle || !logo || logo.widthPx <= 0 || logo.heightPx <= 0) {
+  if (!titleStyle || !logo || logo.linkTitleSizeToHeight === false || logo.widthPx <= 0 || logo.heightPx <= 0) {
     return params;
   }
 

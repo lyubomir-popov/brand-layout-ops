@@ -71,6 +71,8 @@ All scoped under `@brand-layout-ops/`.
 - The preview control surface now imports the sibling `portable-vertical-rhythm` package instead of `vanilla-framework`, and Halo Field range controls render as real themed sliders again rather than bare native thumbs
 - The preview config editor now builds its accordion from a keyed, ordered registry of section definitions with section-level post-render hooks instead of one fixed append sequence plus hardcoded follow-up wiring, as the next step back toward operator-registered control surfaces
 - The shared keyed section-registry primitive now lives in `packages/parameter-ui/src/index.ts` instead of `main.ts`, so future operator panels can register through shared parameter-surface infrastructure rather than preview-local maps
+- Overlay selection now starts empty and clears when the selected element disappears, so resize handles only arm after an explicit user selection instead of always falling back to another field
+- The logo panel now lets the user swap the logo asset path and toggle the A Head-to-logo size lock instead of forcing linked sizing at all times
 
 ## Current sprint TODO (do in order)
 
@@ -113,6 +115,8 @@ All scoped under `@brand-layout-ops/`.
 - [x] Accordion shouldn't change when clicking inside — mutual exclusion on open, no close-on-content-click
 - [x] Show overlay checkbox in wrong place — moved to grid accordion section
 - [x] Text resize bug — north-corner text resize now preserves vertical snapping instead of collapsing the top edge toward the safe area
+- [x] Overlay selection no longer starts with a forced selected text field or auto-falls back to another item after deletes or source-default resets
+- [x] Logo sizing lock is now toggleable in the selected-logo section, and the logo asset path is editable there as well
 
 ### G. After current parity priorities
 

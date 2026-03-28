@@ -312,6 +312,7 @@ export interface LogoPlacementSpec {
   widthPx: number;
   heightPx: number;
   assetPath?: string;
+  linkTitleSizeToHeight?: boolean;
 }
 
 export interface LogoPlacement {
@@ -321,6 +322,7 @@ export interface LogoPlacement {
   widthPx: number;
   heightPx: number;
   assetPath?: string;
+  linkTitleSizeToHeight?: boolean;
   bounds: LayoutBounds;
 }
 
