@@ -1,5 +1,5 @@
-﻿/**
- * main.ts â€” Overlay-preview application entry point.
+/**
+ * main.ts Ã¢â‚¬â€ Overlay-preview application entry point.
  *
  * Architecture:
  * 1. Three.js WebGL canvas renders the halo field animation (bottom layer)
@@ -124,7 +124,6 @@ import {
 } from "./sample-document.js";
 import {
   denormalizeOverlayPreviewDocumentFromPersistence,
-  type OverlayPreviewDocument as OverlayPreviewDocumentModel,
   type PersistedOverlayPreviewDocument
 } from "./preview-document.js";
 import {
@@ -141,14 +140,19 @@ import {
   createDocumentWorkspaceController,
   renderDocumentWorkspaceUi
 } from "./document-workspace.js";
+import type {
+  PreviewAppContext,
+  PreviewState,
+  Selection,
+  GuideMode,
+  SourceDefaultSnapshot,
+  OverlayPreviewDocument
+} from "./preview-app-context.js";
+import { buildHaloConfigSection } from "./halo-config-section.js";
+import { buildGridSection } from "./grid-section.js";
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Types Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
-type Selection =
-  | { kind: "text"; id: string }
-  | { kind: "logo"; id: string };
-
-type GuideMode = "off" | "composition" | "baseline";
 const GUIDE_MODES: readonly GuideMode[] = ["off", "composition", "baseline"];
 
 type DragMode = "move" | "resize";
@@ -170,38 +174,13 @@ type ConfigSectionFactory = () => HTMLElement;
 
 type ConfigSectionDefinition = ParameterSectionDefinition;
 
-// â”€â”€â”€ Operator registry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Operator registry Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 const PREVIEW_NODE_ID = "overlay-preview";
 const registry = new OperatorRegistry();
 registry.register(createOverlayLayoutOperator());
 
-// â”€â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-interface PreviewState {
-  params: OverlayLayoutOperatorParams;
-  selected: Selection | null;
-  guideMode: GuideMode;
-  overlayVisible: boolean;
-  pendingCsvDraftsByBucket: Record<string, string>;
-  outputProfileKey: string;
-  contentFormatKey: string;
-  profileFormatBuckets: ProfileFormatBuckets;
-  contentFormatKeyByProfile: ProfileContentFormatMap;
-  presets: Preset[];
-  activePresetId: string | null;
-  exportSettings: ExportSettings;
-  exportSettingsByProfile: Record<string, ExportSettings>;
-  haloConfig: HaloFieldConfig;
-  haloConfigByProfile: Record<string, HaloFieldConfig>;
-  sourceDefaults: SourceDefaultSnapshot;
-  documentProject: OverlayDocumentProject;
-  isPlaying: boolean;
-  playbackTimeSec: number;
-}
-
-type SourceDefaultSnapshot = OverlaySourceDefaultSnapshot<ExportSettings, HaloFieldConfig, GuideMode>;
-type OverlayPreviewDocument = OverlayPreviewDocumentModel<HaloFieldConfig, GuideMode>;
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ State Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 const INITIAL_PROFILE_KEY = "instagram_1080x1350";
 const INITIAL_FORMAT_KEY = "generic_social";
@@ -369,7 +348,7 @@ let logoIntrinsicHeight = 0;
 // Sync halo config to the initial profile
 syncHaloConfigToProfile(state.outputProfileKey);
 
-// â”€â”€â”€ Logo intrinsic dimension loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Logo intrinsic dimension loading Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function loadLogoIntrinsicDimensions(assetPath: string): Promise<void> {
   return new Promise<void>((resolve) => {
@@ -403,7 +382,7 @@ let authoringSelectedLabel: HTMLElement | null = null;
 let authoringBaselineGuide: HTMLElement | null = null;
 let authoringHandles: Map<ResizeEdge, HTMLElement> = new Map();
 
-// â”€â”€â”€ DOM references â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ DOM references Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 const $ = <T extends Element>(sel: string): T | null => document.querySelector<T>(sel);
 
@@ -424,7 +403,7 @@ function getDocumentSummaryEl(): HTMLElement | null { return $("[data-document-s
 function getDocumentStatusEl(): HTMLElement | null { return $("[data-document-status]"); }
 function getDocumentRecentListEl(): HTMLElement | null { return $("[data-document-recent-list]"); }
 
-// â”€â”€â”€ Helper utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Helper utilities Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -586,7 +565,7 @@ function setStagedCsvDraft(
   state.pendingCsvDraftsByBucket[bucketKey] = draft;
 }
 
-// â”€â”€â”€ Operator graph evaluation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Operator graph evaluation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function buildGraph(params: OverlayLayoutOperatorParams): OperatorGraph {
   return {
@@ -610,7 +589,7 @@ function getEffectiveParams(): OverlayLayoutOperatorParams {
   });
 }
 
-// â”€â”€â”€ Content source accessors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Content source accessors Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function getContentSource(): OverlayContentSource {
   return state.params.contentSource === "csv" ? "csv" : "inline";
@@ -835,7 +814,7 @@ function createOverlayItemActionRow(): HTMLElement {
   return actions;
 }
 
-// â”€â”€â”€ State mutators â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ State mutators Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function updateTextField(
   id: string,
@@ -924,7 +903,7 @@ function discardStagedCsvDraft() {
   markDocumentDirty();
 }
 
-// â”€â”€â”€ Profile / format / preset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Profile / format / preset Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function getDefaultDocumentTargetLabel(profileKey: string): string {
   return OUTPUT_PROFILES[profileKey]?.label ?? profileKey;
@@ -1560,7 +1539,7 @@ function getUbuntuSummitSceneDescriptor() {
   return sceneDescriptor;
 }
 
-// â”€â”€â”€ Halo field rendering (Three.js) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Halo field rendering (Three.js) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function initHaloRenderer() {
   const canvas = getCanvasEl();
@@ -1721,7 +1700,7 @@ function togglePlayback() {
   setPlaybackPlaying(!state.isPlaying);
 }
 
-// â”€â”€â”€ SVG overlay rendering (text, logo, guides) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ SVG overlay rendering (text, logo, guides) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function renderSvgOverlay(scene: LayerScene) {
   const svg = getSvgOverlay();
@@ -1757,7 +1736,7 @@ function renderSvgOverlay(scene: LayerScene) {
   svg.innerHTML = parts.join("");
 }
 
-// â”€â”€â”€ Full render pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Full render pipeline Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 async function renderStage() {
   const myToken = ++renderToken;
@@ -1775,7 +1754,7 @@ async function renderStage() {
   renderAuthoringUI();
 }
 
-// â”€â”€â”€ Aside panel: output profiles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Aside panel: output profiles Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function buildOutputProfileOptions() {
   const container = getOutputProfileOptions();
@@ -1880,9 +1859,9 @@ function buildOutputProfileOptions() {
     const metaSpan = document.createElement("span");
     metaSpan.className = "preset-radio-status";
     const profileMeta = profile
-      ? `${profile.label} â€¢ ${profile.widthPx}x${profile.heightPx}`
+      ? `${profile.label} Ã¢â‚¬Â¢ ${profile.widthPx}x${profile.heightPx}`
       : target.outputProfileKey;
-    metaSpan.textContent = radio.checked ? `${profileMeta} â€¢ Active` : profileMeta;
+    metaSpan.textContent = radio.checked ? `${profileMeta} Ã¢â‚¬Â¢ Active` : profileMeta;
 
     row.append(radio, nameSpan, metaSpan);
     list.append(row);
@@ -1913,7 +1892,7 @@ function buildOutputProfileOptions() {
       getUnusedDocumentTargetProfileKeys(activeTarget.outputProfileKey).map((profileKey) => {
         const profile = OUTPUT_PROFILES[profileKey];
         return {
-          label: profile ? `${profile.label} â€¢ ${profile.widthPx}x${profile.heightPx}` : profileKey,
+          label: profile ? `${profile.label} Ã¢â‚¬Â¢ ${profile.widthPx}x${profile.heightPx}` : profileKey,
           value: profileKey
         };
       }),
@@ -1929,7 +1908,7 @@ function buildOutputProfileOptions() {
   container.append(details);
 }
 
-// â”€â”€â”€ Aside panel: preset tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Aside panel: preset tabs Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function buildPresetTabs() {
   const container = getPresetTabs();
@@ -1974,7 +1953,7 @@ function buildPresetTabs() {
     const statusSpan = document.createElement("span");
     statusSpan.className = "preset-radio-status";
     if (preset.id === state.activePresetId) {
-      statusSpan.textContent = isActivePresetDirty() ? "Active â€¢ Dirty" : "Active";
+      statusSpan.textContent = isActivePresetDirty() ? "Active Ã¢â‚¬Â¢ Dirty" : "Active";
     } else {
       statusSpan.textContent = "";
     }
@@ -1999,7 +1978,7 @@ function updatePresetToolbarState() {
   if (deleteButton) deleteButton.disabled = !hasActivePreset;
 }
 
-// â”€â”€â”€ Aside panel: config editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Aside panel: config editor Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function buildPlaybackExportSection(): HTMLElement {
   const { root, body } = buildAccordionSectionEl("Playback & Export");
@@ -2257,6 +2236,61 @@ function buildPresetsSection(): HTMLElement {
   return root;
 }
 
+// â€” Preview app context (passed to extracted panel modules) â€”
+
+const ctx: PreviewAppContext = {
+  state,
+  renderStage,
+  buildConfigEditor,
+  buildOutputProfileOptions,
+  buildPresetTabs,
+  resizeRenderer,
+  syncOverlayVisibilityUi,
+  updatePlaybackToggleUi,
+  updateDocumentUi,
+  markDocumentDirty,
+  select,
+  togglePlayback,
+  setPlaybackPlaying,
+  setOverlayVisible,
+  normalizeParamsTextFieldOffsets,
+  updateExportSettings,
+  updateTextField,
+  updateLogo,
+  updateLogoSizeWithAspectRatio,
+  getCurrentLogoAspectRatio,
+  loadLogoIntrinsicDimensions,
+  applySelectedTextStyle,
+  switchContentFormat,
+  setStagedCsvDraft,
+  getStagedCsvDraft,
+  applyStagedCsvDraft,
+  switchOutputProfile,
+  saveCurrentAsPreset,
+  updateActivePreset,
+  getActivePreset,
+  exportPreset,
+  importPresetsFromFiles,
+  deletePreset,
+  loadPreset,
+  applySourceDefaultSnapshot,
+  writeCurrentAsSourceDefault,
+  setSourceDefaultStatus,
+  getSceneFamilyPreviewState,
+  getSceneFamilyLabel,
+  addDocumentTarget,
+  removeActiveDocumentTarget: removeActiveDocumentTarget,
+  setActiveDocumentTarget,
+  updateActiveDocumentTargetLabel,
+  updateActiveDocumentTargetProfile,
+  getUnusedDocumentTargetProfileKeys,
+  getDefaultDocumentTargetLabel,
+  documentWorkspace: documentWorkspaceController,
+  getNormalizedDocumentName,
+  exportComposedFramePng,
+  exportPngSequence
+};
+
 const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
   { key: "playback-export", order: 100, factory: buildPlaybackExportSection, afterRender: updatePlaybackToggleUi },
   { key: "output-format", order: 200, factory: buildOutputFormatSection, afterRender: buildOutputProfileOptions },
@@ -2265,8 +2299,8 @@ const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
   { key: "content-format", order: 400, factory: buildContentFormatSection },
   { key: "selected-overlay", order: 500, factory: buildOverlaySection },
   { key: "paragraph-styles", order: 600, factory: buildParagraphStylesSection },
-  { key: "layout-grid", order: 700, factory: buildGridSection, afterRender: syncOverlayVisibilityUi },
-  { key: "halo-config", order: 800, factory: buildHaloConfigSection }
+  { key: "layout-grid", order: 700, factory: () => buildGridSection(ctx), afterRender: syncOverlayVisibilityUi },
+  { key: "halo-config", order: 800, factory: () => buildHaloConfigSection(ctx) }
 ];
 
 const configSectionRegistry = createParameterSectionRegistry(CORE_CONFIG_SECTION_DEFINITIONS);
@@ -2338,7 +2372,7 @@ function applySelectedTextStyle(styleKey: string) {
   void renderStage();
 }
 
-// â”€â”€ Content format section
+// Ã¢â€â‚¬Ã¢â€â‚¬ Content format section
 
 function buildContentFormatSection(): HTMLElement {
   const { root, body } = buildAccordionSectionEl("Content Format");
@@ -2484,7 +2518,7 @@ function buildContentFormatSection(): HTMLElement {
   return root;
 }
 
-// â”€â”€ Selected overlay item
+// Ã¢â€â‚¬Ã¢â€â‚¬ Selected overlay item
 
 function buildOverlaySection(): HTMLElement {
   const { root, body } = buildAccordionSectionEl(getSelectedOverlaySectionTitle());
@@ -2695,7 +2729,7 @@ function buildOverlaySection(): HTMLElement {
   return root;
 }
 
-// â”€â”€ Paragraph style palette
+// Ã¢â€â‚¬Ã¢â€â‚¬ Paragraph style palette
 
 function buildParagraphStylesSection(): HTMLElement {
   const { root, body } = buildAccordionSectionEl("Paragraph Styles");
@@ -2747,518 +2781,11 @@ function buildParagraphStylesSection(): HTMLElement {
   return root;
 }
 
-// â”€â”€ Grid settings
+// Ã¢â€â‚¬Ã¢â€â‚¬ Grid settings
 
-function buildGridSection(): HTMLElement {
-  const { root, body } = buildAccordionSectionEl("Layout Grid");
-  const grid = state.params.grid;
 
-  const displayFields = document.createElement("div");
-  displayFields.className = "grid-row";
 
-  displayFields.append(wrapCol(1, createCheckboxFormGroup(
-    "Show Overlay",
-    state.overlayVisible,
-    (visible) => {
-      setOverlayVisible(visible);
-      void renderStage();
-    },
-    (input) => {
-      input.setAttribute("data-overlay-visibility", "");
-    }
-  )));
-
-  displayFields.append(wrapCol(1, createCheckboxFormGroup(
-    "Fit Safe Area",
-    grid.fitWithinSafeArea ?? true,
-    (fitWithinSafeArea) => {
-      state.params = { ...state.params, grid: { ...state.params.grid, fitWithinSafeArea } };
-      buildConfigEditor();
-      void renderStage();
-    }
-  )));
-
-  displayFields.append(wrapCol(2, createFormGroup(
-    "Guides",
-    createSelectInput(state.guideMode,
-      [{ label: "Off", value: "off" }, { label: "Composition Grid", value: "composition" }, { label: "Baseline Grid", value: "baseline" }],
-      (v) => { state.guideMode = v as GuideMode; void renderStage(); }
-    )
-  )));
-
-  body.append(displayFields);
-
-  const fields = document.createElement("div");
-  fields.className = "grid-row";
-
-  fields.append(wrapCol(1, createFormGroup("Baseline (px)",
-    createNumberInput(grid.baselineStepPx, { min: 1, max: 48, step: 1 }, v => {
-      state.params = normalizeParamsTextFieldOffsets({
-        ...state.params,
-        grid: { ...state.params.grid, baselineStepPx: v }
-      });
-      buildConfigEditor();
-      void renderStage();
-    })
-  )));
-
-  fields.append(wrapCol(1, createFormGroup("Rows",
-    createNumberInput(grid.rowCount, { min: 1, max: 24, step: 1 }, v => {
-      state.params = { ...state.params, grid: { ...state.params.grid, rowCount: v } }; void renderStage();
-    })
-  )));
-
-  fields.append(wrapCol(1, createFormGroup("Columns",
-    createNumberInput(grid.columnCount, { min: 1, max: 24, step: 1 }, v => {
-      state.params = { ...state.params, grid: { ...state.params.grid, columnCount: v } }; void renderStage();
-    })
-  )));
-
-  fields.append(wrapCol(1, createFormGroup("Row Gutter",
-    createNumberInput(grid.rowGutterBaselines, { min: 0, max: 48, step: 1 }, v => {
-      state.params = { ...state.params, grid: { ...state.params.grid, rowGutterBaselines: v } }; void renderStage();
-    })
-  )));
-
-  fields.append(wrapCol(1, createFormGroup("Col Gutter",
-    createNumberInput(grid.columnGutterBaselines, { min: 0, max: 24, step: 1 }, v => {
-      state.params = { ...state.params, grid: { ...state.params.grid, columnGutterBaselines: v } }; void renderStage();
-    })
-  )));
-
-  body.append(fields);
-
-  const margins = document.createElement("div");
-  margins.className = "grid-row";
-
-  margins.append(wrapCol(1, createFormGroup("Top Margin",
-    createNumberInput(grid.marginTopBaselines, { min: 0, max: 48, step: 1 }, v => {
-      state.params = { ...state.params, grid: { ...state.params.grid, marginTopBaselines: v } }; void renderStage();
-    })
-  )));
-
-  margins.append(wrapCol(1, createFormGroup("Bottom Margin",
-    createNumberInput(grid.marginBottomBaselines, { min: 0, max: 48, step: 1 }, v => {
-      state.params = { ...state.params, grid: { ...state.params.grid, marginBottomBaselines: v } }; void renderStage();
-    })
-  )));
-
-  margins.append(wrapCol(1, createFormGroup("Left Margin",
-    createNumberInput(grid.marginLeftBaselines, { min: 0, max: 48, step: 1 }, v => {
-      state.params = { ...state.params, grid: { ...state.params.grid, marginLeftBaselines: v } }; void renderStage();
-    })
-  )));
-
-  margins.append(wrapCol(1, createFormGroup("Right Margin",
-    createNumberInput(grid.marginRightBaselines, { min: 0, max: 48, step: 1 }, v => {
-      state.params = { ...state.params, grid: { ...state.params.grid, marginRightBaselines: v } }; void renderStage();
-    })
-  )));
-
-  body.append(margins);
-
-  if (grid.fitWithinSafeArea !== false) {
-    const safeArea = state.params.safeArea;
-    const safeFields = document.createElement("div");
-    safeFields.className = "grid-row";
-
-    safeFields.append(wrapCol(1, createFormGroup("Safe Top",
-      createNumberInput(safeArea.top, { min: 0, step: 1 }, v => {
-        state.params = { ...state.params, safeArea: { ...safeArea, top: v } }; void renderStage();
-      })
-    )));
-
-    safeFields.append(wrapCol(1, createFormGroup("Safe Right",
-      createNumberInput(safeArea.right, { min: 0, step: 1 }, v => {
-        state.params = { ...state.params, safeArea: { ...safeArea, right: v } }; void renderStage();
-      })
-    )));
-
-    safeFields.append(wrapCol(1, createFormGroup("Safe Bottom",
-      createNumberInput(safeArea.bottom, { min: 0, step: 1 }, v => {
-        state.params = { ...state.params, safeArea: { ...safeArea, bottom: v } }; void renderStage();
-      })
-    )));
-
-    safeFields.append(wrapCol(1, createFormGroup("Safe Left",
-      createNumberInput(safeArea.left, { min: 0, step: 1 }, v => {
-        state.params = { ...state.params, safeArea: { ...safeArea, left: v } }; void renderStage();
-      })
-    )));
-
-    body.append(safeFields);
-  }
-
-  return root;
-}
-
-// â”€â”€ Halo field config
-
-function buildHaloConfigSection(): HTMLElement {
-  if (state.documentProject.sceneFamilyKey !== "halo") {
-    const previewState = getSceneFamilyPreviewState();
-    const { root, body } = buildAccordionSectionEl(`${getSceneFamilyLabel(state.documentProject.sceneFamilyKey)} Preview`);
-
-    const helpText = document.createElement("p");
-    helpText.className = "p-form-help-text u-no-margin--bottom";
-    helpText.textContent = "This scene family now affects the stage renderer and composed-frame export path. Dedicated controls are still not surfaced yet, but the preview now uses a richer adapter-side render pass instead of the halo inspector.";
-    body.append(helpText);
-
-    if (previewState) {
-      const summary = document.createElement("div");
-      summary.className = "grid-row";
-      summary.append(wrapCol(2, createFormGroup("Preview", createReadonlySpan(previewState.title))));
-      summary.append(wrapCol(2, createFormGroup("State", createReadonlySpan(previewState.subtitle))));
-      body.append(summary);
-
-      const statsList = document.createElement("div");
-      statsList.className = "style-palette";
-      for (const stat of previewState.stats) {
-        const card = document.createElement("div");
-        card.className = "style-palette__button";
-
-        const meta = document.createElement("span");
-        meta.className = "style-palette__meta";
-        meta.textContent = stat;
-
-        card.append(meta);
-        statsList.append(card);
-      }
-
-      body.append(statsList);
-    }
-
-    return root;
-  }
-
-  const { root, body } = buildAccordionSectionEl("Halo Field");
-  const hc = state.haloConfig;
-
-  const compositionFields = document.createElement("div");
-  compositionFields.className = "grid-row";
-
-  compositionFields.append(wrapCol(1, createFormGroup("Scale",
-    createSliderInput(hc.composition.scale, { min: 0.1, max: 2, step: 0.01 }, v => {
-      state.haloConfig = { ...hc, composition: { ...hc.composition, scale: v } }; void renderStage();
-    })
-  )));
-
-  compositionFields.append(wrapCol(1, createFormGroup("Radial Scale",
-    createSliderInput(hc.composition.radial_scale, { min: 0.1, max: 2, step: 0.01 }, v => {
-      state.haloConfig = { ...hc, composition: { ...hc.composition, radial_scale: v } }; void renderStage();
-    })
-  )));
-
-  compositionFields.append(wrapCol(1, createFormGroup("Inner Radius",
-    createSliderInput(hc.generator_wrangle.inner_radius, { min: 0, max: 1, step: 0.001 }, v => {
-      state.haloConfig = { ...hc, generator_wrangle: { ...hc.generator_wrangle, inner_radius: v } }; void renderStage();
-    })
-  )));
-
-  compositionFields.append(wrapCol(1, createFormGroup("Outer Radius",
-    createSliderInput(hc.generator_wrangle.outer_radius, { min: 0, max: 1, step: 0.001 }, v => {
-      state.haloConfig = { ...hc, generator_wrangle: { ...hc.generator_wrangle, outer_radius: v } }; void renderStage();
-    })
-  )));
-
-  body.append(compositionFields);
-
-  const generatorFields = document.createElement("div");
-  generatorFields.className = "grid-row";
-
-  generatorFields.append(wrapCol(1, createFormGroup("Spokes",
-    createNumberInput(hc.generator_wrangle.spoke_count, { min: 4, max: 120, step: 1 }, v => {
-      state.haloConfig = { ...hc, generator_wrangle: { ...hc.generator_wrangle, spoke_count: Math.round(v) } }; void renderStage();
-    })
-  )));
-
-  generatorFields.append(wrapCol(1, createFormGroup("Orbits",
-    createNumberInput(hc.generator_wrangle.num_orbits, { min: 1, max: 16, step: 1 }, v => {
-      state.haloConfig = { ...hc, generator_wrangle: { ...hc.generator_wrangle, num_orbits: Math.round(v) } }; void renderStage();
-    })
-  )));
-
-  generatorFields.append(wrapCol(1, createFormGroup("Min Active Orbits",
-    createNumberInput(hc.generator_wrangle.min_active_orbits, { min: 1, max: 16, step: 1 }, v => {
-      state.haloConfig = { ...hc, generator_wrangle: { ...hc.generator_wrangle, min_active_orbits: Math.round(v) } }; void renderStage();
-    })
-  )));
-
-  generatorFields.append(wrapCol(1, createFormGroup("Phase Count",
-    createNumberInput(hc.generator_wrangle.phase_count, { min: 1, max: 6, step: 1 }, v => {
-      state.haloConfig = { ...hc, generator_wrangle: { ...hc.generator_wrangle, phase_count: Math.round(v) } }; void renderStage();
-    })
-  )));
-
-  body.append(generatorFields);
-
-  const angleFields = document.createElement("div");
-  angleFields.className = "grid-row";
-
-  angleFields.append(wrapCol(1, createFormGroup("Base Angle",
-    createSliderInput(hc.generator_wrangle.base_angle_deg, { min: -180, max: 180, step: 0.1 }, v => {
-      state.haloConfig = { ...hc, generator_wrangle: { ...hc.generator_wrangle, base_angle_deg: v } }; void renderStage();
-    })
-  )));
-
-  angleFields.append(wrapCol(1, createFormGroup("Pattern Offset",
-    createNumberInput(hc.generator_wrangle.pattern_offset_spokes, { min: -120, max: 120, step: 1 }, v => {
-      state.haloConfig = { ...hc, generator_wrangle: { ...hc.generator_wrangle, pattern_offset_spokes: Math.round(v) } }; void renderStage();
-    })
-  )));
-
-  angleFields.append(wrapCol(1, createFormGroup("Start Radius",
-    createSliderInput(hc.spoke_lines.start_radius_px, { min: 0, max: 400, step: 1 }, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, start_radius_px: v } }; void renderStage();
-    })
-  )));
-
-  angleFields.append(wrapCol(1, createFormGroup("End Radius Extra",
-    createSliderInput(hc.spoke_lines.end_radius_extra_px, { min: 0, max: 400, step: 1 }, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, end_radius_extra_px: v } }; void renderStage();
-    })
-  )));
-
-  body.append(angleFields);
-
-  /* colors row */
-  const colorFields = document.createElement("div");
-  colorFields.className = "grid-row";
-
-  for (const [label, getValue, setValue] of [
-    ["Background", () => hc.composition.background_color,
-      (v: string) => { state.haloConfig = { ...hc, composition: { ...hc.composition, background_color: v } }; }],
-    ["Dot Color", () => hc.point_style.color,
-      (v: string) => { state.haloConfig = { ...hc, point_style: { ...hc.point_style, color: v } }; }],
-    ["Construction", () => hc.spoke_lines.construction_color,
-      (v: string) => { state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, construction_color: v } }; }],
-    ["Reference", () => hc.spoke_lines.reference_color,
-      (v: string) => { state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, reference_color: v } }; }],
-    ["Spoke Color", () => hc.spoke_lines.color,
-      (v: string) => { state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, color: v } }; }],
-    ["Echo Color", () => hc.spoke_lines.echo_color,
-      (v: string) => { state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_color: v } }; }]
-  ] as const) {
-    const colorInput = document.createElement("input");
-    colorInput.type = "color";
-    colorInput.className = "control-color";
-    colorInput.value = (getValue as () => string)();
-    colorInput.addEventListener("input", () => {
-      (setValue as (v: string) => void)(colorInput.value);
-      void renderStage();
-    });
-    colorFields.append(wrapCol(1, createFormGroup(label as string, colorInput)));
-  }
-
-  body.append(colorFields);
-
-  /* spoke details row */
-  const spokeDetails = document.createElement("div");
-  spokeDetails.className = "grid-row";
-
-  spokeDetails.append(wrapCol(1, createFormGroup("Spoke Width",
-    createSliderInput(hc.spoke_lines.width_px, { min: 0, max: 16, step: 0.5 }, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, width_px: v } }; void renderStage();
-    })
-  )));
-
-  spokeDetails.append(wrapCol(1, createFormGroup("Echo Count",
-    createNumberInput(hc.spoke_lines.echo_count, { min: 0, max: 32, step: 1 }, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_count: Math.round(v) } }; void renderStage();
-    })
-  )));
-
-  spokeDetails.append(wrapCol(1, createFormGroup("Echo Style",
-    createSelectInput(hc.spoke_lines.echo_style,
-      [
-        { label: "Mixed", value: "mixed" },
-        { label: "Dots", value: "dots" },
-        { label: "Plus", value: "plus" },
-        { label: "Triangles", value: "triangles" },
-        { label: "Diamond", value: "diamond" },
-        { label: "Star", value: "star" },
-        { label: "Hexagon", value: "hexagon" },
-        { label: "Radial Dash", value: "radial_dash" }
-      ],
-      (v) => { state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_style: v } }; void renderStage(); }
-    )
-  )));
-
-  spokeDetails.append(wrapCol(1, createFormGroup("Phase Width",
-    createSliderInput(hc.spoke_lines.phase_start_width_px, { min: 0, max: 32, step: 1 }, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, phase_start_width_px: v } }; void renderStage();
-    })
-  )));
-
-  body.append(spokeDetails);
-
-  /* echo shape details row */
-  const echoDetails = document.createElement("div");
-  echoDetails.className = "grid-row";
-
-  echoDetails.append(wrapCol(1, createFormGroup("Phase End Width",
-    createSliderInput(hc.spoke_lines.phase_end_width_px, { min: 0, max: 32, step: 1 }, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, phase_end_width_px: v } }; void renderStage();
-    })
-  )));
-
-  echoDetails.append(wrapCol(1, createFormGroup("Echo Stroke",
-    createSliderInput(hc.spoke_lines.echo_marker_stroke_px, { min: 0, max: 12, step: 0.5 }, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_marker_stroke_px: v } }; void renderStage();
-    })
-  )));
-
-  echoDetails.append(wrapCol(1, createFormGroup("Echo Scale",
-    createSliderInput(hc.spoke_lines.echo_marker_scale_mult, { min: 0.1, max: 6, step: 0.1 }, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_marker_scale_mult: v } }; void renderStage();
-    })
-  )));
-
-  echoDetails.append(wrapCol(1, createFormGroup("Sparse Boost",
-    createSliderInput(hc.spoke_lines.echo_sparse_scale_boost, { min: 0, max: 6, step: 0.1 }, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_sparse_scale_boost: v } }; void renderStage();
-    })
-  )));
-
-  body.append(echoDetails);
-
-  /* echo pattern details row */
-  const echoPatternDetails = document.createElement("div");
-  echoPatternDetails.className = "grid-row";
-
-  echoPatternDetails.append(wrapCol(1, createFormGroup("Shape Seed",
-    createNumberInput(hc.spoke_lines.echo_shape_seed, { min: 0, max: 9999, step: 1 }, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_shape_seed: Math.round(v) } }; void renderStage();
-    })
-  )));
-
-  echoPatternDetails.append(wrapCol(1, createFormGroup("Mix Shape %",
-    createSliderInput(hc.spoke_lines.echo_mix_shape_pct, { min: 0, max: 1, step: 0.01 }, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_mix_shape_pct: v } }; void renderStage();
-    })
-  )));
-
-  echoPatternDetails.append(wrapCol(1, createFormGroup("Ripple Count",
-    createSliderInput(hc.spoke_lines.echo_wave_count, { min: 0, max: 12, step: 1 }, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_wave_count: Math.round(v) } }; void renderStage();
-    })
-  )));
-
-  echoPatternDetails.append(wrapCol(1, createFormGroup("Echo Fade",
-    createSliderInput(hc.spoke_lines.echo_opacity_mult, { min: 0, max: 1, step: 0.01 }, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, echo_opacity_mult: v } }; void renderStage();
-    })
-  )));
-
-  body.append(echoPatternDetails);
-
-  const screensaverDetails = document.createElement("div");
-  screensaverDetails.className = "grid-row";
-
-  screensaverDetails.append(wrapCol(1, createFormGroup("Breath Cycle",
-    createSliderInput(hc.screensaver?.cycle_sec ?? 60, { min: 0, max: 60, step: 0.1 }, v => {
-      state.haloConfig = { ...hc, screensaver: { ...hc.screensaver!, cycle_sec: v } }; void renderStage();
-    })
-  )));
-
-  screensaverDetails.append(wrapCol(1, createFormGroup("Breath Ramp In",
-    createSliderInput(hc.screensaver?.ramp_in_sec ?? 0.6, { min: 0, max: 60, step: 0.1 }, v => {
-      state.haloConfig = { ...hc, screensaver: { ...hc.screensaver!, ramp_in_sec: v } }; void renderStage();
-    })
-  )));
-
-  screensaverDetails.append(wrapCol(1, createFormGroup("Min Spokes",
-    createSliderInput(hc.screensaver?.min_spoke_count ?? 24, { min: 1, max: 180, step: 1 }, v => {
-      state.haloConfig = { ...hc, screensaver: { ...hc.screensaver!, min_spoke_count: Math.round(v) } }; void renderStage();
-    })
-  )));
-
-  screensaverDetails.append(wrapCol(1, createFormGroup("Boundary Ease",
-    createSliderInput(hc.screensaver?.phase_boundary_transition_sec ?? 0.35, { min: 0, max: 1.5, step: 0.01 }, v => {
-      state.haloConfig = { ...hc, screensaver: { ...hc.screensaver!, phase_boundary_transition_sec: v } }; void renderStage();
-    })
-  )));
-
-  body.append(screensaverDetails);
-
-  const toggleFields = document.createElement("div");
-  toggleFields.className = "grid-row";
-
-  toggleFields.append(wrapCol(1, createCheckboxFormGroup(
-    "Pulse Orbits",
-    hc.screensaver?.pulse_orbits ?? false,
-    (pulseOrbits) => {
-      state.haloConfig = { ...hc, screensaver: { ...hc.screensaver!, pulse_orbits: pulseOrbits } };
-      void renderStage();
-    }
-  )));
-
-  toggleFields.append(wrapCol(1, createCheckboxFormGroup(
-    "Pulse Spokes",
-    hc.screensaver?.pulse_spokes ?? false,
-    (pulseSpokes) => {
-      state.haloConfig = { ...hc, screensaver: { ...hc.screensaver!, pulse_spokes: pulseSpokes } };
-      void renderStage();
-    }
-  )));
-
-  toggleFields.append(wrapCol(1, createCheckboxFormGroup(
-    "Release Labels",
-    hc.spoke_text?.enabled ?? false,
-    (enabled) => {
-      state.haloConfig = { ...hc, spoke_text: { ...hc.spoke_text!, enabled } };
-      void renderStage();
-    }
-  )));
-
-  body.append(toggleFields);
-
-  if (hc.spoke_text?.enabled) {
-    const labelFields = document.createElement("div");
-    labelFields.className = "grid-row";
-
-    labelFields.append(wrapCol(1, createFormGroup("Label Size",
-      createSliderInput(hc.spoke_text.font_size_px, { min: 3, max: 24, step: 0.5 }, v => {
-        state.haloConfig = { ...hc, spoke_text: { ...hc.spoke_text!, font_size_px: v } }; void renderStage();
-      })
-    )));
-
-    labelFields.append(wrapCol(1, createFormGroup("Label Position",
-      createSliderInput(hc.spoke_text.radial_u, { min: 0, max: 1, step: 0.01 }, v => {
-        state.haloConfig = { ...hc, spoke_text: { ...hc.spoke_text!, radial_u: v } }; void renderStage();
-      })
-    )));
-
-    body.append(labelFields);
-  }
-
-  const debugFields = document.createElement("div");
-  debugFields.className = "grid-row";
-
-  debugFields.append(wrapCol(1, createCheckboxFormGroup(
-    "Reference Halo",
-    hc.spoke_lines.show_reference_halo,
-    (showReferenceHalo) => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, show_reference_halo: showReferenceHalo } };
-      void renderStage();
-    }
-  )));
-
-  debugFields.append(wrapCol(1, createCheckboxFormGroup(
-    "Debug Masks",
-    hc.spoke_lines.show_debug_masks,
-    (showDebugMasks) => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, show_debug_masks: showDebugMasks } };
-      void renderStage();
-    }
-  )));
-
-  body.append(debugFields);
-
-  return root;
-}
-
-// â”€â”€â”€ DOM authoring layer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ DOM authoring layer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function createAuthoringBox(className: string): { box: HTMLElement; label: HTMLElement } {
   const box = document.createElement("div");
@@ -3477,7 +3004,7 @@ function renderAuthoringUI() {
   }
 }
 
-// â”€â”€â”€ Inline editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Inline editor Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function openInlineEditor(fieldId: string) {
   if (!state.overlayVisible) return;
@@ -3554,7 +3081,7 @@ function closeInlineEditor() {
   editSession = null;
 }
 
-// â”€â”€â”€ Pointer event handling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Pointer event handling Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function clientToFrame(clientX: number, clientY: number): { frameX: number; frameY: number } | null {
   const stage = getStageEl();
@@ -3742,7 +3269,7 @@ function handlePointerMove(e: PointerEvent) {
     const delta = getFrameDelta(e.clientX, e.clientY);
 
     if (currentDrag.mode === "resize") {
-      // Resize mode â€” adjust columnSpan (text) or dimensions (logo)
+      // Resize mode Ã¢â‚¬â€ adjust columnSpan (text) or dimensions (logo)
       if (currentDrag.selection.kind === "text" && currentDrag.initialField) {
         const metrics = currentDrag.metrics;
         const colW = metrics.columnWidthPx + metrics.columnGutterPx;
@@ -3893,7 +3420,7 @@ function setDrawerOpen(isOpen: boolean) {
   toggleBtn?.setAttribute("aria-expanded", "false");
 }
 
-// â”€â”€â”€ Keyboard shortcuts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Keyboard shortcuts Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function handleKeyDown(e: KeyboardEvent) {
   if (editSession && e.key === "Escape") {
@@ -3966,7 +3493,7 @@ function handleKeyDown(e: KeyboardEvent) {
   }
 }
 
-// â”€â”€â”€ Drawer toggle (mobile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Drawer toggle (mobile) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function setupDrawerToggle() {
   const toggleBtn = $<HTMLElement>("[data-drawer-toggle]");
@@ -3981,7 +3508,7 @@ function setupDrawerToggle() {
   backdrop?.addEventListener("click", () => setDrawerOpen(false));
 }
 
-// â”€â”€â”€ Button handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Button handlers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -4058,7 +3585,7 @@ async function exportComposedFramePng() {
   }, "image/png");
 }
 
-// â”€â”€â”€ Export modal + sequence export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Export modal + sequence export Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 interface ExportOptions {
   startFrame: number;
@@ -4273,7 +3800,7 @@ async function exportPngSequence() {
     }
 
     const exported = f - startFrame + 1;
-    // Update progress periodically â€” every 12 frames or at start/end
+    // Update progress periodically Ã¢â‚¬â€ every 12 frames or at start/end
     if (exported === 1 || exported === frameCount || exported % 12 === 0) {
       setSourceDefaultStatus(`Exporting PNG sequence: ${exported}/${frameCount}...`);
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -4404,7 +3931,7 @@ function setupControlPanelResize() {
   });
 }
 
-// â”€â”€â”€ Window resize â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Window resize Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function setupResize() {
   const appShell = getAppShellEl();
@@ -4432,7 +3959,7 @@ function setupResize() {
   window.addEventListener("resize", checkDock);
 }
 
-// â”€â”€â”€ Initialization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Initialization Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 async function init() {
   setSourceDefaultStatus("Loading source default...");
@@ -4456,7 +3983,7 @@ async function init() {
   setupResize();
   initAuthoringLayer();
 
-  // Pointer events on the stage element (not the SVG â€” SVG is pointer-events:none)
+  // Pointer events on the stage element (not the SVG Ã¢â‚¬â€ SVG is pointer-events:none)
   const stage = getStageEl();
   if (stage) {
     stage.addEventListener("pointerdown", handlePointerDown);
@@ -4475,7 +4002,7 @@ async function init() {
 
 const initPromise = init();
 
-// â”€â”€â”€ Headless automation API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Headless automation API Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 // Matches the reference repo's window.__mascotAutomation pattern.
 // Used by scripts/export_frames.py (Playwright) to drive headless rendering.
 
