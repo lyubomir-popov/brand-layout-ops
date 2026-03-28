@@ -386,6 +386,88 @@ export function getOverlayFieldDisplayLabel(
   return buildOverlayVariableItemLabel(field.styleKey, Math.max(1, ordinal), sameStyleFields.length);
 }
 
+export function getOverlayMainHeadingField(
+  params: Pick<OverlayLayoutOperatorParams, "textFields">
+): TextFieldPlacementSpec | undefined {
+  return params.textFields.find((field) => field.id === "main_heading");
+}
+
+export function replaceOverlayTextField(
+  textFields: TextFieldPlacementSpec[],
+  nextField: TextFieldPlacementSpec
+): TextFieldPlacementSpec[] {
+  const index = textFields.findIndex((field) => field.id === nextField.id);
+  if (index === -1) {
+    return [{ ...nextField }, ...textFields];
+  }
+
+  return textFields.map((field, fieldIndex) => (
+    fieldIndex === index ? { ...nextField } : field
+  ));
+}
+
+export function syncOverlayParamsFrameToProfile(
+  params: OverlayLayoutOperatorParams,
+  profileKey: string
+): OverlayLayoutOperatorParams {
+  const profile = getOutputProfile(profileKey);
+  const cloned = JSON.parse(JSON.stringify(params)) as OverlayLayoutOperatorParams;
+  cloned.frame = { widthPx: profile.widthPx, heightPx: profile.heightPx };
+  return cloned;
+}
+
+export function syncOverlaySharedProfileParams(
+  source: OverlayLayoutOperatorParams,
+  target: OverlayLayoutOperatorParams,
+  profileKey: string
+): OverlayLayoutOperatorParams {
+  const profile = getOutputProfile(profileKey);
+  const synced = JSON.parse(JSON.stringify(target)) as OverlayLayoutOperatorParams;
+  const sourceHeading = getOverlayMainHeadingField(source);
+
+  synced.frame = {
+    widthPx: profile.widthPx,
+    heightPx: profile.heightPx
+  };
+  synced.safeArea = { ...source.safeArea };
+  synced.grid = { ...source.grid };
+  synced.textStyles = source.textStyles.map((style) => ({ ...style }));
+  if (source.logo) {
+    synced.logo = { ...source.logo };
+  } else {
+    delete synced.logo;
+  }
+
+  if (sourceHeading) {
+    synced.textFields = replaceOverlayTextField(synced.textFields, sourceHeading);
+  }
+
+  const nextInlineTextByFieldId = { ...(synced.inlineTextByFieldId ?? {}) };
+  if (sourceHeading) {
+    const headingKeys = new Set<string>([sourceHeading.id]);
+    if (sourceHeading.contentFieldId) {
+      headingKeys.add(sourceHeading.contentFieldId);
+    }
+
+    for (const key of headingKeys) {
+      const mappedValue = source.inlineTextByFieldId?.[key];
+      if (typeof mappedValue === "string") {
+        nextInlineTextByFieldId[key] = mappedValue;
+      }
+    }
+
+    if (sourceHeading.text.trim().length > 0) {
+      nextInlineTextByFieldId[sourceHeading.id] = sourceHeading.text;
+      if (sourceHeading.contentFieldId) {
+        nextInlineTextByFieldId[sourceHeading.contentFieldId] = sourceHeading.text;
+      }
+    }
+  }
+
+  synced.inlineTextByFieldId = nextInlineTextByFieldId;
+  return synced;
+}
+
 function createLandscapeOverlayTextFields(): TextFieldPlacementSpec[] {
   return [
     {

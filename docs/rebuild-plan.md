@@ -283,6 +283,7 @@ It reflects the current repo after the overlay-preview rebuild, reference-doc re
 1. **Output profiles are now scaffolded, and the preview now keeps per-profile overlay buckets.**
 	`core-types` now defines the 5 reference profile keys plus dimensions, safe areas, and default frame rates.
 	The preview shell now preserves overlay params per output profile instead of mutating one shared document when the profile changes.
+	The shared overlay-layout path now also owns profile-switch frame resync and carried-over heading or shared overlay-state normalization between per-format buckets, instead of leaving that document rule in preview-only helpers.
 	Remaining gap: profile ownership still does not extend to source-default persistence, export state, or profile-owned motion and mascot defaults the way the reference app does.
 
 2. **Content-format structure exists, and the preview now keeps per-format buckets inside each profile.**

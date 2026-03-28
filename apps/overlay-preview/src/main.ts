@@ -46,6 +46,7 @@ import {
   createDefaultOverlayParams,
   createOverlayLayoutOperator,
   getOverlayFieldDisplayLabel,
+  getOverlayMainHeadingField,
   getOverlayStyleDisplayLabel,
   inspectOverlayCsvDraft,
   normalizeOverlayParamsForEditing,
@@ -53,6 +54,8 @@ import {
   OVERLAY_LAYOUT_OPERATOR_KEY,
   resolveOverlayTextValue,
   setOverlayTextValue,
+  syncOverlayParamsFrameToProfile,
+  syncOverlaySharedProfileParams,
   type OverlayContentSource,
   type OverlayLayoutOperatorParams
 } from "@brand-layout-ops/operator-overlay-layout";
@@ -519,76 +522,6 @@ function updateExportSettings(updater: (settings: ExportSettings) => ExportSetti
   persistActiveExportSettings();
 }
 
-function getMainHeadingField(params: OverlayLayoutOperatorParams): TextFieldPlacementSpec | undefined {
-  return params.textFields.find((field) => field.id === "main_heading");
-}
-
-function replaceTextField(
-  textFields: TextFieldPlacementSpec[],
-  nextField: TextFieldPlacementSpec
-): TextFieldPlacementSpec[] {
-  const index = textFields.findIndex((field) => field.id === nextField.id);
-  if (index === -1) {
-    return [{ ...nextField }, ...textFields];
-  }
-
-  return textFields.map((field, fieldIndex) => (
-    fieldIndex === index ? { ...nextField } : field
-  ));
-}
-
-function syncSharedProfileParams(
-  source: OverlayLayoutOperatorParams,
-  target: OverlayLayoutOperatorParams,
-  profileKey: string
-): OverlayLayoutOperatorParams {
-  const profile = getOutputProfile(profileKey);
-  const synced = cloneOverlayParams(target);
-  const sourceHeading = getMainHeadingField(source);
-
-  synced.frame = {
-    widthPx: profile.widthPx,
-    heightPx: profile.heightPx
-  };
-  synced.safeArea = { ...source.safeArea };
-  synced.grid = { ...source.grid };
-  synced.textStyles = source.textStyles.map((style) => ({ ...style }));
-  if (source.logo) {
-    synced.logo = { ...source.logo };
-  } else {
-    delete synced.logo;
-  }
-
-  if (sourceHeading) {
-    synced.textFields = replaceTextField(synced.textFields, sourceHeading);
-  }
-
-  const nextInlineTextByFieldId = { ...(synced.inlineTextByFieldId ?? {}) };
-  if (sourceHeading) {
-    const headingKeys = new Set<string>([sourceHeading.id]);
-    if (sourceHeading.contentFieldId) {
-      headingKeys.add(sourceHeading.contentFieldId);
-    }
-
-    for (const key of headingKeys) {
-      const mappedValue = source.inlineTextByFieldId?.[key];
-      if (typeof mappedValue === "string") {
-        nextInlineTextByFieldId[key] = mappedValue;
-      }
-    }
-
-    if (sourceHeading.text.trim().length > 0) {
-      nextInlineTextByFieldId[sourceHeading.id] = sourceHeading.text;
-      if (sourceHeading.contentFieldId) {
-        nextInlineTextByFieldId[sourceHeading.contentFieldId] = sourceHeading.text;
-      }
-    }
-  }
-
-  synced.inlineTextByFieldId = nextInlineTextByFieldId;
-  return synced;
-}
-
 function persistActiveProfileBuckets(): void {
   const activeParams = cloneOverlayParams(state.params);
   const profileBucket = getProfileFormatBucket(state.outputProfileKey);
@@ -602,7 +535,7 @@ function persistActiveProfileBuckets(): void {
     const existing = profileBucket[formatKey] ?? createDefaultOverlayParams(state.outputProfileKey, formatKey);
     profileBucket[formatKey] = formatKey === state.contentFormatKey
       ? cloneOverlayParams(activeParams)
-      : syncSharedProfileParams(activeParams, existing, state.outputProfileKey);
+      : syncOverlaySharedProfileParams(activeParams, existing, state.outputProfileKey);
   }
 }
 
@@ -613,10 +546,7 @@ function getOrCreateProfileFormatParams(
   const profileBucket = getProfileFormatBucket(profileKey);
   const existing = profileBucket[formatKey];
   if (existing) {
-    const profile = getOutputProfile(profileKey);
-    const cloned = cloneOverlayParams(existing);
-    cloned.frame = { widthPx: profile.widthPx, heightPx: profile.heightPx };
-    return cloned;
+    return syncOverlayParamsFrameToProfile(existing, profileKey);
   }
 
   const created = createDefaultOverlayParams(profileKey, formatKey);
@@ -644,7 +574,7 @@ function normalizeSelection() {
     return;
   }
 
-  const fallbackField = getMainHeadingField(state.params) ?? state.params.textFields[0];
+  const fallbackField = getOverlayMainHeadingField(state.params) ?? state.params.textFields[0];
   if (fallbackField) {
     state.selected = { kind: "text", id: fallbackField.id };
     return;
@@ -683,7 +613,7 @@ function addTextField() {
   const selectedField = state.selected?.kind === "text"
     ? state.params.textFields.find((field) => field.id === state.selected?.id)
     : undefined;
-  const anchorField = selectedField ?? getMainHeadingField(state.params) ?? state.params.textFields[0];
+  const anchorField = selectedField ?? getOverlayMainHeadingField(state.params) ?? state.params.textFields[0];
   const nextId = createTextFieldId();
   const nextContentFieldId = nextId;
   const nextField: TextFieldPlacementSpec = {
@@ -738,7 +668,7 @@ function deleteSelectedTextField() {
     inlineTextByFieldId: nextInlineText
   };
 
-  const fallbackField = remainingFields[remainingFields.length - 1] ?? getMainHeadingField(state.params);
+  const fallbackField = remainingFields[remainingFields.length - 1] ?? getOverlayMainHeadingField(state.params);
   state.selected = fallbackField
     ? { kind: "text", id: fallbackField.id }
     : state.params.logo
@@ -884,7 +814,7 @@ function switchContentFormat(formatKey: string) {
   if (formatKey === state.contentFormatKey) return;
 
   persistActiveProfileBuckets();
-  const nextParams = syncSharedProfileParams(
+  const nextParams = syncOverlaySharedProfileParams(
     getEffectiveParams(),
     getOrCreateProfileFormatParams(state.outputProfileKey, formatKey),
     state.outputProfileKey
