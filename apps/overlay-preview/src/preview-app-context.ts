@@ -28,7 +28,8 @@ import type { OverlayPreviewDocument as OverlayPreviewDocumentModel } from "./pr
 import type { DocumentWorkspaceController } from "./document-workspace.js";
 import type {
   FuzzyBoidsPreviewConfig,
-  PhyllotaxisPreviewConfig
+  PhyllotaxisPreviewConfig,
+  ScatterPreviewConfig
 } from "./scene-family-preview.js";
 
 // ——— Constants shared between main.ts and extracted panel modules ———
@@ -65,6 +66,7 @@ export interface PreviewState {
   haloConfigByProfile: Record<string, HaloFieldConfig>;
   phyllotaxisConfig: PhyllotaxisPreviewConfig;
   fuzzyBoidsConfig: FuzzyBoidsPreviewConfig;
+  scatterConfig: ScatterPreviewConfig;
   sourceDefaults: SourceDefaultSnapshot;
   documentProject: OverlayDocumentProject;
   isPlaying: boolean;

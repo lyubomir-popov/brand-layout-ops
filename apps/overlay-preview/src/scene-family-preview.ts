@@ -1,5 +1,12 @@
 import type { BoidField, BoidRecord, ColorRgba, PointField, PointRecord, Vector3 } from "@brand-layout-ops/core-types";
 import { FuzzyBoidsSimulation, type FuzzyBoidsBoundsParams } from "@brand-layout-ops/operator-fuzzy-boids";
+import {
+  resolveScatterPointField,
+  resolveScatterShape,
+  type ScatterDistributionMode,
+  type ScatterResolvedShape,
+  type ScatterShapeKind
+} from "@brand-layout-ops/operator-scatter";
 
 const fuzzyBoidsSimulation = new FuzzyBoidsSimulation();
 import { resolvePhyllotaxisField } from "@brand-layout-ops/operator-phyllotaxis";
@@ -27,9 +34,16 @@ export interface FuzzyBoidsSceneFamilyPreviewState extends BaseSceneFamilyPrevie
   linkRadiusPx: number;
 }
 
+export interface ScatterSceneFamilyPreviewState extends BaseSceneFamilyPreviewState {
+  sceneFamilyKey: "scatter";
+  shape: ScatterResolvedShape;
+  distributionMode: ScatterDistributionMode;
+}
+
 export type SceneFamilyPreviewState =
   | PhyllotaxisSceneFamilyPreviewState
-  | FuzzyBoidsSceneFamilyPreviewState;
+  | FuzzyBoidsSceneFamilyPreviewState
+  | ScatterSceneFamilyPreviewState;
 
 interface SceneFamilyPalette {
   point: ColorRgba;
@@ -135,6 +149,32 @@ export function createDefaultPhyllotaxisPreviewConfig(): PhyllotaxisPreviewConfi
   };
 }
 
+export interface ScatterPreviewConfig {
+  pointCount: number;
+  seed: number;
+  distributionMode: ScatterDistributionMode;
+  marginPx: number;
+  shapeKind: ScatterShapeKind;
+  widthPx: number;
+  heightPx: number;
+  cornerRadiusPx: number;
+  svgPath: string;
+}
+
+export function createDefaultScatterPreviewConfig(): ScatterPreviewConfig {
+  return {
+    pointCount: 420,
+    seed: 1,
+    distributionMode: "uniform",
+    marginPx: 16,
+    shapeKind: "rounded-rect",
+    widthPx: 620,
+    heightPx: 420,
+    cornerRadiusPx: 64,
+    svgPath: "M -220 0 L -120 -150 L 120 -150 L 220 0 L 120 150 L -120 150 Z"
+  };
+}
+
 export interface BuildSceneFamilyPreviewStateOptions {
   sceneFamilyKey: OverlaySceneFamilyKey;
   widthPx: number;
@@ -143,6 +183,7 @@ export interface BuildSceneFamilyPreviewStateOptions {
   haloConfig: HaloFieldConfig;
   phyllotaxisConfig: PhyllotaxisPreviewConfig;
   fuzzyBoidsConfig: FuzzyBoidsPreviewConfig;
+  scatterConfig: ScatterPreviewConfig;
 }
 
 export interface RenderSceneFamilyPreviewFrameOptions {
@@ -295,6 +336,11 @@ function getPointRadius(point: PointRecord, pointIndex: number, pointCount: numb
     return clamp(1.25 + pscale * 1.8, 1.25, 4.5);
   }
 
+  if (sceneFamilyKey === "scatter") {
+    const densityWeight = Number(point.attributes.scatter_density_weight ?? 0.8);
+    return clamp(1.1 + densityWeight * 2.4, 1.1, 3.8);
+  }
+
   const normalizedIndex = pointCount <= 1 ? 0 : pointIndex / Math.max(1, pointCount - 1);
   return 0.9 + normalizedIndex * 2.1;
 }
@@ -302,6 +348,11 @@ function getPointRadius(point: PointRecord, pointIndex: number, pointCount: numb
 function getPointAlpha(point: PointRecord, pointIndex: number, pointCount: number, sceneFamilyKey: PreviewableSceneFamilyKey): number {
   if (sceneFamilyKey === "fuzzy-boids") {
     return Boolean(point.attributes.boid_active) ? 0.88 : 0.18;
+  }
+
+  if (sceneFamilyKey === "scatter") {
+    const densityWeight = Number(point.attributes.scatter_density_weight ?? 0.8);
+    return 0.26 + densityWeight * 0.58;
   }
 
   const normalizedIndex = pointCount <= 1 ? 1 : pointIndex / Math.max(1, pointCount - 1);
@@ -431,6 +482,102 @@ function drawPhyllotaxisPreview(
   });
 
   drawGuideRing(ctx, previewState.center, Math.max(3, previewState.maxRadiusPx * 0.025), toCanvasColor(palette.point, 0.7), 1.25);
+}
+
+function drawRoundedRectPath(
+  ctx: CanvasRenderingContext2D,
+  left: number,
+  top: number,
+  widthPx: number,
+  heightPx: number,
+  radiusPx: number
+): void {
+  const safeRadiusPx = clamp(radiusPx, 0, Math.min(widthPx, heightPx) * 0.5);
+  const right = left + widthPx;
+  const bottom = top + heightPx;
+  ctx.beginPath();
+  ctx.moveTo(left + safeRadiusPx, top);
+  ctx.lineTo(right - safeRadiusPx, top);
+  ctx.quadraticCurveTo(right, top, right, top + safeRadiusPx);
+  ctx.lineTo(right, bottom - safeRadiusPx);
+  ctx.quadraticCurveTo(right, bottom, right - safeRadiusPx, bottom);
+  ctx.lineTo(left + safeRadiusPx, bottom);
+  ctx.quadraticCurveTo(left, bottom, left, bottom - safeRadiusPx);
+  ctx.lineTo(left, top + safeRadiusPx);
+  ctx.quadraticCurveTo(left, top, left + safeRadiusPx, top);
+  ctx.closePath();
+}
+
+function drawScatterShapeGuide(
+  ctx: CanvasRenderingContext2D,
+  shape: ScatterResolvedShape,
+  palette: SceneFamilyPalette
+): void {
+  ctx.save();
+  ctx.strokeStyle = toCanvasColor(palette.reference, 0.24);
+  ctx.fillStyle = toCanvasColor(palette.echo, 0.05);
+  ctx.lineWidth = 1.2;
+
+  if (shape.kind === "ellipse") {
+    ctx.beginPath();
+    ctx.ellipse(shape.center.x, shape.center.y, shape.radiusXPx, shape.radiusYPx, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  if (shape.kind === "rect") {
+    ctx.fillRect(shape.bounds.left, shape.bounds.top, shape.widthPx, shape.heightPx);
+    ctx.strokeRect(shape.bounds.left, shape.bounds.top, shape.widthPx, shape.heightPx);
+    ctx.restore();
+    return;
+  }
+
+  if (shape.kind === "rounded-rect") {
+    drawRoundedRectPath(ctx, shape.bounds.left, shape.bounds.top, shape.widthPx, shape.heightPx, shape.cornerRadiusPx);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  if (shape.kind === "svg-path") {
+    ctx.beginPath();
+    ctx.moveTo(shape.points[0].x, shape.points[0].y);
+    for (let pointIndex = 1; pointIndex < shape.points.length; pointIndex += 1) {
+      ctx.lineTo(shape.points[pointIndex].x, shape.points[pointIndex].y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawScatterPreview(
+  ctx: CanvasRenderingContext2D,
+  previewState: ScatterSceneFamilyPreviewState,
+  haloConfig: HaloFieldConfig
+): void {
+  const palette = buildPreviewPalette(haloConfig);
+  drawScatterShapeGuide(ctx, previewState.shape, palette);
+
+  previewState.pointField.points.forEach((point, pointIndex) => {
+    const densityWeight = Number(point.attributes.scatter_density_weight ?? 0.8);
+    const pointColor = previewState.distributionMode === "density-weighted"
+      ? mixColors(palette.point, palette.echo, 1 - densityWeight * 0.45)
+      : mixColors(palette.echo, palette.reference, clamp(pointIndex / Math.max(1, previewState.pointField.points.length - 1), 0, 1) * 0.4);
+
+    drawPointDot(ctx, point, {
+      color: pointColor,
+      alpha: getPointAlpha(point, pointIndex, previewState.pointField.points.length, previewState.sceneFamilyKey),
+      radiusPx: getPointRadius(point, pointIndex, previewState.pointField.points.length, previewState.sceneFamilyKey)
+    });
+  });
+
+  drawGuideRing(ctx, previewState.center, Math.max(3, Math.min(previewState.shape.bounds.width, previewState.shape.bounds.height) * 0.025), toCanvasColor(palette.point, 0.68), 1.25);
 }
 
 function drawFuzzyBoidVelocity(
@@ -711,6 +858,46 @@ export function buildSceneFamilyPreviewState(
     };
   }
 
+  if (options.sceneFamilyKey === "scatter") {
+    const sc = options.scatterConfig;
+    const pointField = resolveScatterPointField({
+      pointCount: sc.pointCount,
+      seed: sc.seed,
+      distributionMode: sc.distributionMode,
+      marginPx: sc.marginPx,
+      shape: {
+        kind: sc.shapeKind,
+        widthPx: sc.widthPx,
+        heightPx: sc.heightPx,
+        cornerRadiusPx: sc.cornerRadiusPx,
+        svgPath: sc.svgPath,
+        origin: center
+      }
+    });
+    const shape = resolveScatterShape({
+      pointCount: sc.pointCount,
+      seed: sc.seed,
+      distributionMode: sc.distributionMode,
+      marginPx: sc.marginPx,
+      shape: {
+        kind: sc.shapeKind,
+        widthPx: sc.widthPx,
+        heightPx: sc.heightPx,
+        cornerRadiusPx: sc.cornerRadiusPx,
+        svgPath: sc.svgPath,
+        origin: center
+      }
+    });
+
+    return {
+      sceneFamilyKey: "scatter",
+      pointField,
+      center,
+      shape,
+      distributionMode: sc.distributionMode
+    };
+  }
+
   const bc = options.fuzzyBoidsConfig;
   const seedField = resolvePhyllotaxisField({
     numPoints: bc.numBoids,
@@ -791,6 +978,11 @@ export function renderSceneFamilyPreviewFrame(
 
   if (options.previewState.sceneFamilyKey === "phyllotaxis") {
     drawPhyllotaxisPreview(context, options.previewState, options.haloConfig, options.widthPx, options.heightPx);
+    return;
+  }
+
+  if (options.previewState.sceneFamilyKey === "scatter") {
+    drawScatterPreview(context, options.previewState, options.haloConfig);
     return;
   }
 

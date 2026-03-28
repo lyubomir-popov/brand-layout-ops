@@ -70,7 +70,7 @@ That starts a Vite app at `apps/overlay-preview/` which currently:
 - includes left and right snapped resize handles for selected text fields, a first-baseline guide, and staged CSV apply or discard controls
 - persists local `.brand-layout-ops.json` documents through the shared overlay document metadata/state envelope plus shared scene-family or target `project` metadata, with preview-only preset and CSV-draft extras layered on top and legacy preview-file compatibility retained
 - lets the Output Format panel add or delete saved document sizes and edit the document scene-family metadata instead of treating the active screen size as only transient preview state
-- uses the selected document scene family in the live stage and composed-frame export path, with phyllotaxis and fuzzy-boids rendered through richer family-specific canvas preview passes while halo keeps the Three.js renderer
+- uses the selected document scene family in the live stage and composed-frame export path, with phyllotaxis, fuzzy-boids, and scatter rendered through richer family-specific canvas preview passes while halo keeps the Three.js renderer
 - treats local documents as the source of truth for working state; browser-local preset storage is no longer supposed to seed a new session's working document
 
 Other useful local checks:
@@ -94,6 +94,7 @@ npm run demo:spokes
 - `@brand-layout-ops/operator-copy-to-points`: Houdini-style point instancing with propagated attributes for later Three.js and SVG backends
 - `@brand-layout-ops/operator-orbits`: coarse orbit-ring point-field generator for motion-side rebuild work
 - `@brand-layout-ops/operator-phyllotaxis`: golden-angle point-field generation matching the current Houdini phyllotaxis HDA logic
+- `@brand-layout-ops/operator-scatter`: scatter-point generation inside ellipse, rect, rounded-rect, or polygon-style SVG path boundaries
 - `@brand-layout-ops/operator-spokes`: coarse spoke-band point-field generator for motion-side rebuild work
 - `@brand-layout-ops/operator-ubuntu-summit-animation`: coarse scene-family operator boundary for the full non-reusable Ubuntu Summit parity port, including mascot and full animation timeline state
 - `@brand-layout-ops/overlay-interaction`: snapped text/logo drag math for operator-facing overlay editing
@@ -122,7 +123,7 @@ The next work should stay parity-first:
 
 1. close the unchecked items in `docs/rebuild-plan.md`
 2. validate against the reference app visually and with geometry checks
-3. keep broader feature work such as fuzzy boids deferred until the reopened parity checklist is materially closed
+3. keep broader feature work such as pushing more non-halo settings deeper into preview-local state deferred until the reopened parity checklist is materially closed
 
 ## Later additions
 

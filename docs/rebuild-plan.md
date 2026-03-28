@@ -204,6 +204,8 @@ Only after parity is proven in this repo should new feature work resume.
 	Reason: the highest-value next anti-drift move was to stop letting `apps/overlay-preview/src/main.ts` own recent-document reopen, file save or open orchestration, dirty-state UI, and fallback download plumbing, without prematurely freezing the broader shared document schema for scene-family selection and multi-target output.
 - [x] 2026-03-28: Shared document project metadata and preview-side document state bridging landed before scene-family or multi-target UI was exposed.
 	Reason: preserving the emerging scene-family and target schema through file open/save and removing the remaining `apps/overlay-preview/src/main.ts` document serialization seam was lower risk than building more preview-local UI state on top of an unstable document contract.
+- [x] 2026-03-28: Scatter landed as a first-class document scene family instead of as a selector-only operator.
+	Reason: the current operator selector and preview renderer are both keyed to `documentProject.sceneFamilyKey`, so promoting scatter to that seam was the smallest coherent change that preserved the existing document-owned background model.
 
 ## Parity Gap Audit — 2026-03-27
 
@@ -514,13 +516,13 @@ The phyllotaxis scene family has no UI for controlling its parameters.
 
 New operator: scatter points inside an SVG shape, analogous to Houdini scatter SOP.
 
-Current constraint: the preview's operator selector is still driven by `documentProject.sceneFamilyKey`, so landing scatter cleanly in that selector requires either generalizing the selector beyond scene families or promoting scatter to a first-class document scene family.
+Resolved architecture choice: scatter landed as a first-class document scene family so it fits the current operator selector and preview-renderer seam without inventing a second selection model yet.
 
-- [ ] Create `@brand-layout-ops/operator-scatter`.
-- [ ] Input: an SVG path or shape definition, recreated in the operator (not in Three.js).
-- [ ] Output: a `PointField` of scattered points inside the shape boundary.
-- [ ] Parameters: point count, seed, distribution mode (uniform, density-weighted), margin.
-- [ ] Build a parameter panel and register it for the operator selector.
+- [x] Create `@brand-layout-ops/operator-scatter`.
+- [x] Input: an SVG path or shape definition, recreated in the operator (not in Three.js).
+- [x] Output: a `PointField` of scattered points inside the shape boundary.
+- [x] Parameters: point count, seed, distribution mode (uniform, density-weighted), margin.
+- [x] Build a parameter panel and register it for the operator selector.
 
 ### EQ-6. Resolve or remove presets ✅
 

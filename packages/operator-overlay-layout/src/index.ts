@@ -94,7 +94,8 @@ export const OVERLAY_DOCUMENT_FILE_VERSION = 1;
 export const OVERLAY_SCENE_FAMILY_ORDER = [
   "halo",
   "phyllotaxis",
-  "fuzzy-boids"
+  "fuzzy-boids",
+  "scatter"
 ] as const;
 
 export type OverlaySceneFamilyKey = typeof OVERLAY_SCENE_FAMILY_ORDER[number];
