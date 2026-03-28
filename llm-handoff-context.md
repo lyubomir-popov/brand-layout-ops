@@ -58,8 +58,10 @@ All scoped under `@brand-layout-ops/`.
 - Active content formats now persist per output profile inside preview state, source-default snapshots, and preset payloads, so profile switches restore the intended format bucket instead of reusing one global selection
 - CSV authoring UI now shows row status, alias-based field mapping, and per-field staged-versus-applied values for the active format
 - `operator-ubuntu-summit-animation` now computes scene phase, runtime timing, loop timing, mascot-box metadata, reveal geometry, screensaver pulse counts, and transient spoke-transition state, and the preview renderer plus automation state now consume that descriptor path
+- `operator-ubuntu-summit-animation` now also emits mascot motion timing and motion-state metadata (blink, head turn, eye closure, sneeze/nose bob) through the scene descriptor and automation bridge
 - Linked title-to-logo sizing now normalizes through shared preview-state params, so profile switches and loaded snapshots keep the A Head/logo lock intact
 - MP4 export verification now covers both straight encode and fade-in/fade-out flags against a real 48-frame headless export on Windows
+- The preview control surface now imports the sibling `portable-vertical-rhythm` package instead of `vanilla-framework`, and Halo Field range controls render as real themed sliders again rather than bare native thumbs
 
 ## Current sprint TODO (do in order)
 
@@ -105,9 +107,9 @@ All scoped under `@brand-layout-ops/`.
 
 ### G. After current parity priorities
 
-- [ ] Incrementally switch the preview control surface from Vanilla to the local `portable-vertical-rhythm` micro-framework once the active parity task list above is complete
-  - Use the sibling repo package as a local dependency, not copied source
-  - Keep this behind the current parity work; do not let the UI-library swap displace export, content, profile, or authoring parity
+- [x] Incrementally switch the preview control surface from Vanilla to the local `portable-vertical-rhythm` micro-framework
+  - Landed early by explicit user request so the broken Halo Field slider rendering could be fixed in the live preview
+  - Uses the sibling repo package as a local dependency and keeps the existing alias-based markup for now
 
 ### D. UI parity quick wins (done)
 

@@ -167,6 +167,8 @@ Only after parity is proven in this repo should new feature work resume.
 	Reason: systematic line-by-line comparison of config-schema.js, default-config-source.js, editor-constants.js, index.js, rendering.js, and halo-field.js against the current brand-layout-ops implementation. Gaps categorized as critical (5), high (7), medium (4), and low (2).
 - [x] 2026-03-27: Audit delta recorded after the interaction-layer rebuild and current-repo scaffold expansion.
 	Reason: the repo is no longer at the same state as the first 18-gap audit. Output-profile scaffolding, content-format specs, 3 text styles, linked title-size helper logic, preset localStorage scaffolding, stronger guides, and direct authoring interactions now exist, so the remaining parity work is narrower and more architectural than the original snapshot suggests.
+- [x] 2026-03-28: The preview control-surface migration to `portable-vertical-rhythm` landed before parity signoff.
+	Reason: the user explicitly requested the swap during active parity work, and the broken Halo Field slider rendering was caused by the preview still using the old Vanilla dependency path instead of the sibling package's themed range controls.
 
 ## Parity Gap Audit — 2026-03-27
 
@@ -366,8 +368,8 @@ These matter, but they are not approved active work until we discuss placement, 
 	Working assumption: do not widen the abstraction until parity is proven, but keep the future compositor layer in mind.
 - [ ] Operator-registered accordion panels for the config editor UI.
 	Working assumption: each operator package self-registers an accordion tab+panel instead of the preview app hard-coding per-section builders. This keeps the UI organized as the control surface grows. Fits naturally into Stage 3 (operator surfaces) and the non-negotiable rule that parameter UI reads operator manifests.
-- [ ] Incremental control-surface swap from Vanilla to the sibling `portable-vertical-rhythm` package after the current parity backlog is cleared.
-	Working assumption: treat this as a post-parity UI-surface migration, use the package as a local dependency rather than copied source, and avoid coupling the migration to the remaining export/content/profile parity work.
+- [x] Incremental control-surface swap from Vanilla to the sibling `portable-vertical-rhythm` package for the overlay-preview shell.
+	Working assumption: landed through the package's compatibility aliases first, keeps the sibling repo as the source of truth, and leaves any later `vr-*` class renames optional rather than blocking parity work.
 
 ### Splits to not get bogged down with
 

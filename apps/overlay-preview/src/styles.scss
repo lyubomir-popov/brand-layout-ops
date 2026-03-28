@@ -1,6 +1,3 @@
-@import "vanilla-framework";
-@include vanilla;
-
 :root {
   color-scheme: dark;
   --editor-panel-space: 0px;
@@ -260,6 +257,16 @@ body.editor-docked .drawer-panel {
   overflow-y: auto;
   padding-bottom: 0;
   padding-top: 0;
+}
+
+.slider-pair input[type="range"] {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.slider-pair .p-slider__input {
+  flex: 0 0 auto;
+  inline-size: 4.5rem;
 }
 
 .drawer-content {

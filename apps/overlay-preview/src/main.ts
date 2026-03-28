@@ -6,9 +6,12 @@
  * 2. 2D canvas renders release labels (middle layer)
  * 3. SVG overlay renders text, logo, and composition guides (top layer)
  * 4. DOM authoring layer provides inline text editing
- * 5. Vanilla-framework aside panel provides all controls
+ * 5. Portable Vertical Rhythm themed aside panel provides all controls
  */
+import "portable-vertical-rhythm/styles.css";
 import "./styles.scss";
+
+import { initRangeControls } from "portable-vertical-rhythm";
 
 import type {
   LayerScene,
@@ -2016,6 +2019,7 @@ function buildConfigEditor() {
   accordion.append(list);
   container.append(accordion);
   setupAccordion(accordion);
+  initRangeControls({ root: container });
 
   // Populate dynamic content inside the new accordion sections
   buildOutputProfileOptions();
@@ -2067,10 +2071,7 @@ function createSliderInput(
   onChange: (v: number) => void
 ): HTMLElement {
   const wrap = document.createElement("div");
-  wrap.className = "slider-pair";
-  wrap.style.display = "flex";
-  wrap.style.gap = "4px";
-  wrap.style.alignItems = "center";
+  wrap.className = "slider-pair p-slider__wrapper";
 
   const range = document.createElement("input");
   range.type = "range";
@@ -2078,18 +2079,14 @@ function createSliderInput(
   range.max = String(opts.max);
   range.step = String(opts.step);
   range.value = String(value);
-  range.style.flex = "1";
-  range.style.minWidth = "0";
 
   const num = document.createElement("input");
   num.type = "number";
-  num.className = "p-form-validation__input is-dense";
+  num.className = "p-form-validation__input p-slider__input is-dense";
   num.min = String(opts.min);
   num.max = String(opts.max);
   num.step = String(opts.step);
   num.value = String(value);
-  num.style.width = "56px";
-  num.style.flexShrink = "0";
 
   range.addEventListener("input", () => {
     const v = parseFloat(range.value);
@@ -3885,7 +3882,7 @@ function buildExportModal(): HTMLDialogElement {
       </div>
       <footer class="p-modal__footer">
         <button class="p-button--base" type="button" data-export-cancel>Cancel</button>
-        <button class="p-button--positive" type="button" data-export-submit>Export</button>
+        <button class="p-button" type="button" data-export-submit>Export</button>
       </footer>
     </div>
   `;
@@ -4121,7 +4118,17 @@ function getAutomationState() {
     scene_effective_orbit_count: sceneDescriptor.frameState.effectiveOrbitCount,
     scene_effective_spoke_count: sceneDescriptor.frameState.effectiveSpokeCount,
     scene_halo_reveal_u: sceneDescriptor.frameState.haloU,
-    scene_screensaver_active: sceneDescriptor.frameState.useScreensaverField
+    scene_screensaver_active: sceneDescriptor.frameState.useScreensaverField,
+    scene_blink_start_sec: sceneDescriptor.frameState.motionTiming.blinkStartSec,
+    scene_blink_end_sec: sceneDescriptor.frameState.motionTiming.blinkEndSec,
+    scene_head_turn_duration_sec: sceneDescriptor.frameState.motionTiming.headTurnDurationSec,
+    scene_mascot_fade_u: sceneDescriptor.frameState.mascotMotion.mascotFadeU,
+    scene_head_turn_deg: sceneDescriptor.frameState.mascotMotion.headTurnDeg,
+    scene_eye_closure_u: sceneDescriptor.frameState.mascotMotion.eyeClosureU,
+    scene_closing_blink_u: sceneDescriptor.frameState.mascotMotion.closingBlinkU,
+    scene_loop_blink_u: sceneDescriptor.frameState.mascotMotion.loopBlinkU,
+    scene_sneeze_u: sceneDescriptor.frameState.mascotMotion.sneezeU,
+    scene_nose_bob_px: sceneDescriptor.frameState.mascotMotion.noseBobPx
   };
 }
 
