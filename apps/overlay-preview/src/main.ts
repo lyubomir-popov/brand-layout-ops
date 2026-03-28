@@ -114,6 +114,7 @@ interface ConfigSectionDefinition {
   key: string;
   order: number;
   factory: ConfigSectionFactory;
+  afterRender?: (() => void) | undefined;
 }
 
 // ─── Operator registry ────────────────────────────────────────────────
@@ -1950,13 +1951,13 @@ function buildPresetsSection(): HTMLElement {
 }
 
 const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
-  { key: "playback-export", order: 100, factory: buildPlaybackExportSection },
-  { key: "output-format", order: 200, factory: buildOutputFormatSection },
-  { key: "presets", order: 300, factory: buildPresetsSection },
+  { key: "playback-export", order: 100, factory: buildPlaybackExportSection, afterRender: updatePlaybackToggleUi },
+  { key: "output-format", order: 200, factory: buildOutputFormatSection, afterRender: buildOutputProfileOptions },
+  { key: "presets", order: 300, factory: buildPresetsSection, afterRender: buildPresetTabs },
   { key: "content-format", order: 400, factory: buildContentFormatSection },
   { key: "selected-overlay", order: 500, factory: buildOverlaySection },
   { key: "paragraph-styles", order: 600, factory: buildParagraphStylesSection },
-  { key: "layout-grid", order: 700, factory: buildGridSection },
+  { key: "layout-grid", order: 700, factory: buildGridSection, afterRender: syncOverlayVisibilityUi },
   { key: "halo-config", order: 800, factory: buildHaloConfigSection }
 ];
 
@@ -1972,10 +1973,9 @@ function registerConfigSections(sections: ConfigSectionDefinition[]) {
   }
 }
 
-function getConfigSectionFactories(): ConfigSectionFactory[] {
+function getConfigSections(): ConfigSectionDefinition[] {
   return [...registeredConfigSections.values()]
-    .sort((left, right) => left.order - right.order)
-    .map((section) => section.factory);
+    .sort((left, right) => left.order - right.order);
 }
 
 registerConfigSections(CORE_CONFIG_SECTION_DEFINITIONS);
@@ -1991,9 +1991,9 @@ function buildConfigEditor() {
   const list = document.createElement("ul");
   list.className = "p-accordion__list";
 
-  const sectionFactories = getConfigSectionFactories();
-  for (const buildSection of sectionFactories) {
-    list.append(buildSection());
+  const sections = getConfigSections();
+  for (const section of sections) {
+    list.append(section.factory());
   }
 
   accordion.append(list);
@@ -2001,11 +2001,9 @@ function buildConfigEditor() {
   setupAccordion(accordion);
   initRangeControls({ root: container });
 
-  // Populate dynamic content inside the new accordion sections
-  buildOutputProfileOptions();
-  buildPresetTabs();
-  updatePlaybackToggleUi();
-  syncOverlayVisibilityUi();
+  for (const section of sections) {
+    section.afterRender?.();
+  }
 }
 
 /* shared form helpers */
