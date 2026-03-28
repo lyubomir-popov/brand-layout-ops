@@ -65,7 +65,7 @@ All scoped under `@brand-layout-ops/`.
 - Base overlay text styles, seeded field layouts, seeded logo placement, sample CSV drafts, and `createDefaultOverlayParams` now also live in `operator-overlay-layout` instead of `sample-document.ts`
 - MP4 export verification now covers both straight encode and fade-in/fade-out flags against a real 48-frame headless export on Windows
 - The preview control surface now imports the sibling `portable-vertical-rhythm` package instead of `vanilla-framework`, and Halo Field range controls render as real themed sliders again rather than bare native thumbs
-- The preview config editor now builds its accordion from a registry-style section factory list instead of one fixed append sequence, as the first step back toward operator-registered control surfaces
+- The preview config editor now builds its accordion from a keyed, ordered registry of section definitions instead of one fixed append sequence, as the next step back toward operator-registered control surfaces
 
 ## Current sprint TODO (do in order)
 

@@ -109,6 +109,12 @@ interface DragState {
 
 type ConfigSectionFactory = () => HTMLElement;
 
+interface ConfigSectionDefinition {
+  key: string;
+  order: number;
+  factory: ConfigSectionFactory;
+}
+
 // ─── Operator registry ────────────────────────────────────────────────
 
 const PREVIEW_NODE_ID = "overlay-preview";
@@ -1976,26 +1982,36 @@ function buildPresetsSection(): HTMLElement {
   return root;
 }
 
-const coreConfigSectionFactories: ConfigSectionFactory[] = [
-  buildPlaybackExportSection,
-  buildOutputFormatSection,
-  buildPresetsSection,
-  buildContentFormatSection,
-  buildOverlaySection,
-  buildParagraphStylesSection,
-  buildGridSection,
-  buildHaloConfigSection
+const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
+  { key: "playback-export", order: 100, factory: buildPlaybackExportSection },
+  { key: "output-format", order: 200, factory: buildOutputFormatSection },
+  { key: "presets", order: 300, factory: buildPresetsSection },
+  { key: "content-format", order: 400, factory: buildContentFormatSection },
+  { key: "selected-overlay", order: 500, factory: buildOverlaySection },
+  { key: "paragraph-styles", order: 600, factory: buildParagraphStylesSection },
+  { key: "layout-grid", order: 700, factory: buildGridSection },
+  { key: "halo-config", order: 800, factory: buildHaloConfigSection }
 ];
 
-const registeredConfigSectionFactories: ConfigSectionFactory[] = [];
+const registeredConfigSections = new Map<string, ConfigSectionDefinition>();
 
-function registerConfigSection(factory: ConfigSectionFactory) {
-  registeredConfigSectionFactories.push(factory);
+function registerConfigSection(section: ConfigSectionDefinition) {
+  registeredConfigSections.set(section.key, section);
+}
+
+function registerConfigSections(sections: ConfigSectionDefinition[]) {
+  for (const section of sections) {
+    registerConfigSection(section);
+  }
 }
 
 function getConfigSectionFactories(): ConfigSectionFactory[] {
-  return [...coreConfigSectionFactories, ...registeredConfigSectionFactories];
+  return [...registeredConfigSections.values()]
+    .sort((left, right) => left.order - right.order)
+    .map((section) => section.factory);
 }
+
+registerConfigSections(CORE_CONFIG_SECTION_DEFINITIONS);
 
 function buildConfigEditor() {
   const container = getConfigEditor();
