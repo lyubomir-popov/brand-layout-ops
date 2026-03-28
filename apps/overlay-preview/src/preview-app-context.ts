@@ -16,6 +16,7 @@ import type {
   TextStyleSpec
 } from "@brand-layout-ops/core-types";
 import type {
+  OverlayBackgroundNode,
   OverlayDocumentProject,
   OverlayContentSource,
   OverlayLayoutOperatorParams,
@@ -62,6 +63,7 @@ export interface PreviewState {
   sourceDefaults: SourceDefaultSnapshot;
   sourceDefaultProject: OverlayDocumentProject;
   documentProject: OverlayDocumentProject;
+  selectedBackgroundNodeId: string | null;
   isPlaying: boolean;
   playbackTimeSec: number;
 }
@@ -203,6 +205,12 @@ export interface PreviewAppContext {
 
   // — Scene family —
 
+  /** Set which saved background node the inspector is currently editing. */
+  setSelectedBackgroundNode(nodeId: string | null): boolean;
+  /** Get the saved background node currently selected in the inspector. */
+  getSelectedBackgroundNode(): OverlayBackgroundNode | null;
+  /** Update the saved background node currently selected in the inspector. */
+  updateSelectedBackgroundNode(updater: (node: OverlayBackgroundNode) => OverlayBackgroundNode): boolean;
   /** Rebuild the saved background graph from the current scene-family state. */
   syncDocumentBackgroundGraph(): void;
   /** Get the preview state snapshot for the current scene family. */

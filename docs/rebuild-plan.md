@@ -257,7 +257,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	Recent anti-drift pass: preview-local document workspace state, recent-document rendering, file open or save orchestration, and fallback download handling now live in `apps/overlay-preview/src/document-workspace.ts` instead of `apps/overlay-preview/src/main.ts`.
 	Recent anti-drift pass: preview-side source-default snapshot plus document build/apply/reset logic now live in `apps/overlay-preview/src/preview-document-bridge.ts` instead of `apps/overlay-preview/src/main.ts`.
 	Recent anti-drift pass: shared `document.project.sceneFamilyConfigs` now owns the phyllotaxis, fuzzy-boids, and scatter settings, and the source-default authoring file now round-trips that shared project metadata instead of only a raw snapshot.
-	Remaining gap: preview-only extras still live in preview-local modules, and the next seam is list-first inspector UI for the saved background chain rather than more preview-local background config state.
+	Remaining gap: preview-only extras still live in preview-local modules, while fuller graph authoring stays intentionally deferred after the new list-first inspector proves out the saved-chain workflow.
 	User direction on 2026-03-28: browser-local presets are the wrong long-term product shape; a first pass of filesystem-backed documents is now landed, and follow-up work should keep extending that path instead of deepening localStorage-first UX blindly.
 	Reference files: `index.js` (save_preset, delete_active_preset, export_current_preset, import_presets_from_file, apply_preset_by_id).
 
@@ -577,9 +577,10 @@ Treat operator chaining as a document-and-graph concern, not preview-local glue.
 
 Only build more graph UI after the document model can already persist the chain.
 
-- [ ] Expose the saved background chain as a list-first network view in the inspector once EQ-10 and EQ-11 exist.
-- [ ] Selecting an operator in that list shows only its typed parameter pane.
-- [ ] Defer a full draggable node editor until the persisted graph model and typed chaining are stable.
+- [x] Expose the saved background chain as a list-first network view in the inspector once EQ-10 and EQ-11 exist.
+- [x] Selecting an operator in that list shows only its typed parameter pane.
+- [x] Defer a full draggable node editor until the persisted graph model and typed chaining are stable.
+- [x] Landed implementation: the inspector now shows rendered-output radios plus a saved-node list for `document.project.backgroundGraph`, selecting a node filters the accordion to that operator's pane, upstream-node edits now stay on the saved graph node instead of rebuilding the full chain from `sceneFamilyConfigs`, and the active output node still mirrors its params back into the matching scene-family defaults.
 
 ### Recent cleanup and bugs (reference)
 

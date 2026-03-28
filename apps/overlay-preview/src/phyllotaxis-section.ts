@@ -13,25 +13,35 @@ import {
   createSliderInput,
   wrapCol
 } from "@brand-layout-ops/parameter-ui";
+import { OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY } from "@brand-layout-ops/operator-overlay-layout";
 import type { PreviewAppContext } from "./preview-app-context.js";
 import type { PhyllotaxisPreviewConfig } from "./scene-family-preview.js";
 
 export function buildPhyllotaxisSection(ctx: PreviewAppContext): HTMLElement {
   const { root, body } = buildAccordionSectionEl("Phyllotaxis");
-  const pc = ctx.state.documentProject.sceneFamilyConfigs.phyllotaxis;
+  const selectedNode = ctx.getSelectedBackgroundNode();
+  const pc = selectedNode?.operatorKey === OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY
+    ? selectedNode.params
+    : ctx.state.documentProject.sceneFamilyConfigs.phyllotaxis;
 
   function update(patch: Partial<PhyllotaxisPreviewConfig>) {
-    ctx.state.documentProject = {
-      ...ctx.state.documentProject,
-      sceneFamilyConfigs: {
-        ...ctx.state.documentProject.sceneFamilyConfigs,
-        phyllotaxis: {
-          ...ctx.state.documentProject.sceneFamilyConfigs.phyllotaxis,
+    const didUpdate = ctx.updateSelectedBackgroundNode((node) => {
+      if (node.operatorKey !== OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY) {
+        return node;
+      }
+
+      return {
+        ...node,
+        params: {
+          ...node.params,
           ...patch
         }
-      }
-    };
-    ctx.syncDocumentBackgroundGraph();
+      };
+    });
+    if (!didUpdate) {
+      return;
+    }
+
     ctx.markDocumentDirty();
     void ctx.renderStage();
   }

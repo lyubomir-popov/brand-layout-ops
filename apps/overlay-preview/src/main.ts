@@ -54,6 +54,7 @@ import {
   createOverlayLayoutOperator,
   getOverlayFieldDisplayLabel,
   getOverlayMainHeadingField,
+  getOverlaySceneFamilyKeyForBackgroundOperator,
   getOverlayStyleDisplayLabel,
   inspectOverlayCsvDraft,
   normalizeOverlayBackgroundGraph,
@@ -61,6 +62,11 @@ import {
   normalizeOverlayParamsForEditing,
   normalizeOverlayTextFieldOffsetBaselines,
   normalizeOverlaySceneFamilyConfigs,
+  OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY,
+  OVERLAY_BACKGROUND_FUZZY_SEED_NODE_ID,
+  OVERLAY_BACKGROUND_HALO_OPERATOR_KEY,
+  OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY,
+  OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY,
   OVERLAY_SCENE_FAMILY_ORDER,
   OVERLAY_LAYOUT_OPERATOR_KEY,
   resolveOverlayContentFormatKeyForProfile,
@@ -69,6 +75,7 @@ import {
   setOverlayTextValue,
   syncOverlayParamsFrameToProfile,
   syncOverlaySharedProfileParams,
+  type OverlayBackgroundNode,
   type OverlayDocumentProject,
   type OverlayDocumentTarget,
   type OverlaySceneFamilyKey,
@@ -324,6 +331,7 @@ const state: PreviewState = {
   sourceDefaults: cloneOverlaySourceDefaultSnapshot(INITIAL_SOURCE_DEFAULTS),
   sourceDefaultProject: cloneOverlayDocumentProject(INITIAL_SOURCE_DEFAULT_PROJECT),
   documentProject: cloneOverlayDocumentProject(INITIAL_SOURCE_DEFAULT_PROJECT),
+  selectedBackgroundNodeId: INITIAL_SOURCE_DEFAULT_PROJECT.backgroundGraph.activeNodeId,
   isPlaying: true,
   playbackTimeSec: 0
 };
@@ -337,6 +345,122 @@ const previewDocumentBridge = {
   syncHaloConfigToProfile
 };
 
+function normalizeSelectedBackgroundNodeId(
+  preferredNodeId: string | null = state.selectedBackgroundNodeId
+): string | null {
+  const activeNode = state.documentProject.backgroundGraph.nodes.find(
+    (node) => node.id === state.documentProject.backgroundGraph.activeNodeId
+  );
+  const preferredNode = preferredNodeId
+    ? state.documentProject.backgroundGraph.nodes.find((node) => node.id === preferredNodeId)
+    : null;
+  const nextSelectedNodeId = preferredNode?.id ?? activeNode?.id ?? state.documentProject.backgroundGraph.nodes[0]?.id ?? null;
+  state.selectedBackgroundNodeId = nextSelectedNodeId;
+  return nextSelectedNodeId;
+}
+
+function setSelectedBackgroundNode(nodeId: string | null): boolean {
+  const previousNodeId = state.selectedBackgroundNodeId;
+  normalizeSelectedBackgroundNodeId(nodeId);
+  return state.selectedBackgroundNodeId !== previousNodeId;
+}
+
+function getSelectedBackgroundNode(): OverlayBackgroundNode | null {
+  const selectedNodeId = normalizeSelectedBackgroundNodeId();
+  if (!selectedNodeId) {
+    return null;
+  }
+
+  return state.documentProject.backgroundGraph.nodes.find((node) => node.id === selectedNodeId) ?? null;
+}
+
+function getSelectedBackgroundNodeGroup(): OverlaySceneFamilyKey {
+  const selectedNode = getSelectedBackgroundNode();
+  return selectedNode
+    ? getOverlaySceneFamilyKeyForBackgroundOperator(selectedNode.operatorKey)
+    : state.documentProject.sceneFamilyKey;
+}
+
+function syncActiveSceneFamilyConfigFromBackgroundNode(
+  project: OverlayDocumentProject,
+  node: OverlayBackgroundNode
+): OverlayDocumentProject {
+  if (node.id !== project.backgroundGraph.activeNodeId) {
+    return project;
+  }
+
+  switch (node.operatorKey) {
+    case OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY:
+      return {
+        ...project,
+        sceneFamilyConfigs: {
+          ...project.sceneFamilyConfigs,
+          phyllotaxis: { ...node.params }
+        }
+      };
+    case OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY:
+      return {
+        ...project,
+        sceneFamilyConfigs: {
+          ...project.sceneFamilyConfigs,
+          fuzzyBoids: { ...node.params }
+        }
+      };
+    case OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY:
+      return {
+        ...project,
+        sceneFamilyConfigs: {
+          ...project.sceneFamilyConfigs,
+          scatter: { ...node.params }
+        }
+      };
+    default:
+      return project;
+  }
+}
+
+function updateSelectedBackgroundNode(
+  updater: (node: OverlayBackgroundNode) => OverlayBackgroundNode
+): boolean {
+  const selectedNodeId = normalizeSelectedBackgroundNodeId();
+  if (!selectedNodeId) {
+    return false;
+  }
+
+  let didUpdate = false;
+  const nextNodes = state.documentProject.backgroundGraph.nodes.map((node) => {
+    if (node.id !== selectedNodeId) {
+      return node;
+    }
+
+    const nextNode = updater(node);
+    didUpdate = nextNode !== node;
+    return nextNode;
+  });
+
+  if (!didUpdate) {
+    return false;
+  }
+
+  const updatedNode = nextNodes.find((node) => node.id === selectedNodeId);
+  if (!updatedNode) {
+    return false;
+  }
+
+  let nextProject: OverlayDocumentProject = {
+    ...state.documentProject,
+    backgroundGraph: {
+      ...state.documentProject.backgroundGraph,
+      nodes: nextNodes
+    }
+  };
+
+  nextProject = syncActiveSceneFamilyConfigFromBackgroundNode(nextProject, updatedNode);
+  state.documentProject = nextProject;
+  normalizeSelectedBackgroundNodeId(selectedNodeId);
+  return true;
+}
+
 function syncDocumentBackgroundGraph() {
   state.documentProject = {
     ...state.documentProject,
@@ -345,6 +469,7 @@ function syncDocumentBackgroundGraph() {
       state.documentProject.sceneFamilyConfigs
     )
   };
+  normalizeSelectedBackgroundNodeId(state.selectedBackgroundNodeId);
 }
 
 const documentWorkspaceController = createDocumentWorkspaceController<OverlayPreviewDocument>({
@@ -372,6 +497,7 @@ let lastPlaybackFrameMs: number | null = null;
 let ubuntuSummitTransitionState: UbuntuSummitAnimationTransitionState | null = null;
 let logoIntrinsicWidth = 0;
 let logoIntrinsicHeight = 0;
+let shouldAutoOpenNextOperatorSection = false;
 
 // Sync halo config to the initial profile
 syncHaloConfigToProfile(state.outputProfileKey);
@@ -1203,6 +1329,7 @@ async function refreshPreviewAfterDocumentStateChange(): Promise<void> {
   hoverHandle = null;
   closeInlineEditor();
   normalizeSelection();
+  normalizeSelectedBackgroundNodeId();
   resizeRenderer();
   buildConfigEditor();
 
@@ -1482,6 +1609,7 @@ function applySourceDefaultSnapshot(
   state.sourceDefaultProject = cloneOverlayDocumentProject(normalizedProject);
   state.documentProject = cloneOverlayDocumentProject(normalizedProject);
   syncDocumentProjectToCurrentOutputProfile();
+  normalizeSelectedBackgroundNodeId(state.documentProject.backgroundGraph.activeNodeId);
   normalizeSelection();
 }
 
@@ -2066,6 +2194,9 @@ const ctx: PreviewAppContext = {
   applySourceDefaultSnapshot,
   writeCurrentAsSourceDefault,
   setSourceDefaultStatus,
+  setSelectedBackgroundNode,
+  getSelectedBackgroundNode,
+  updateSelectedBackgroundNode,
   syncDocumentBackgroundGraph,
   getSceneFamilyPreviewState,
   getSceneFamilyLabel,
@@ -2110,6 +2241,50 @@ function getConfigSections(): ConfigSectionDefinition[] {
   return configSectionRegistry.getSections();
 }
 
+function getBackgroundNodeLabel(node: OverlayBackgroundNode): string {
+  if (node.operatorKey === OVERLAY_BACKGROUND_HALO_OPERATOR_KEY) {
+    return "Halo Field";
+  }
+
+  if (node.operatorKey === OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY && node.id === OVERLAY_BACKGROUND_FUZZY_SEED_NODE_ID) {
+    return "Phyllotaxis Seed";
+  }
+
+  return getSceneFamilyLabel(getOverlaySceneFamilyKeyForBackgroundOperator(node.operatorKey));
+}
+
+function getBackgroundNodeStatus(node: OverlayBackgroundNode): string {
+  const nodesById = new Map(state.documentProject.backgroundGraph.nodes.map((entry) => [entry.id, entry]));
+  const incomingLabels = state.documentProject.backgroundGraph.edges
+    .filter((edge) => edge.toNodeId === node.id)
+    .map((edge) => nodesById.get(edge.fromNodeId))
+    .filter((entry): entry is OverlayBackgroundNode => entry !== undefined)
+    .map((entry) => getBackgroundNodeLabel(entry));
+  const outgoingLabels = state.documentProject.backgroundGraph.edges
+    .filter((edge) => edge.fromNodeId === node.id)
+    .map((edge) => nodesById.get(edge.toNodeId))
+    .filter((entry): entry is OverlayBackgroundNode => entry !== undefined)
+    .map((entry) => getBackgroundNodeLabel(entry));
+
+  const statusParts = [
+    node.id === state.documentProject.backgroundGraph.activeNodeId ? "Output" : "Upstream"
+  ];
+
+  if (incomingLabels.length > 0) {
+    statusParts.push(`Receives ${incomingLabels.join(", ")}`);
+  }
+
+  if (outgoingLabels.length > 0) {
+    statusParts.push(`Feeds ${outgoingLabels.join(", ")}`);
+  }
+
+  if (incomingLabels.length === 0 && outgoingLabels.length === 0) {
+    statusParts.push("No saved connections");
+  }
+
+  return statusParts.join(" · ");
+}
+
 function buildOperatorSelectorEl(): HTMLElement {
   const section = document.createElement("li");
   section.className = "bf-accordion__group operator-selector";
@@ -2119,8 +2294,20 @@ function buildOperatorSelectorEl(): HTMLElement {
 
   const label = document.createElement("span");
   label.className = "bf-form__label";
-  label.textContent = "Background Operator";
+  label.textContent = "Background Graph";
   heading.append(label);
+
+  const help = document.createElement("p");
+  help.className = "bf-form-help bf-u-no-margin--bottom operator-selector__help";
+  help.textContent = "Output selects the rendered family. Saved nodes select which operator pane the inspector edits.";
+
+  const outputSection = document.createElement("div");
+  outputSection.className = "operator-selector__section";
+
+  const outputLabel = document.createElement("div");
+  outputLabel.className = "operator-selector__subheading";
+  outputLabel.textContent = "Rendered Output";
+  outputSection.append(outputLabel);
 
   const radioGroup = document.createElement("div");
   radioGroup.className = "operator-selector__options";
@@ -2131,7 +2318,7 @@ function buildOperatorSelectorEl(): HTMLElement {
 
     const radio = document.createElement("input");
     radio.type = "radio";
-    radio.name = "operator-selector";
+    radio.name = "background-family-selector";
     radio.value = sceneFamilyKey;
     radio.checked = sceneFamilyKey === state.documentProject.sceneFamilyKey;
     radio.addEventListener("change", () => {
@@ -2140,6 +2327,7 @@ function buildOperatorSelectorEl(): HTMLElement {
         ...state.documentProject,
         sceneFamilyKey: sceneFamilyKey as OverlaySceneFamilyKey
       };
+      shouldAutoOpenNextOperatorSection = true;
       syncDocumentBackgroundGraph();
       markDocumentDirty();
       buildConfigEditor();
@@ -2154,8 +2342,70 @@ function buildOperatorSelectorEl(): HTMLElement {
     radioGroup.append(radioLabel);
   }
 
-  section.append(heading, radioGroup);
+  outputSection.append(radioGroup);
+
+  const nodesSection = document.createElement("div");
+  nodesSection.className = "operator-selector__section";
+
+  const nodesLabel = document.createElement("div");
+  nodesLabel.className = "operator-selector__subheading";
+  nodesLabel.textContent = "Saved Nodes";
+  nodesSection.append(nodesLabel);
+
+  const nodeList = document.createElement("div");
+  nodeList.className = "bf-stack preview-stack--compact";
+  const selectedBackgroundNodeId = normalizeSelectedBackgroundNodeId();
+
+  for (const node of state.documentProject.backgroundGraph.nodes) {
+    const row = document.createElement("label");
+    row.className = "preset-radio-row operator-selector__node";
+
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "background-node-selector";
+    radio.value = node.id;
+    radio.checked = node.id === selectedBackgroundNodeId;
+    radio.addEventListener("change", () => {
+      if (!radio.checked || !setSelectedBackgroundNode(node.id)) {
+        return;
+      }
+
+      shouldAutoOpenNextOperatorSection = true;
+      buildConfigEditor();
+    });
+
+    const copy = document.createElement("span");
+    copy.className = "operator-selector__node-copy";
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "preset-radio-name";
+    nameSpan.textContent = getBackgroundNodeLabel(node);
+
+    const metaSpan = document.createElement("span");
+    metaSpan.className = "preset-radio-status";
+    metaSpan.textContent = getBackgroundNodeStatus(node);
+
+    copy.append(nameSpan, metaSpan);
+    row.append(radio, copy);
+    nodeList.append(row);
+  }
+
+  nodesSection.append(nodeList);
+  section.append(heading, help, outputSection, nodesSection);
   return section;
+}
+
+function openAccordionSection(group: HTMLElement | null): boolean {
+  const tab = group?.querySelector<HTMLElement>(".bf-accordion__tab");
+  const panelId = tab?.getAttribute("aria-controls");
+  const panel = panelId ? document.getElementById(panelId) : null;
+  if (!tab || !panel) {
+    return false;
+  }
+
+  tab.setAttribute("aria-expanded", "true");
+  panel.setAttribute("aria-hidden", "false");
+  return true;
 }
 
 function buildConfigEditor() {
@@ -2176,7 +2426,7 @@ function buildConfigEditor() {
   list.className = "bf-accordion__list";
 
   const sections = getConfigSections();
-  const activeGroup = state.documentProject.sceneFamilyKey;
+  const activeGroup = getSelectedBackgroundNodeGroup();
 
   // Shell sections (no group) — always visible
   const shellSections = sections.filter((section) => !section.group && (section.key !== "paragraph-styles" || state.guideMode !== "off"));
@@ -2203,16 +2453,25 @@ function buildConfigEditor() {
   initRangeControls({ root: container });
 
   // Restore previously open section
-  if (previouslyOpenKey) {
-    const targetGroup = list.querySelector<HTMLElement>(`[data-section-key="${CSS.escape(previouslyOpenKey)}"]`);
-    const targetTab = targetGroup?.querySelector<HTMLElement>(".bf-accordion__tab");
-    const panelId = targetTab?.getAttribute("aria-controls");
-    const targetPanel = panelId ? document.getElementById(panelId) : null;
-    if (targetTab && targetPanel) {
-      targetTab.setAttribute("aria-expanded", "true");
-      targetPanel.setAttribute("aria-hidden", "false");
+  let restoredSection = false;
+  if (shouldAutoOpenNextOperatorSection) {
+    if (previouslyOpenKey && operatorSections.some((section) => section.key === previouslyOpenKey)) {
+      const targetGroup = list.querySelector<HTMLElement>(`[data-section-key="${CSS.escape(previouslyOpenKey)}"]`);
+      restoredSection = openAccordionSection(targetGroup);
     }
+
+    if (!restoredSection) {
+      const firstOperatorSection = operatorSections[0]
+        ? list.querySelector<HTMLElement>(`[data-section-key="${CSS.escape(operatorSections[0].key)}"]`)
+        : null;
+      restoredSection = openAccordionSection(firstOperatorSection);
+    }
+  } else if (previouslyOpenKey) {
+    const targetGroup = list.querySelector<HTMLElement>(`[data-section-key="${CSS.escape(previouslyOpenKey)}"]`);
+    restoredSection = openAccordionSection(targetGroup);
   }
+
+  shouldAutoOpenNextOperatorSection = false;
 
   const activeSections = [...shellSections, ...operatorSections];
   for (const section of activeSections) {
@@ -3580,6 +3839,7 @@ async function applyAutomationSnapshot(payload: Record<string, unknown> = {}) {
         state.documentProject.sceneFamilyConfigs
       )
     };
+    normalizeSelectedBackgroundNodeId(state.selectedBackgroundNodeId);
     backgroundGraphProvided = true;
   }
 

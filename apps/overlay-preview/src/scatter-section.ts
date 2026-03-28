@@ -12,25 +12,35 @@ import {
   createSliderInput,
   wrapCol
 } from "@brand-layout-ops/parameter-ui";
+import { OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY } from "@brand-layout-ops/operator-overlay-layout";
 import type { PreviewAppContext } from "./preview-app-context.js";
 import type { ScatterPreviewConfig } from "./scene-family-preview.js";
 
 export function buildScatterSection(ctx: PreviewAppContext): HTMLElement {
   const { root, body } = buildAccordionSectionEl("Scatter");
-  const sc = ctx.state.documentProject.sceneFamilyConfigs.scatter;
+  const selectedNode = ctx.getSelectedBackgroundNode();
+  const sc = selectedNode?.operatorKey === OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY
+    ? selectedNode.params
+    : ctx.state.documentProject.sceneFamilyConfigs.scatter;
 
   function update(patch: Partial<ScatterPreviewConfig>, rebuildEditor = false) {
-    ctx.state.documentProject = {
-      ...ctx.state.documentProject,
-      sceneFamilyConfigs: {
-        ...ctx.state.documentProject.sceneFamilyConfigs,
-        scatter: {
-          ...ctx.state.documentProject.sceneFamilyConfigs.scatter,
+    const didUpdate = ctx.updateSelectedBackgroundNode((node) => {
+      if (node.operatorKey !== OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY) {
+        return node;
+      }
+
+      return {
+        ...node,
+        params: {
+          ...node.params,
           ...patch
         }
-      }
-    };
-    ctx.syncDocumentBackgroundGraph();
+      };
+    });
+    if (!didUpdate) {
+      return;
+    }
+
     ctx.markDocumentDirty();
     if (rebuildEditor) {
       ctx.buildConfigEditor();

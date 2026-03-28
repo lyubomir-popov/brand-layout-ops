@@ -8,6 +8,7 @@
 
 import type { PreviewAppContext } from "./preview-app-context.js";
 import type { FuzzyBoidsPreviewConfig } from "./scene-family-preview.js";
+import { OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY } from "@brand-layout-ops/operator-overlay-layout";
 import {
   buildAccordionSectionEl,
   createFormGroup,
@@ -20,20 +21,29 @@ import {
 export function buildFuzzyBoidsSection(ctx: PreviewAppContext): HTMLElement {
   const { state } = ctx;
   const { root, body } = buildAccordionSectionEl("Fuzzy Boids");
-  const bc = state.documentProject.sceneFamilyConfigs.fuzzyBoids;
+  const selectedNode = ctx.getSelectedBackgroundNode();
+  const bc = selectedNode?.operatorKey === OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY
+    ? selectedNode.params
+    : state.documentProject.sceneFamilyConfigs.fuzzyBoids;
 
   function update(patch: Partial<FuzzyBoidsPreviewConfig>) {
-    state.documentProject = {
-      ...state.documentProject,
-      sceneFamilyConfigs: {
-        ...state.documentProject.sceneFamilyConfigs,
-        fuzzyBoids: {
-          ...state.documentProject.sceneFamilyConfigs.fuzzyBoids,
+    const didUpdate = ctx.updateSelectedBackgroundNode((node) => {
+      if (node.operatorKey !== OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY) {
+        return node;
+      }
+
+      return {
+        ...node,
+        params: {
+          ...node.params,
           ...patch
         }
-      }
-    };
-    ctx.syncDocumentBackgroundGraph();
+      };
+    });
+    if (!didUpdate) {
+      return;
+    }
+
     ctx.markDocumentDirty();
     void ctx.renderStage();
   }
