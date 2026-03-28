@@ -161,6 +161,12 @@ export const OVERLAY_PROFILE_TEXT_STYLE_OVERRIDES: Record<string, OverlayProfile
   }
 };
 
+export const OVERLAY_TEXT_STYLE_DISPLAY_LABELS: Record<string, string> = {
+  title: "A Head",
+  b_head: "B Head",
+  paragraph: "P"
+};
+
 export const OVERLAY_LAYOUT_PARAMETER_SCHEMA: OperatorParameterSchema = {
   sections: [
     {
@@ -230,6 +236,29 @@ export function applyOverlayProfileTextStyleDefaults(
       ? { ...style, fontSizePx: override.fontSizePx, lineHeightPx: override.lineHeightPx }
       : { ...style };
   });
+}
+
+export function getOverlayStyleDisplayLabel(styleKey: string): string {
+  return OVERLAY_TEXT_STYLE_DISPLAY_LABELS[styleKey] ?? styleKey;
+}
+
+export function buildOverlayVariableItemLabel(styleKey: string, ordinal: number, total: number): string {
+  const styleLabel = getOverlayStyleDisplayLabel(styleKey);
+  return total > 1 ? `${styleLabel} ${ordinal}` : styleLabel;
+}
+
+export function getOverlayFieldDisplayLabel(
+  params: Pick<OverlayLayoutOperatorParams, "textFields">,
+  fieldId: string
+): string {
+  const field = params.textFields.find((candidate) => candidate.id === fieldId);
+  if (!field) {
+    return fieldId;
+  }
+
+  const sameStyleFields = params.textFields.filter((candidate) => candidate.styleKey === field.styleKey);
+  const ordinal = sameStyleFields.findIndex((candidate) => candidate.id === field.id) + 1;
+  return buildOverlayVariableItemLabel(field.styleKey, Math.max(1, ordinal), sameStyleFields.length);
 }
 
 function normalizeContentSource(contentSource?: OverlayContentSource): OverlayContentSource {

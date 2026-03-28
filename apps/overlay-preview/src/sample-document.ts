@@ -40,12 +40,6 @@ export const DEFAULT_TEXT_STYLES: TextStyleSpec[] = [
   }
 ];
 
-export const TEXT_STYLE_DISPLAY_LABELS: Record<string, string> = {
-  title: "A Head",
-  b_head: "B Head",
-  paragraph: "P"
-};
-
 // ---------------------------------------------------------------------------
 // Per-profile default overlay params (landscape_1280x720)
 // ---------------------------------------------------------------------------

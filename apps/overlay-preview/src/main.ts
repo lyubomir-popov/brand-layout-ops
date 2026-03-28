@@ -42,7 +42,10 @@ import {
   type UbuntuSummitAnimationTransitionState
 } from "@brand-layout-ops/operator-ubuntu-summit-animation";
 import {
+  buildOverlayVariableItemLabel,
   createOverlayLayoutOperator,
+  getOverlayFieldDisplayLabel,
+  getOverlayStyleDisplayLabel,
   inspectOverlayCsvDraft,
   normalizeOverlayLinkedTitleLogoParams,
   OVERLAY_LAYOUT_OPERATOR_KEY,
@@ -74,7 +77,6 @@ import {
   saveActivePresetId,
   savePresets,
   saveOutputFormatKey,
-  TEXT_STYLE_DISPLAY_LABELS,
   type ExportSettings,
   type ProfileContentFormatMap,
   type PersistedPreset,
@@ -2197,26 +2199,6 @@ function createReadonlySpan(value: string): HTMLElement {
   return span;
 }
 
-function getOverlayStyleDisplayLabel(styleKey: string): string {
-  return TEXT_STYLE_DISPLAY_LABELS[styleKey] ?? styleKey;
-}
-
-function buildOverlayVariableItemLabel(styleKey: string, ordinal: number, total: number): string {
-  const styleLabel = getOverlayStyleDisplayLabel(styleKey);
-  return total > 1 ? `${styleLabel} ${ordinal}` : styleLabel;
-}
-
-function getOverlayFieldDisplayLabel(fieldId: string): string {
-  const field = state.params.textFields.find((candidate) => candidate.id === fieldId);
-  if (!field) {
-    return fieldId;
-  }
-
-  const sameStyleFields = state.params.textFields.filter((candidate) => candidate.styleKey === field.styleKey);
-  const ordinal = sameStyleFields.findIndex((candidate) => candidate.id === field.id) + 1;
-  return buildOverlayVariableItemLabel(field.styleKey, Math.max(1, ordinal), sameStyleFields.length);
-}
-
 function getSelectedOverlaySectionTitle(): string {
   if (!state.selected) {
     return "Selected Element";
@@ -2224,7 +2206,7 @@ function getSelectedOverlaySectionTitle(): string {
 
   return state.selected.kind === "logo"
     ? "Selected Logo"
-    : `Selected ${getOverlayFieldDisplayLabel(state.selected.id)}`;
+    : `Selected ${getOverlayFieldDisplayLabel(state.params, state.selected.id)}`;
 }
 
 function getSelectedTextField(): TextFieldPlacementSpec | null {
@@ -2407,7 +2389,7 @@ function buildOverlaySection(): HTMLElement {
     if (!field) return root;
     const selectedStyle = state.params.textStyles.find((style) => style.key === field.styleKey);
 
-    body.append(createFormGroup("Label", createReadonlySpan(getOverlayFieldDisplayLabel(field.id))));
+    body.append(createFormGroup("Label", createReadonlySpan(getOverlayFieldDisplayLabel(state.params, field.id))));
     body.append(createFormGroup("ID", createReadonlySpan(field.id)));
 
     body.append(createFormGroup("Style",
@@ -2466,7 +2448,7 @@ function buildOverlaySection(): HTMLElement {
         updateSelectedTextValue(field.id, textarea.value);
         void renderStage();
       });
-      body.append(createFormGroup(`${getOverlayFieldDisplayLabel(field.id)} Text`, textarea));
+      body.append(createFormGroup(`${getOverlayFieldDisplayLabel(state.params, field.id)} Text`, textarea));
     }
 
     const grid = document.createElement("div");
@@ -2557,7 +2539,7 @@ function buildParagraphStylesSection(): HTMLElement {
 
   const helper = document.createElement("p");
   helper.className = "p-form-help-text control-help";
-  helper.textContent = `Apply a paragraph style to ${getOverlayFieldDisplayLabel(selectedField.id)}.`;
+  helper.textContent = `Apply a paragraph style to ${getOverlayFieldDisplayLabel(state.params, selectedField.id)}.`;
   body.append(helper);
 
   const palette = document.createElement("div");
@@ -3109,7 +3091,7 @@ function getOverlayItemBounds(): OverlayItemBounds[] {
     items.push({
       id: text.id,
       kind: "text",
-      label: getOverlayFieldDisplayLabel(text.id),
+      label: getOverlayFieldDisplayLabel(state.params, text.id),
       leftPx: b.left,
       topPx: authoringTopPx,
       widthPx: authoringWidthPx,

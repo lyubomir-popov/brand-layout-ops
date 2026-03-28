@@ -202,7 +202,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	Reference files: `config-schema.js` (format specs, alias matching, format bucket sync), `default-config-source.js` (per-profile overlay_content_formats).
 
 3. **Text style parity (DONE).**
-	Reference has 3 distinct styles: `title` (A Head, 42px/48px, weight 200), `b_head` (B Head, 24px/32px, weight 400), `paragraph` (P, 24px/32px, weight 400). Current repo now has all 3 styles with per-profile font size overrides and display labels (`TEXT_STYLE_DISPLAY_LABELS`).
+	Reference has 3 distinct styles: `title` (A Head, 42px/48px, weight 200), `b_head` (B Head, 24px/32px, weight 400), `paragraph` (P, 24px/32px, weight 400). Current repo now has all 3 styles with per-profile font size overrides and shared overlay-layout display labels.
 
 4. **Linked title-to-logo sizing (PARTIAL).**
 	`link_title_size_to_logo_height = true` scales title font size proportionally to `overlay_logo.height_px` using `LINKED_TITLE_BASE_FONT_SIZE_PX = 63` as the reference base. Current repo has no linked sizing logic.
@@ -215,7 +215,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 ### High — required for editor and workflow parity
 
 6. **Style-based labels in selected-element editor (DONE).**
-	`getOverlayFieldDisplayLabel` produces "A Head", "B Head 1", "P 2" etc. with ordinal counting when multiple fields share a style. Logo is "Selected Logo". Uses `TEXT_STYLE_DISPLAY_LABELS` map from `sample-document.ts`.
+	`getOverlayFieldDisplayLabel` produces "A Head", "B Head 1", "P 2" etc. with ordinal counting when multiple fields share a style. Logo is "Selected Logo". The label helpers now live in `packages/operator-overlay-layout/src/index.ts` instead of preview-local maps.
 
 7. **Selected-element authoring surface (PARTIAL).**
 	Missing: richer selected-item controls panel and full reference-grade per-style tab structure. The current repo now has selection + drag + resize + inline editing, direct style assignment, add/delete text blocks, and selected-text controls for font size, line height, and weight, but it still does not match the full editor-panel breadth of the reference app.
