@@ -237,8 +237,8 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	Remaining gap: reference-grade mascot-linked choreography, finale-detail passes, and any remaining visual-timing polish still need to be ported.
 	Reference files: `halo-field.js` (full module), `rendering.js` (spoke rendering pipeline).
 
-14. **Mascot composition (MISSING).**
-	Face SVG texture on Three.js mesh. Halo SVG texture. Nose path (Path2D) with cutout material for background color punch-through. Eye circles (cx:260/340, cy:290.25, r:8). Blink animation. Head turn animation. Mascot fade-in. Decision: keep in adapter until reuse becomes concrete.
+14. **Mascot composition (PARTIAL).**
+	The preview now draws the local face SVG, optional halo SVG, dark eye cutouts, and a simple nose pass on the overlay canvas using the scene-family operator's mascot box plus blink, head-turn, and nose-bob motion state. Remaining gap: this still does not match the full reference mesh layering, texture-loading path, or cutout fidelity from the original Three.js implementation. Decision: keep mascot-specific composition in the adapter or scene-family layer until reuse becomes concrete.
 	Reference files: `rendering.js` (mascot mesh setup, nose texture, eye rendering), `config-schema.js` (MASCOT_* constants).
 
 15. **Vignette system (MISSING).**

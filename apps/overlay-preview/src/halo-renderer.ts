@@ -38,6 +38,16 @@ const ECHO_MARKER_HALO_GAP_PX = 4;
 const ECHO_TEXT_BASE_FONT_SIZE_PX = 18;
 const TEXT_LABEL_FONT_FAMILY = '"Ubuntu Sans", "Ubuntu", sans-serif';
 const TEXT_LABEL_MARGIN_PX = 16;
+const MASCOT_FACE_ASSET_PATH = "/assets/racoon-mascot-face.svg";
+const MASCOT_HALO_ASSET_PATH = "/assets/racoon-mascot-halo.svg";
+const MASCOT_REFERENCE_HALO_OPACITY = 0.3;
+const MASCOT_EYE_SPECS = [
+  { cx: 260, cy: 290.25, radius: 8 },
+  { cx: 340, cy: 290.25, radius: 8 }
+] as const;
+const MASCOT_NOSE_PATH = new Path2D(
+  "M314.719,325.951c1.206.283,1.861,1.609,1.362,2.749-3.479,7.962-8.503,15.086-14.69,20.992-.78.744-2.004.744-2.784,0-6.186-5.905-11.211-13.029-14.69-20.992-.498-1.14.156-2.466,1.362-2.749,4.728-1.111,9.655-1.701,14.719-1.701s9.991.59,14.719,1.701Z"
+);
 
 const LAYER_ORDER = {
   backgroundSpokes: 1,
@@ -160,6 +170,43 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
   let cachedConfigJSON = "";
   let introField: IntroFieldState | null = null;
   let runtimePoints: RuntimePoint[] = [];
+  let lastSceneDescriptor: UbuntuSummitAnimationSceneDescriptor | null = null;
+  let mascotFaceImage: HTMLImageElement | null = null;
+  let mascotHaloImage: HTMLImageElement | null = null;
+  let mascotAssetsRequested = false;
+
+  function loadImage(url: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error(`Failed to load image: ${url}`));
+      image.src = url;
+    });
+  }
+
+  function ensureMascotAssetsLoaded() {
+    if (mascotAssetsRequested) {
+      return;
+    }
+
+    mascotAssetsRequested = true;
+    Promise.all([
+      loadImage(MASCOT_FACE_ASSET_PATH),
+      loadImage(MASCOT_HALO_ASSET_PATH)
+    ])
+      .then(([faceImage, haloImage]) => {
+        mascotFaceImage = faceImage;
+        mascotHaloImage = haloImage;
+        if (lastSceneDescriptor) {
+          renderFrame(lastSceneDescriptor);
+        }
+      })
+      .catch(() => {
+        mascotFaceImage = null;
+        mascotHaloImage = null;
+      });
+  }
 
   /** Rebuild intro field + runtime points when config changes. */
   function ensureSceneData(
@@ -868,9 +915,73 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     textCtx.restore();
   }
 
+  function drawMascotOverlay(sceneDescriptor: UbuntuSummitAnimationSceneDescriptor) {
+    const mascotBox = sceneDescriptor.mascotBox;
+    const mascotMotion = sceneDescriptor.frameState.mascotMotion;
+    if (!mascotBox || !mascotFaceImage) {
+      return;
+    }
+
+    const baseAlpha = clamp(mascotMotion.mascotFadeU, 0, 1);
+    if (baseAlpha <= 0) {
+      return;
+    }
+
+    const sizePx = mascotBox.draw_size_px;
+    const centerX = mascotBox.center_x_px;
+    const centerY = stageH - mascotBox.center_y_px;
+    const bgColor = sceneDescriptor.haloConfig.composition.background_color || "#202020";
+    const eyeScaleY = clamp(mascotMotion.eyeScaleY, 0.02, 1);
+    const headTurnRad = -sceneDescriptor.frameState.mascotMotion.headTurnDeg * Math.PI / 180;
+    const haloAlpha = baseAlpha
+      * clamp(sceneDescriptor.frameState.haloU, 0, 1)
+      * MASCOT_REFERENCE_HALO_OPACITY;
+
+    textCtx.save();
+    textCtx.translate(centerX, centerY);
+    textCtx.rotate(headTurnRad);
+    textCtx.globalAlpha = baseAlpha;
+    textCtx.drawImage(mascotFaceImage, -sizePx * 0.5, -sizePx * 0.5, sizePx, sizePx);
+
+    if (sceneDescriptor.haloConfig.spoke_lines.show_reference_halo && mascotHaloImage && haloAlpha > 0) {
+      textCtx.save();
+      textCtx.globalAlpha = haloAlpha;
+      textCtx.drawImage(mascotHaloImage, -sizePx * 0.5, -sizePx * 0.5, sizePx, sizePx);
+      textCtx.restore();
+    }
+
+    textCtx.save();
+    textCtx.translate(-sizePx * 0.5, -sizePx * 0.5);
+    textCtx.scale(sizePx / 600, sizePx / 600);
+    textCtx.fillStyle = bgColor;
+    textCtx.fill(MASCOT_NOSE_PATH);
+    textCtx.restore();
+
+    textCtx.save();
+    textCtx.translate(-sizePx * 0.5, -sizePx * 0.5 - mascotMotion.noseBobPx);
+    textCtx.scale(sizePx / 600, sizePx / 600);
+    textCtx.fillStyle = "#ffffff";
+    textCtx.fill(MASCOT_NOSE_PATH);
+    textCtx.restore();
+
+    textCtx.fillStyle = bgColor;
+    for (const eye of MASCOT_EYE_SPECS) {
+      const localX = sizePx * (eye.cx / 600 - 0.5);
+      const localY = sizePx * (eye.cy / 600 - 0.5);
+      const radiusX = sizePx * (eye.radius / 600);
+      const radiusY = Math.max(0.75, radiusX * eyeScaleY);
+      textCtx.beginPath();
+      textCtx.ellipse(localX, localY, radiusX, radiusY, 0, 0, Math.PI * 2);
+      textCtx.fill();
+    }
+
+    textCtx.restore();
+  }
+
   // ── main render ─────────────────────────────────────────────────────
 
   function renderFrame(sceneDescriptor: UbuntuSummitAnimationSceneDescriptor) {
+    lastSceneDescriptor = sceneDescriptor;
     const config = sceneDescriptor.haloConfig;
     const mascotBox = sceneDescriptor.mascotBox;
     const frameState = sceneDescriptor.frameState;
@@ -893,6 +1004,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
 
     // Rebuild scene data when config changes
     ensureSceneData(config, mascotBox, sceneDescriptor.runtimeTiming);
+  ensureMascotAssetsLoaded();
 
     const fullFrameR = frameState.fullFrameOuterRadiusPx;
     const screensaverFieldState = frameState.screensaverFieldState;
@@ -932,6 +1044,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     if (textOverlayCanvas.width !== stageW) textOverlayCanvas.width = stageW;
     if (textOverlayCanvas.height !== stageH) textOverlayCanvas.height = stageH;
     textCtx.clearRect(0, 0, stageW, stageH);
+    drawMascotOverlay(sceneDescriptor);
     drawReleaseLabelOverlay(spokes, mascotBox, haloOuterR, fullFrameR, config, reveal);
   }
 

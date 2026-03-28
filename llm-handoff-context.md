@@ -59,6 +59,7 @@ All scoped under `@brand-layout-ops/`.
 - CSV authoring UI now shows row status, alias-based field mapping, and per-field staged-versus-applied values for the active format
 - `operator-ubuntu-summit-animation` now computes scene phase, runtime timing, loop timing, mascot-box metadata, reveal geometry, screensaver pulse counts, and transient spoke-transition state, and the preview renderer plus automation state now consume that descriptor path
 - `operator-ubuntu-summit-animation` now also emits mascot motion timing and motion-state metadata (blink, head turn, eye closure, sneeze/nose bob) through the scene descriptor and automation bridge
+- The preview renderer now draws the local mascot face asset, optional reference halo asset, and simple eye or nose motion on the overlay canvas using the scene-family operator's mascot box and motion state
 - Linked title-to-logo sizing now normalizes through shared preview-state params, so profile switches and loaded snapshots keep the A Head/logo lock intact
 - MP4 export verification now covers both straight encode and fade-in/fade-out flags against a real 48-frame headless export on Windows
 - The preview control surface now imports the sibling `portable-vertical-rhythm` package instead of `vanilla-framework`, and Halo Field range controls render as real themed sliders again rather than bare native thumbs
@@ -88,7 +89,7 @@ All scoped under `@brand-layout-ops/`.
 - [x] Export pipeline — single PNG ✅, PNG sequence with modal ✅, headless export ✅, MP4 encode ✅, fade encode flags ✅ (local FFmpeg install verified on Windows)
 - [x] Logo intrinsic aspect ratio (loads via `Image`, uses `naturalWidth`/`naturalHeight`)
 - [ ] Full Ubuntu Summit animation as one coarse scene-family operator
-- [ ] Mascot composition (face SVG, halo SVG, blink, head turn) — **deprioritized**
+- [ ] Mascot composition (face SVG, halo SVG, blink, head turn) — **partial, still deprioritized for full parity polish**
 
 ### E. Export pipeline & headless Playwright (priority)
 
