@@ -71,6 +71,85 @@ export interface OverlayProfileBucketState {
   contentFormatKeyByProfile: ProfileContentFormatMap;
 }
 
+export interface OverlaySourceDefaultSnapshot<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+> {
+  outputProfileKey: string;
+  contentFormatKey: string;
+  profileFormatBuckets: ProfileFormatBuckets;
+  contentFormatKeyByProfile: ProfileContentFormatMap;
+  exportSettings: TExportSettings;
+  exportSettingsByProfile: Record<string, TExportSettings>;
+  haloConfig: THaloConfig;
+  haloConfigByProfile: Record<string, THaloConfig>;
+  guideMode: TGuideMode;
+}
+
+export const OVERLAY_DOCUMENT_FILE_KIND = "brand-layout-ops.document";
+export const OVERLAY_DOCUMENT_FILE_VERSION = 1;
+
+export interface OverlayDocumentMetadata {
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OverlayDocumentFile<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+> {
+  kind: typeof OVERLAY_DOCUMENT_FILE_KIND;
+  version: typeof OVERLAY_DOCUMENT_FILE_VERSION;
+  metadata: OverlayDocumentMetadata;
+  state: OverlaySourceDefaultSnapshot<TExportSettings, THaloConfig, TGuideMode>;
+}
+
+export interface CreateOverlaySourceDefaultSnapshotOptions<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+> {
+  outputProfileKey: string;
+  contentFormatKey: string;
+  guideMode: TGuideMode;
+  createExportSettings: (profileKey: string) => TExportSettings;
+  createHaloConfig: (profileKey: string) => THaloConfig;
+}
+
+export interface CreateOverlayDocumentFileOptions<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+> {
+  name: string;
+  state: OverlaySourceDefaultSnapshot<TExportSettings, THaloConfig, TGuideMode>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SanitizeOverlaySourceDefaultSnapshotOptions<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+> {
+  fallbackSnapshot: OverlaySourceDefaultSnapshot<TExportSettings, THaloConfig, TGuideMode>;
+  createExportSettings: (profileKey: string) => TExportSettings;
+  createHaloConfig: (profileKey: string, rawHaloConfig?: unknown) => THaloConfig;
+  normalizeGuideMode: (rawGuideMode: unknown) => TGuideMode;
+}
+
+export interface SanitizeOverlayDocumentFileOptions<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+> extends SanitizeOverlaySourceDefaultSnapshotOptions<TExportSettings, THaloConfig, TGuideMode> {
+  fallbackName?: string;
+  now?: string;
+}
+
 export interface OverlayLayoutOperatorOutputs {
   scene: LayerScene;
   grid: LayoutGridMetrics;
@@ -91,6 +170,28 @@ export interface OverlayProfileTextStyleOverrides {
 
 function cloneOverlayJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeOverlayDocumentName(rawName: unknown, fallbackName: string): string {
+  if (typeof rawName !== "string") {
+    return fallbackName;
+  }
+
+  const trimmedName = rawName.trim();
+  return trimmedName.length > 0 ? trimmedName : fallbackName;
+}
+
+function normalizeOverlayDocumentTimestamp(rawTimestamp: unknown, fallbackTimestamp: string): string {
+  if (typeof rawTimestamp !== "string") {
+    return fallbackTimestamp;
+  }
+
+  const trimmedTimestamp = rawTimestamp.trim();
+  return trimmedTimestamp.length > 0 ? trimmedTimestamp : fallbackTimestamp;
 }
 
 export interface ContentFormatFieldOverride {
@@ -513,6 +614,211 @@ export function cloneProfileFormatBuckets(buckets: ProfileFormatBuckets): Profil
 
 export function cloneProfileContentFormatMap(contentFormatKeyByProfile: ProfileContentFormatMap): ProfileContentFormatMap {
   return cloneOverlayJson(contentFormatKeyByProfile);
+}
+
+export function cloneOverlaySourceDefaultSnapshot<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+>(
+  snapshot: OverlaySourceDefaultSnapshot<TExportSettings, THaloConfig, TGuideMode>
+): OverlaySourceDefaultSnapshot<TExportSettings, THaloConfig, TGuideMode> {
+  return cloneOverlayJson(snapshot);
+}
+
+export function cloneOverlayDocumentFile<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+>(
+  documentFile: OverlayDocumentFile<TExportSettings, THaloConfig, TGuideMode>
+): OverlayDocumentFile<TExportSettings, THaloConfig, TGuideMode> {
+  return cloneOverlayJson(documentFile);
+}
+
+export function createBuiltInOverlaySourceDefaultSnapshot<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+>(
+  options: CreateOverlaySourceDefaultSnapshotOptions<TExportSettings, THaloConfig, TGuideMode>
+): OverlaySourceDefaultSnapshot<TExportSettings, THaloConfig, TGuideMode> {
+  const exportSettings = options.createExportSettings(options.outputProfileKey);
+  const haloConfig = options.createHaloConfig(options.outputProfileKey);
+
+  return {
+    outputProfileKey: options.outputProfileKey,
+    contentFormatKey: options.contentFormatKey,
+    profileFormatBuckets: {
+      [options.outputProfileKey]: {
+        [options.contentFormatKey]: createDefaultOverlayParams(options.outputProfileKey, options.contentFormatKey)
+      }
+    },
+    contentFormatKeyByProfile: {
+      [options.outputProfileKey]: options.contentFormatKey
+    },
+    exportSettings,
+    exportSettingsByProfile: {
+      [options.outputProfileKey]: cloneOverlayJson(exportSettings)
+    },
+    haloConfig,
+    haloConfigByProfile: {
+      [options.outputProfileKey]: cloneOverlayJson(haloConfig)
+    },
+    guideMode: options.guideMode
+  };
+}
+
+export function createOverlayDocumentFile<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+>(
+  options: CreateOverlayDocumentFileOptions<TExportSettings, THaloConfig, TGuideMode>
+): OverlayDocumentFile<TExportSettings, THaloConfig, TGuideMode> {
+  const createdAt = options.createdAt ?? new Date().toISOString();
+  const updatedAt = options.updatedAt ?? createdAt;
+
+  return {
+    kind: OVERLAY_DOCUMENT_FILE_KIND,
+    version: OVERLAY_DOCUMENT_FILE_VERSION,
+    metadata: {
+      name: options.name,
+      createdAt,
+      updatedAt
+    },
+    state: cloneOverlaySourceDefaultSnapshot(options.state)
+  };
+}
+
+export function sanitizeOverlaySourceDefaultSnapshot<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+>(
+  rawSnapshot: unknown,
+  options: SanitizeOverlaySourceDefaultSnapshotOptions<TExportSettings, THaloConfig, TGuideMode>
+): OverlaySourceDefaultSnapshot<TExportSettings, THaloConfig, TGuideMode> | null {
+  if (!isRecord(rawSnapshot)) {
+    return null;
+  }
+
+  const outputProfileKey = typeof rawSnapshot.outputProfileKey === "string"
+    ? rawSnapshot.outputProfileKey
+    : options.fallbackSnapshot.outputProfileKey;
+  const normalizedProfileState = normalizeOverlayProfileBucketState({
+    outputProfileKey,
+    contentFormatKey: typeof rawSnapshot.contentFormatKey === "string"
+      ? rawSnapshot.contentFormatKey
+      : options.fallbackSnapshot.contentFormatKey,
+    profileFormatBuckets: isRecord(rawSnapshot.profileFormatBuckets)
+      ? cloneProfileFormatBuckets(rawSnapshot.profileFormatBuckets as ProfileFormatBuckets)
+      : cloneProfileFormatBuckets(options.fallbackSnapshot.profileFormatBuckets),
+    contentFormatKeyByProfile: isRecord(rawSnapshot.contentFormatKeyByProfile)
+      ? Object.fromEntries(
+        Object.entries(rawSnapshot.contentFormatKeyByProfile)
+          .filter(([, rawFormatKey]) => typeof rawFormatKey === "string")
+      ) as ProfileContentFormatMap
+      : cloneProfileContentFormatMap(options.fallbackSnapshot.contentFormatKeyByProfile)
+  });
+
+  const exportSettingsByProfile: Record<string, TExportSettings> = {};
+  if (isRecord(rawSnapshot.exportSettingsByProfile)) {
+    for (const [profileKey, rawExportSettings] of Object.entries(rawSnapshot.exportSettingsByProfile)) {
+      exportSettingsByProfile[profileKey] = isRecord(rawExportSettings)
+        ? {
+          ...options.createExportSettings(profileKey),
+          ...rawExportSettings
+        } as TExportSettings
+        : options.createExportSettings(profileKey);
+    }
+  }
+
+  const exportSettings = isRecord(rawSnapshot.exportSettings)
+    ? {
+      ...options.createExportSettings(normalizedProfileState.outputProfileKey),
+      ...rawSnapshot.exportSettings
+    } as TExportSettings
+    : exportSettingsByProfile[normalizedProfileState.outputProfileKey]
+      ?? options.createExportSettings(normalizedProfileState.outputProfileKey);
+
+  exportSettingsByProfile[normalizedProfileState.outputProfileKey] ??= cloneOverlayJson(exportSettings);
+
+  const haloConfigByProfile: Record<string, THaloConfig> = {};
+  if (isRecord(rawSnapshot.haloConfigByProfile)) {
+    for (const [profileKey, rawHaloConfig] of Object.entries(rawSnapshot.haloConfigByProfile)) {
+      haloConfigByProfile[profileKey] = options.createHaloConfig(profileKey, rawHaloConfig);
+    }
+  }
+
+  const haloConfig = haloConfigByProfile[normalizedProfileState.outputProfileKey]
+    ?? options.createHaloConfig(normalizedProfileState.outputProfileKey, rawSnapshot.haloConfig);
+
+  haloConfigByProfile[normalizedProfileState.outputProfileKey] ??= cloneOverlayJson(haloConfig);
+
+  return {
+    outputProfileKey: normalizedProfileState.outputProfileKey,
+    contentFormatKey: normalizedProfileState.contentFormatKey,
+    profileFormatBuckets: normalizedProfileState.profileFormatBuckets,
+    contentFormatKeyByProfile: normalizedProfileState.contentFormatKeyByProfile,
+    exportSettings,
+    exportSettingsByProfile,
+    haloConfig,
+    haloConfigByProfile,
+    guideMode: options.normalizeGuideMode(rawSnapshot.guideMode)
+  };
+}
+
+export function sanitizeOverlayDocumentFile<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+>(
+  rawDocumentFile: unknown,
+  options: SanitizeOverlayDocumentFileOptions<TExportSettings, THaloConfig, TGuideMode>
+): OverlayDocumentFile<TExportSettings, THaloConfig, TGuideMode> | null {
+  if (!isRecord(rawDocumentFile)) {
+    return null;
+  }
+
+  const now = options.now ?? new Date().toISOString();
+  const fallbackName = options.fallbackName ?? "Untitled";
+
+  let rawState: unknown = rawDocumentFile;
+  let rawMetadata: unknown = undefined;
+
+  if ("state" in rawDocumentFile || "kind" in rawDocumentFile || "version" in rawDocumentFile) {
+    if (rawDocumentFile.kind !== OVERLAY_DOCUMENT_FILE_KIND) {
+      return null;
+    }
+
+    if (rawDocumentFile.version !== OVERLAY_DOCUMENT_FILE_VERSION) {
+      return null;
+    }
+
+    rawState = rawDocumentFile.state;
+    rawMetadata = rawDocumentFile.metadata;
+  }
+
+  const state = sanitizeOverlaySourceDefaultSnapshot(rawState, options);
+  if (!state) {
+    return null;
+  }
+
+  const metadataRecord = isRecord(rawMetadata) ? rawMetadata : {};
+  const createdAt = normalizeOverlayDocumentTimestamp(metadataRecord.createdAt, now);
+  const updatedAt = normalizeOverlayDocumentTimestamp(metadataRecord.updatedAt, createdAt);
+
+  return {
+    kind: OVERLAY_DOCUMENT_FILE_KIND,
+    version: OVERLAY_DOCUMENT_FILE_VERSION,
+    metadata: {
+      name: normalizeOverlayDocumentName(metadataRecord.name, fallbackName),
+      createdAt,
+      updatedAt
+    },
+    state
+  };
 }
 
 function createLandscapeOverlayTextFields(): TextFieldPlacementSpec[] {

@@ -43,8 +43,10 @@ import {
 } from "@brand-layout-ops/operator-ubuntu-summit-animation";
 import {
   buildOverlayVariableItemLabel,
+  cloneOverlaySourceDefaultSnapshot,
   cloneProfileContentFormatMap,
   cloneProfileFormatBuckets,
+  createBuiltInOverlaySourceDefaultSnapshot,
   createDefaultOverlayParams,
   createOverlayLayoutOperator,
   getOverlayFieldDisplayLabel,
@@ -57,11 +59,13 @@ import {
   OVERLAY_LAYOUT_OPERATOR_KEY,
   resolveOverlayContentFormatKeyForProfile,
   resolveOverlayTextValue,
+  sanitizeOverlaySourceDefaultSnapshot,
   setOverlayTextValue,
   syncOverlayParamsFrameToProfile,
   syncOverlaySharedProfileParams,
   type OverlayContentSource,
   type OverlayLayoutOperatorParams,
+  type OverlaySourceDefaultSnapshot,
   type ProfileContentFormatMap,
   type ProfileFormatBuckets
 } from "@brand-layout-ops/operator-overlay-layout";
@@ -82,8 +86,6 @@ import {
   createPresetId,
   denormalizePresetFromPersistence,
   getNextPresetName,
-  loadActivePresetId,
-  loadPresets,
   loadOutputFormatKeys,
   normalizePresetForPersistence,
   saveActivePresetId,
@@ -93,6 +95,18 @@ import {
   type PersistedPreset,
   type Preset
 } from "./sample-document.js";
+import {
+  clonePreset,
+  createOverlayPreviewDocument,
+  denormalizeOverlayPreviewDocumentFromPersistence,
+  normalizeOverlayPreviewDocumentForPersistence,
+  type OverlayPreviewDocument as OverlayPreviewDocumentModel,
+  type PersistedOverlayPreviewDocument
+} from "./preview-document.js";
+import {
+  createDocumentWorkspaceController,
+  renderDocumentWorkspaceUi
+} from "./document-workspace.js";
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -151,31 +165,21 @@ interface PreviewState {
   playbackTimeSec: number;
 }
 
-interface SourceDefaultSnapshot {
-  outputProfileKey: string;
-  contentFormatKey: string;
-  profileFormatBuckets: ProfileFormatBuckets;
-  contentFormatKeyByProfile: ProfileContentFormatMap;
-  exportSettings: ExportSettings;
-  exportSettingsByProfile: Record<string, ExportSettings>;
-  haloConfig: HaloFieldConfig;
-  haloConfigByProfile: Record<string, HaloFieldConfig>;
-  guideMode: GuideMode;
-}
+type SourceDefaultSnapshot = OverlaySourceDefaultSnapshot<ExportSettings, HaloFieldConfig, GuideMode>;
+type OverlayPreviewDocument = OverlayPreviewDocumentModel<HaloFieldConfig, GuideMode>;
 
 const INITIAL_PROFILE_KEY = "instagram_1080x1350";
 const INITIAL_FORMAT_KEY = "generic_social";
+const UNTITLED_DOCUMENT_NAME = "Untitled document";
 const _persistedFormat = loadOutputFormatKeys();
 const _startProfileKey = _persistedFormat?.profileKey ?? INITIAL_PROFILE_KEY;
 const _startFormatKey = _persistedFormat?.formatKey ?? INITIAL_FORMAT_KEY;
 const INITIAL_PARAMS = createDefaultOverlayParams(_startProfileKey, _startFormatKey);
 const SOURCE_DEFAULT_AUTHORING_ENDPOINT = "/__authoring/source-default-config";
 const SOURCE_DEFAULT_ASSET_PATH = "/assets/source-default-config.json";
+const CONTROL_PANEL_WIDTH_STORAGE_KEY = "brand-layout-ops-control-panel-width-v1";
+const CONTROL_PANEL_WIDTH_STEP_PX = 16;
 const previewTextMeasurer = createApproximateTextMeasurer();
-
-function cloneSourceDefaultSnapshot(snapshot: SourceDefaultSnapshot): SourceDefaultSnapshot {
-  return JSON.parse(JSON.stringify(snapshot));
-}
 
 function cloneExportSettingsByProfile(
   exportSettingsByProfile: Record<string, ExportSettings>
@@ -258,33 +262,19 @@ function getHaloConfigForProfile(profileKey: string, rawHaloConfig?: unknown): H
   return config;
 }
 
-function createBuiltInSourceDefaultSnapshot(): SourceDefaultSnapshot {
-  const exportSettings = createDefaultExportSettings(INITIAL_PROFILE_KEY);
-  const haloConfig = getHaloConfigForProfile(INITIAL_PROFILE_KEY);
-  return {
-    outputProfileKey: INITIAL_PROFILE_KEY,
-    contentFormatKey: INITIAL_FORMAT_KEY,
-    profileFormatBuckets: {
-      [INITIAL_PROFILE_KEY]: {
-        [INITIAL_FORMAT_KEY]: cloneOverlayParams(INITIAL_PARAMS)
-      }
-    },
-    contentFormatKeyByProfile: {
-      [INITIAL_PROFILE_KEY]: INITIAL_FORMAT_KEY
-    },
-    exportSettings,
-    exportSettingsByProfile: {
-      [INITIAL_PROFILE_KEY]: exportSettings
-    },
-    haloConfig,
-    haloConfigByProfile: {
-      [INITIAL_PROFILE_KEY]: haloConfig
-    },
-    guideMode: "composition"
-  };
+function normalizeGuideMode(rawGuideMode: unknown): GuideMode {
+  return rawGuideMode === "off" || rawGuideMode === "baseline"
+    ? rawGuideMode
+    : "composition";
 }
 
-const INITIAL_SOURCE_DEFAULTS = createBuiltInSourceDefaultSnapshot();
+const INITIAL_SOURCE_DEFAULTS = createBuiltInOverlaySourceDefaultSnapshot<ExportSettings, HaloFieldConfig, GuideMode>({
+  outputProfileKey: INITIAL_PROFILE_KEY,
+  contentFormatKey: INITIAL_FORMAT_KEY,
+  guideMode: "composition",
+  createExportSettings: createDefaultExportSettings,
+  createHaloConfig: getHaloConfigForProfile
+});
 
 const state: PreviewState = {
   params: cloneOverlayParams(INITIAL_PARAMS),
@@ -302,8 +292,8 @@ const state: PreviewState = {
   contentFormatKeyByProfile: {
     [_startProfileKey]: _startFormatKey
   },
-  presets: loadPresets(),
-  activePresetId: loadActivePresetId(),
+  presets: [],
+  activePresetId: null,
   exportSettings: createDefaultExportSettings(_startProfileKey),
   exportSettingsByProfile: {
     [_startProfileKey]: createDefaultExportSettings(_startProfileKey)
@@ -312,10 +302,23 @@ const state: PreviewState = {
   haloConfigByProfile: {
     [_startProfileKey]: getHaloConfigForProfile(_startProfileKey)
   },
-  sourceDefaults: cloneSourceDefaultSnapshot(INITIAL_SOURCE_DEFAULTS),
+  sourceDefaults: cloneOverlaySourceDefaultSnapshot(INITIAL_SOURCE_DEFAULTS),
   isPlaying: true,
   playbackTimeSec: 0
 };
+
+const documentWorkspaceController = createDocumentWorkspaceController<OverlayPreviewDocument>({
+  untitledName: UNTITLED_DOCUMENT_NAME,
+  initialStatusMessage: "Open or save a local document file. Presets are stored in the document when you save it.",
+  parseDocument: sanitizePreviewDocument,
+  getDocumentMetadata: (previewDocument) => previewDocument.document.metadata,
+  buildPersistedDocument: buildCurrentDocumentPersistence,
+  applyDocument: applyPreviewDocumentToState,
+  applyNewDocumentState,
+  onWorkspaceChange: () => {
+    updateDocumentUi();
+  }
+});
 
 let currentScene: LayerScene | null = null;
 let currentDrag: DragState | null = null;
@@ -372,6 +375,7 @@ let authoringHandles: Map<ResizeEdge, HTMLElement> = new Map();
 const $ = <T extends Element>(sel: string): T | null => document.querySelector<T>(sel);
 
 function getStageEl(): HTMLElement | null { return $("[data-stage]"); }
+function getAppShellEl(): HTMLElement | null { return document.querySelector<HTMLElement>(".mascot-app"); }
 function getCanvasEl(): HTMLCanvasElement | null { return $("[data-stage-canvas]"); }
 function getTextOverlayCanvas(): HTMLCanvasElement | null { return $("[data-text-overlay]"); }
 function getSvgOverlay(): SVGSVGElement | null { return $("[data-svg-overlay]"); }
@@ -380,8 +384,143 @@ function getConfigEditor(): HTMLElement | null { return $("[data-config-editor]"
 function getOutputProfileOptions(): HTMLElement | null { return $("[data-output-profile-options]"); }
 function getPresetTabs(): HTMLElement | null { return $("[data-preset-tabs]"); }
 function getOverlayVisibilityInput(): HTMLInputElement | null { return $("[data-overlay-visibility]"); }
+function getControlPanelEl(): HTMLElement | null { return $("[data-control-panel]"); }
+function getControlPanelResizeHandle(): HTMLElement | null { return $("[data-control-panel-resize-handle]"); }
+function getDocumentNameInput(): HTMLInputElement | null { return $("[data-document-name-input]"); }
+function getDocumentSummaryEl(): HTMLElement | null { return $("[data-document-summary]"); }
+function getDocumentStatusEl(): HTMLElement | null { return $("[data-document-status]"); }
+function getDocumentRecentListEl(): HTMLElement | null { return $("[data-document-recent-list]"); }
 
 // ─── Helper utilities ─────────────────────────────────────────────────
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function resolveCssLengthPx(host: HTMLElement, lengthValue: string, fallbackPx: number): number {
+  const trimmedValue = lengthValue.trim();
+  if (!trimmedValue) {
+    return fallbackPx;
+  }
+
+  const probe = document.createElement("div");
+  probe.style.blockSize = "0";
+  probe.style.inlineSize = trimmedValue;
+  probe.style.pointerEvents = "none";
+  probe.style.position = "absolute";
+  probe.style.visibility = "hidden";
+  host.appendChild(probe);
+  const resolvedPx = probe.getBoundingClientRect().width;
+  probe.remove();
+  return Number.isFinite(resolvedPx) && resolvedPx > 0 ? resolvedPx : fallbackPx;
+}
+
+function getControlPanelWidthBounds(): { minPx: number; maxPx: number } {
+  const appShell = getAppShellEl();
+  if (!appShell) {
+    return { minPx: 288, maxPx: 480 };
+  }
+
+  const computedStyle = getComputedStyle(appShell);
+  const minPx = resolveCssLengthPx(appShell, computedStyle.getPropertyValue("--vr-application-aside-width-min"), 288);
+  const maxPx = resolveCssLengthPx(appShell, computedStyle.getPropertyValue("--vr-application-aside-width-max"), 480);
+  return {
+    minPx,
+    maxPx: Math.max(minPx, maxPx)
+  };
+}
+
+function getCurrentControlPanelWidthPx(): number {
+  const controlPanel = getControlPanelEl();
+  if (controlPanel) {
+    const measuredWidth = controlPanel.getBoundingClientRect().width;
+    if (measuredWidth > 0) {
+      return measuredWidth;
+    }
+  }
+
+  const appShell = getAppShellEl();
+  if (!appShell) {
+    return 480;
+  }
+
+  return resolveCssLengthPx(
+    appShell,
+    getComputedStyle(appShell).getPropertyValue("--vr-application-aside-width"),
+    480
+  );
+}
+
+function updateControlPanelResizeHandleA11y(widthPx: number = getCurrentControlPanelWidthPx()): void {
+  const handle = getControlPanelResizeHandle();
+  if (!handle) {
+    return;
+  }
+
+  const { minPx, maxPx } = getControlPanelWidthBounds();
+  handle.setAttribute("aria-valuemin", String(Math.round(minPx)));
+  handle.setAttribute("aria-valuemax", String(Math.round(maxPx)));
+  handle.setAttribute("aria-valuenow", String(Math.round(clamp(widthPx, minPx, maxPx))));
+}
+
+function applyDockedControlPanelWidth(widthPx: number, persist: boolean = true): number {
+  const appShell = getAppShellEl();
+  if (!appShell) {
+    return widthPx;
+  }
+
+  const { minPx, maxPx } = getControlPanelWidthBounds();
+  const nextWidthPx = clamp(widthPx, minPx, maxPx);
+  appShell.style.setProperty("--vr-application-aside-width", `${nextWidthPx}px`);
+  updateControlPanelResizeHandleA11y(nextWidthPx);
+
+  if (persist) {
+    localStorage.setItem(CONTROL_PANEL_WIDTH_STORAGE_KEY, String(Math.round(nextWidthPx)));
+  }
+
+  return nextWidthPx;
+}
+
+function restoreDockedControlPanelWidth(): void {
+  const rawWidth = localStorage.getItem(CONTROL_PANEL_WIDTH_STORAGE_KEY);
+  if (!rawWidth) {
+    updateControlPanelResizeHandleA11y();
+    return;
+  }
+
+  const parsedWidth = Number.parseFloat(rawWidth);
+  if (!Number.isFinite(parsedWidth)) {
+    updateControlPanelResizeHandleA11y();
+    return;
+  }
+
+  applyDockedControlPanelWidth(parsedWidth, false);
+}
+
+function getNormalizedDocumentName(rawName: string = documentWorkspaceController.state.name): string {
+  return documentWorkspaceController.getNormalizedName(rawName);
+}
+
+function markDocumentDirty(): void {
+  documentWorkspaceController.markDirty();
+}
+
+function updateDocumentUi(): void {
+  renderDocumentWorkspaceUi({
+    workspace: documentWorkspaceController.state,
+    untitledName: UNTITLED_DOCUMENT_NAME,
+    elements: {
+      nameInput: getDocumentNameInput(),
+      summaryEl: getDocumentSummaryEl(),
+      statusEl: getDocumentStatusEl(),
+      recentListEl: getDocumentRecentListEl()
+    },
+    actions: {
+      reopenRecentDocument: (recentDocumentId) => documentWorkspaceController.openRecentDocument(recentDocumentId),
+      forgetRecentDocument: (recentDocumentId) => documentWorkspaceController.forgetRecentDocument(recentDocumentId)
+    }
+  });
+}
 
 function escapeXml(s: string): string {
   return String(s)
@@ -557,6 +696,7 @@ function normalizeSelection() {
 
 function updateSelectedTextValue(id: string, value: string) {
   state.params = setOverlayTextValue(state.params, id, value);
+  markDocumentDirty();
 }
 
 function normalizeParamsTextFieldOffsets(params: OverlayLayoutOperatorParams): OverlayLayoutOperatorParams {
@@ -608,6 +748,7 @@ function addTextField() {
   });
 
   state.selected = { kind: "text", id: nextField.id };
+  markDocumentDirty();
 }
 
 function canDeleteSelectedText(): boolean {
@@ -638,6 +779,7 @@ function deleteSelectedTextField() {
     inlineTextByFieldId: nextInlineText
   };
   state.selected = null;
+  markDocumentDirty();
 }
 
 function createOverlayItemActionRow(): HTMLElement {
@@ -750,10 +892,12 @@ function applyStagedCsvDraft() {
     }
   };
   setStagedCsvDraft(null);
+  markDocumentDirty();
 }
 
 function discardStagedCsvDraft() {
   setStagedCsvDraft(null);
+  markDocumentDirty();
 }
 
 // ─── Profile / format / preset ────────────────────────────────────────
@@ -801,6 +945,89 @@ function switchContentFormat(formatKey: string) {
   state.params = normalizeParamsTextFieldOffsets(cloneOverlayParams(nextParams));
   normalizeSelection();
   saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
+}
+
+function buildCurrentDocumentPayload(overrides?: { name?: string; createdAt?: string; updatedAt?: string }): OverlayPreviewDocument {
+  persistActiveProfileBuckets();
+  persistActiveExportSettings();
+  persistActiveHaloConfig();
+  state.contentFormatKeyByProfile[state.outputProfileKey] = state.contentFormatKey;
+  const createdAt = overrides?.createdAt ?? documentWorkspaceController.state.createdAt ?? overrides?.updatedAt;
+  const updatedAt = overrides?.updatedAt ?? documentWorkspaceController.state.updatedAt ?? createdAt;
+
+  return createOverlayPreviewDocument({
+    name: overrides?.name ?? getNormalizedDocumentName(),
+    createdAt,
+    updatedAt,
+    state: createCurrentSourceDefaultSnapshot(),
+    pendingCsvDraftsByBucket: state.pendingCsvDraftsByBucket,
+    presets: state.presets,
+    activePresetId: state.activePresetId
+  });
+}
+
+function buildCurrentDocumentPersistence(overrides?: { name?: string; createdAt?: string; updatedAt?: string }): PersistedOverlayPreviewDocument {
+  return normalizeOverlayPreviewDocumentForPersistence(buildCurrentDocumentPayload(overrides));
+}
+
+function sanitizePreviewDocument(rawDocument: unknown): OverlayPreviewDocument | null {
+  return denormalizeOverlayPreviewDocumentFromPersistence(rawDocument, {
+    fallbackName: UNTITLED_DOCUMENT_NAME,
+    fallbackSnapshot: INITIAL_SOURCE_DEFAULTS,
+    createExportSettings: createDefaultExportSettings,
+    createHaloConfig: getHaloConfigForProfile,
+    normalizeGuideMode
+  });
+}
+
+async function refreshPreviewAfterDocumentStateChange(): Promise<void> {
+  state.playbackTimeSec = 0;
+  state.selected = null;
+  currentDrag = null;
+  hoverId = null;
+  hoverHandle = null;
+  closeInlineEditor();
+  normalizeSelection();
+  resizeRenderer();
+  buildConfigEditor();
+
+  const logoPath = state.params.logo?.assetPath;
+  if (logoPath) {
+    await loadLogoIntrinsicDimensions(logoPath);
+  } else {
+    logoIntrinsicWidth = 0;
+    logoIntrinsicHeight = 0;
+  }
+
+  await renderStage();
+}
+
+async function applyPreviewDocumentToState(previewDocument: OverlayPreviewDocument): Promise<void> {
+  applySourceDefaultSnapshot(previewDocument.document.state);
+  state.pendingCsvDraftsByBucket = { ...previewDocument.pendingCsvDraftsByBucket };
+
+  state.presets = previewDocument.presets.map((preset) => clonePreset(preset));
+  state.activePresetId = previewDocument.activePresetId && state.presets.some((preset) => preset.id === previewDocument.activePresetId)
+    ? previewDocument.activePresetId
+    : null;
+
+  savePresets(state.presets);
+  saveActivePresetId(state.activePresetId);
+  saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
+
+  await refreshPreviewAfterDocumentStateChange();
+}
+
+async function applyNewDocumentState(): Promise<void> {
+  applySourceDefaultSnapshot(state.sourceDefaults);
+  state.pendingCsvDraftsByBucket = {};
+  state.presets = [];
+  state.activePresetId = null;
+  savePresets(state.presets);
+  saveActivePresetId(state.activePresetId);
+  saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
+
+  await refreshPreviewAfterDocumentStateChange();
 }
 
 function buildCurrentPresetPayload(overrides?: Partial<Pick<Preset, "id" | "name">>): Preset {
@@ -931,8 +1158,8 @@ function normalizeImportedPreset(
   return importedPreset;
 }
 
-async function importPresetsFromFiles(files: FileList | null): Promise<void> {
-  if (!files || files.length === 0) return;
+async function importPresetsFromFiles(files: FileList | null): Promise<boolean> {
+  if (!files || files.length === 0) return false;
 
   const usedIds = new Set(state.presets.map((preset) => preset.id));
   const usedNames = new Set(state.presets.map((preset) => preset.name));
@@ -955,12 +1182,13 @@ async function importPresetsFromFiles(files: FileList | null): Promise<void> {
     }
   }
 
-  if (importedPresets.length === 0) return;
+  if (importedPresets.length === 0) return false;
 
   state.presets = [...state.presets, ...importedPresets];
   const lastImportedPreset = importedPresets[importedPresets.length - 1];
   loadPreset(lastImportedPreset);
   savePresets(state.presets);
+  return true;
 }
 
 function loadPreset(preset: Preset) {
@@ -1025,75 +1253,12 @@ function setSourceDefaultStatus(message: string, tone: "neutral" | "success" | "
 }
 
 function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnapshot | null {
-  if (!isRecord(rawSnapshot)) {
-    return null;
-  }
-
-  const outputProfileKey = typeof rawSnapshot.outputProfileKey === "string"
-    ? rawSnapshot.outputProfileKey
-    : INITIAL_PROFILE_KEY;
-  const normalizedProfileState = normalizeOverlayProfileBucketState({
-    outputProfileKey,
-    contentFormatKey: typeof rawSnapshot.contentFormatKey === "string"
-      ? rawSnapshot.contentFormatKey
-      : INITIAL_FORMAT_KEY,
-    profileFormatBuckets: isRecord(rawSnapshot.profileFormatBuckets)
-    ? cloneProfileFormatBuckets(rawSnapshot.profileFormatBuckets as ProfileFormatBuckets)
-      : cloneProfileFormatBuckets(INITIAL_SOURCE_DEFAULTS.profileFormatBuckets),
-    contentFormatKeyByProfile: isRecord(rawSnapshot.contentFormatKeyByProfile)
-      ? Object.fromEntries(
-        Object.entries(rawSnapshot.contentFormatKeyByProfile)
-          .filter(([, rawFormatKey]) => typeof rawFormatKey === "string")
-      ) as ProfileContentFormatMap
-      : cloneProfileContentFormatMap(INITIAL_SOURCE_DEFAULTS.contentFormatKeyByProfile)
+  return sanitizeOverlaySourceDefaultSnapshot(rawSnapshot, {
+    fallbackSnapshot: INITIAL_SOURCE_DEFAULTS,
+    createExportSettings: createDefaultExportSettings,
+    createHaloConfig: getHaloConfigForProfile,
+    normalizeGuideMode
   });
-
-  const exportSettingsByProfile: Record<string, ExportSettings> = {};
-  if (isRecord(rawSnapshot.exportSettingsByProfile)) {
-    for (const [profileKey, rawExportSettings] of Object.entries(rawSnapshot.exportSettingsByProfile)) {
-      exportSettingsByProfile[profileKey] = isRecord(rawExportSettings)
-        ? {
-          ...createDefaultExportSettings(profileKey),
-          ...rawExportSettings
-        }
-        : createDefaultExportSettings(profileKey);
-    }
-  }
-
-  const exportSettings = isRecord(rawSnapshot.exportSettings)
-    ? {
-      ...createDefaultExportSettings(normalizedProfileState.outputProfileKey),
-      ...rawSnapshot.exportSettings
-    }
-    : exportSettingsByProfile[normalizedProfileState.outputProfileKey]
-      ?? createDefaultExportSettings(normalizedProfileState.outputProfileKey);
-
-  exportSettingsByProfile[normalizedProfileState.outputProfileKey] ??= JSON.parse(JSON.stringify(exportSettings)) as ExportSettings;
-  const haloConfigByProfile: Record<string, HaloFieldConfig> = {};
-  if (isRecord(rawSnapshot.haloConfigByProfile)) {
-    for (const [profileKey, rawHaloConfig] of Object.entries(rawSnapshot.haloConfigByProfile)) {
-      haloConfigByProfile[profileKey] = getHaloConfigForProfile(profileKey, rawHaloConfig);
-    }
-  }
-
-  const haloConfig = haloConfigByProfile[normalizedProfileState.outputProfileKey]
-    ?? getHaloConfigForProfile(normalizedProfileState.outputProfileKey, rawSnapshot.haloConfig);
-  haloConfigByProfile[normalizedProfileState.outputProfileKey] ??= JSON.parse(JSON.stringify(haloConfig)) as HaloFieldConfig;
-  const guideMode = rawSnapshot.guideMode === "off" || rawSnapshot.guideMode === "baseline"
-    ? rawSnapshot.guideMode
-    : "composition";
-
-  return {
-    outputProfileKey: normalizedProfileState.outputProfileKey,
-    contentFormatKey: normalizedProfileState.contentFormatKey,
-    profileFormatBuckets: normalizedProfileState.profileFormatBuckets,
-    contentFormatKeyByProfile: normalizedProfileState.contentFormatKeyByProfile,
-    exportSettings,
-    exportSettingsByProfile,
-    haloConfig,
-    haloConfigByProfile,
-    guideMode
-  };
 }
 
 function createCurrentSourceDefaultSnapshot(): SourceDefaultSnapshot {
@@ -1126,7 +1291,7 @@ function applySourceDefaultSnapshot(snapshot: SourceDefaultSnapshot) {
     profileFormatBuckets: snapshot.profileFormatBuckets,
     contentFormatKeyByProfile: snapshot.contentFormatKeyByProfile
   });
-  state.sourceDefaults = cloneSourceDefaultSnapshot(snapshot);
+  state.sourceDefaults = cloneOverlaySourceDefaultSnapshot(snapshot);
   state.outputProfileKey = normalizedProfileState.outputProfileKey;
   state.profileFormatBuckets = normalizedProfileState.profileFormatBuckets;
   state.contentFormatKeyByProfile = normalizedProfileState.contentFormatKeyByProfile;
@@ -1205,7 +1370,7 @@ async function readSourceDefaultSnapshot(): Promise<SourceDefaultSnapshot> {
     // Fall back to the built-in snapshot when the authored file is absent or invalid.
   }
 
-  return cloneSourceDefaultSnapshot(INITIAL_SOURCE_DEFAULTS);
+  return cloneOverlaySourceDefaultSnapshot(INITIAL_SOURCE_DEFAULTS);
 }
 
 async function writeCurrentAsSourceDefault(): Promise<void> {
@@ -1222,7 +1387,7 @@ async function writeCurrentAsSourceDefault(): Promise<void> {
     throw new Error(`HTTP ${response.status}`);
   }
 
-  state.sourceDefaults = cloneSourceDefaultSnapshot(snapshot);
+  state.sourceDefaults = cloneOverlaySourceDefaultSnapshot(snapshot);
 }
 
 function getUbuntuSummitSceneDescriptor() {
@@ -1556,6 +1721,7 @@ function buildOutputProfileOptions() {
     radio.checked = key === state.outputProfileKey;
     radio.addEventListener("change", () => {
       switchOutputProfile(key);
+      markDocumentDirty();
       buildOutputProfileOptions();
       buildPresetTabs();
       buildConfigEditor();
@@ -1607,6 +1773,7 @@ function buildPresetTabs() {
     radio.checked = preset.id === state.activePresetId;
     radio.addEventListener("change", () => {
       loadPreset(preset);
+      markDocumentDirty();
       buildOutputProfileOptions();
       buildPresetTabs();
       buildConfigEditor();
@@ -1682,6 +1849,7 @@ function buildPlaybackExportSection(): HTMLElement {
   resetBtn.textContent = "Reset Defaults";
   resetBtn.addEventListener("click", () => {
     applySourceDefaultSnapshot(state.sourceDefaults);
+    markDocumentDirty();
     state.playbackTimeSec = 0;
     resizeRenderer();
     buildOutputProfileOptions();
@@ -1721,23 +1889,78 @@ function buildPlaybackExportSection(): HTMLElement {
   status.textContent = "Source defaults are using the built-in preview snapshot.";
   body.append(status);
 
-  const transparentGroup = document.createElement("div");
-  transparentGroup.className = "p-form__group";
-  const transparentLabel = document.createElement("label");
-  transparentLabel.className = "p-form__label u-no-margin--bottom";
-  transparentLabel.textContent = "Transparent PNG background";
-  const transparentCtrl = document.createElement("div");
-  transparentCtrl.className = "p-form__control";
-  const transparentInput = document.createElement("input");
-  transparentInput.type = "checkbox";
-  transparentInput.setAttribute("data-export-transparent-background", "");
-  transparentInput.checked = state.exportSettings.transparentBackground;
-  transparentInput.addEventListener("change", () => {
-    updateExportSettings((settings) => ({ ...settings, transparentBackground: transparentInput.checked }));
-  });
-  transparentCtrl.append(transparentInput);
-  transparentGroup.append(transparentLabel, transparentCtrl);
-  body.append(transparentGroup);
+  body.append(createCheckboxFormGroup(
+    "Transparent PNG background",
+    state.exportSettings.transparentBackground,
+    (checked) => {
+      updateExportSettings((settings) => ({ ...settings, transparentBackground: checked }));
+    },
+    (input) => {
+      input.setAttribute("data-export-transparent-background", "");
+    }
+  ));
+
+  return root;
+}
+
+function buildDocumentSection(): HTMLElement {
+  const { root, body } = buildSectionEl("Document");
+
+  const helpText = document.createElement("p");
+  helpText.className = "p-form-help-text u-no-margin--bottom";
+  helpText.textContent = "Open, save, save as, or duplicate the full working state as a local project file.";
+  body.append(helpText);
+
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.className = "p-form-validation__input is-dense";
+  nameInput.placeholder = UNTITLED_DOCUMENT_NAME;
+  nameInput.value = getNormalizedDocumentName(documentWorkspaceController.state.name);
+  nameInput.setAttribute("data-document-name-input", "");
+  body.append(createFormGroup("Name", nameInput));
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "preset-toolbar";
+
+  const buttonSpecs: Array<{ label: string; className: string; onClick: () => void | Promise<void> }> = [
+    { label: "New", className: "p-button--base is-dense", onClick: () => void documentWorkspaceController.createNewDocument() },
+    { label: "Open", className: "p-button--base is-dense", onClick: () => void documentWorkspaceController.openDocumentFromDisk() },
+    { label: "Save", className: "p-button is-dense", onClick: () => void documentWorkspaceController.saveCurrentDocument(false) },
+    { label: "Save As", className: "p-button--base is-dense", onClick: () => void documentWorkspaceController.saveCurrentDocument(true) },
+    { label: "Duplicate", className: "p-button--base is-dense", onClick: () => void documentWorkspaceController.duplicateCurrentDocument() }
+  ];
+
+  for (const buttonSpec of buttonSpecs) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = buttonSpec.className;
+    button.textContent = buttonSpec.label;
+    button.addEventListener("click", () => {
+      void buttonSpec.onClick();
+    });
+    toolbar.append(button);
+  }
+
+  body.append(toolbar);
+
+  const summary = document.createElement("p");
+  summary.className = "p-form-help-text u-no-margin--bottom";
+  summary.setAttribute("data-document-summary", "");
+  body.append(summary);
+
+  const status = document.createElement("p");
+  status.className = "p-form-help-text u-no-margin--bottom";
+  status.setAttribute("data-document-status", "");
+  body.append(status);
+
+  const recentHeading = document.createElement("p");
+  recentHeading.className = "p-form-help-text u-no-margin--bottom";
+  recentHeading.textContent = "Recent";
+  body.append(recentHeading);
+
+  const recentList = document.createElement("div");
+  recentList.setAttribute("data-document-recent-list", "");
+  body.append(recentList);
 
   return root;
 }
@@ -1762,7 +1985,7 @@ function buildPresetsSection(): HTMLElement {
 
   const helpText = document.createElement("p");
   helpText.className = "p-form-help-text u-no-margin--bottom";
-  helpText.textContent = "Presets are stored in this browser.";
+  helpText.textContent = "Presets travel with the current document when you save it. Browser storage still mirrors the working set locally.";
   body.append(helpText);
 
   const nameInput = document.createElement("input");
@@ -1807,11 +2030,13 @@ function buildPresetsSection(): HTMLElement {
   toolbar.querySelector("[data-preset-save]")?.addEventListener("click", () => {
     const name = nameInput.value.trim() || undefined;
     saveCurrentAsPreset(name);
+    markDocumentDirty();
     nameInput.value = "";
     buildPresetTabs();
   });
   toolbar.querySelector("[data-preset-update]")?.addEventListener("click", () => {
     updateActivePreset();
+    markDocumentDirty();
     buildPresetTabs();
   });
   toolbar.querySelector("[data-preset-export]")?.addEventListener("click", () => {
@@ -1822,8 +2047,13 @@ function buildPresetsSection(): HTMLElement {
     importInput.click();
   });
   importInput.addEventListener("change", async () => {
-    await importPresetsFromFiles(importInput.files);
+    const didImport = await importPresetsFromFiles(importInput.files);
     importInput.value = "";
+    if (!didImport) {
+      return;
+    }
+
+    markDocumentDirty();
     buildOutputProfileOptions();
     buildPresetTabs();
     buildConfigEditor();
@@ -1833,6 +2063,7 @@ function buildPresetsSection(): HTMLElement {
   toolbar.querySelector("[data-preset-delete]")?.addEventListener("click", () => {
     if (state.activePresetId) {
       deletePreset(state.activePresetId);
+      markDocumentDirty();
       buildPresetTabs();
     }
   });
@@ -1843,6 +2074,7 @@ function buildPresetsSection(): HTMLElement {
 const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
   { key: "playback-export", order: 100, factory: buildPlaybackExportSection, afterRender: updatePlaybackToggleUi },
   { key: "output-format", order: 200, factory: buildOutputFormatSection, afterRender: buildOutputProfileOptions },
+  { key: "document", order: 250, factory: buildDocumentSection, afterRender: updateDocumentUi },
   { key: "presets", order: 300, factory: buildPresetsSection, afterRender: buildPresetTabs },
   { key: "content-format", order: 400, factory: buildContentFormatSection },
   { key: "selected-overlay", order: 500, factory: buildOverlaySection },
@@ -1909,6 +2141,38 @@ function createFormGroup(label: string, control: HTMLElement): HTMLElement {
   return group;
 }
 
+function createCheckboxFormGroup(
+  label: string,
+  checked: boolean,
+  onChange: (v: boolean) => void,
+  configureInput?: (input: HTMLInputElement) => void
+): HTMLElement {
+  const group = document.createElement("div");
+  group.className = "p-form__group p-form__group--checkbox";
+
+  const ctrl = document.createElement("div");
+  ctrl.className = "p-form__control";
+
+  const checkbox = document.createElement("div");
+  checkbox.className = "p-checkbox";
+
+  const inputId = `preview-checkbox-${++checkboxFieldIdCounter}`;
+  const input = createCheckboxInput(checked, onChange);
+  input.id = inputId;
+  input.className = "p-checkbox__input";
+  configureInput?.(input);
+
+  const inputLabel = document.createElement("label");
+  inputLabel.className = "p-checkbox__label";
+  inputLabel.htmlFor = inputId;
+  inputLabel.textContent = label;
+
+  checkbox.append(input, inputLabel);
+  ctrl.append(checkbox);
+  group.append(ctrl);
+  return group;
+}
+
 function createNumberInput(
   value: number,
   opts: { min?: number; max?: number; step?: number },
@@ -1934,7 +2198,7 @@ function createSliderInput(
   onChange: (v: number) => void
 ): HTMLElement {
   const wrap = document.createElement("div");
-  wrap.className = "slider-pair p-slider__wrapper";
+  wrap.className = "slider-pair slider-pair--stacked p-slider__wrapper";
 
   const range = document.createElement("input");
   range.type = "range";
@@ -1991,6 +2255,7 @@ function createCheckboxInput(checked: boolean, onChange: (v: boolean) => void): 
 }
 
 let accordionIdCounter = 0;
+let checkboxFieldIdCounter = 0;
 
 function buildSectionEl(title: string): { root: HTMLElement; body: HTMLElement } {
   const id = `accordion-tab-${++accordionIdCounter}`;
@@ -2099,7 +2364,10 @@ function applySelectedTextStyle(styleKey: string) {
 function buildContentFormatSection(): HTMLElement {
   const { root, body } = buildSectionEl("Content Format");
 
-  body.append(createFormGroup("Format",
+  const formatFields = document.createElement("div");
+  formatFields.className = "grid-row";
+
+  formatFields.append(wrapCol(2, createFormGroup("Format",
     createSelectInput(
       state.contentFormatKey,
       OVERLAY_CONTENT_FORMAT_ORDER.map(k => ({
@@ -2112,9 +2380,9 @@ function buildContentFormatSection(): HTMLElement {
         void renderStage();
       }
     )
-  ));
+  )));
 
-  body.append(createFormGroup("Content Source",
+  formatFields.append(wrapCol(2, createFormGroup("Content Source",
     createSelectInput(
       getContentSource(),
       [{ label: "Inline text", value: "inline" }, { label: "CSV", value: "csv" }],
@@ -2124,7 +2392,9 @@ function buildContentFormatSection(): HTMLElement {
         void renderStage();
       }
     )
-  ));
+  )));
+
+  body.append(formatFields);
 
   if (getContentSource() === "csv") {
     const effectiveParams = getEffectiveParams();
@@ -2255,10 +2525,12 @@ function buildOverlaySection(): HTMLElement {
     if (!field) return root;
     const selectedStyle = state.params.textStyles.find((style) => style.key === field.styleKey);
 
-    body.append(createFormGroup("Label", createReadonlySpan(getOverlayFieldDisplayLabel(state.params, field.id))));
-    body.append(createFormGroup("ID", createReadonlySpan(field.id)));
+    const metadataFields = document.createElement("div");
+    metadataFields.className = "grid-row";
 
-    body.append(createFormGroup("Style",
+    metadataFields.append(wrapCol(1, createFormGroup("Label", createReadonlySpan(getOverlayFieldDisplayLabel(state.params, field.id)))));
+    metadataFields.append(wrapCol(1, createFormGroup("ID", createReadonlySpan(field.id))));
+    metadataFields.append(wrapCol(2, createFormGroup("Style",
       createSelectInput(
         field.styleKey,
         state.params.textStyles.map((style) => ({
@@ -2269,7 +2541,9 @@ function buildOverlaySection(): HTMLElement {
           applySelectedTextStyle(value);
         }
       )
-    ));
+    )));
+
+    body.append(metadataFields);
 
     if (selectedStyle) {
       const styleGrid = document.createElement("div");
@@ -2371,10 +2645,14 @@ function buildOverlaySection(): HTMLElement {
       buildConfigEditor();
       void renderStage();
     });
-    body.append(createFormGroup("Asset Path", assetInput));
+    const logoMetaFields = document.createElement("div");
+    logoMetaFields.className = "grid-row";
 
-    body.append(createFormGroup("Lock A Head to Logo",
-      createCheckboxInput(logo.linkTitleSizeToHeight !== false, (checked) => {
+    logoMetaFields.append(wrapCol(3, createFormGroup("Asset Path", assetInput)));
+    logoMetaFields.append(wrapCol(1, createCheckboxFormGroup(
+      "Lock A Head to Logo",
+      logo.linkTitleSizeToHeight !== false,
+      (checked) => {
         updateLogo((currentLogo) => ({
           ...currentLogo,
           linkTitleSizeToHeight: checked
@@ -2387,8 +2665,10 @@ function buildOverlaySection(): HTMLElement {
         }
         buildConfigEditor();
         void renderStage();
-      })
-    ));
+      }
+    )));
+
+    body.append(logoMetaFields);
 
     const grid = document.createElement("div");
     grid.className = "grid-row";
@@ -2494,14 +2774,40 @@ function buildGridSection(): HTMLElement {
   const { root, body } = buildSectionEl("Layout Grid");
   const grid = state.params.grid;
 
-  body.append(createFormGroup("Show overlay", (() => {
-    const cb = createCheckboxInput(state.overlayVisible, v => {
-      setOverlayVisible(v);
+  const displayFields = document.createElement("div");
+  displayFields.className = "grid-row";
+
+  displayFields.append(wrapCol(1, createCheckboxFormGroup(
+    "Show Overlay",
+    state.overlayVisible,
+    (visible) => {
+      setOverlayVisible(visible);
       void renderStage();
-    });
-    cb.setAttribute("data-overlay-visibility", "");
-    return cb;
-  })()));
+    },
+    (input) => {
+      input.setAttribute("data-overlay-visibility", "");
+    }
+  )));
+
+  displayFields.append(wrapCol(1, createCheckboxFormGroup(
+    "Fit Safe Area",
+    grid.fitWithinSafeArea ?? true,
+    (fitWithinSafeArea) => {
+      state.params = { ...state.params, grid: { ...state.params.grid, fitWithinSafeArea } };
+      buildConfigEditor();
+      void renderStage();
+    }
+  )));
+
+  displayFields.append(wrapCol(2, createFormGroup(
+    "Guides",
+    createSelectInput(state.guideMode,
+      [{ label: "Off", value: "off" }, { label: "Composition Grid", value: "composition" }, { label: "Baseline Grid", value: "baseline" }],
+      (v) => { state.guideMode = v as GuideMode; void renderStage(); }
+    )
+  )));
+
+  body.append(displayFields);
 
   const fields = document.createElement("div");
   fields.className = "grid-row";
@@ -2572,14 +2878,6 @@ function buildGridSection(): HTMLElement {
 
   body.append(margins);
 
-  body.append(createFormGroup("Fit Within Safe Area",
-    createCheckboxInput(grid.fitWithinSafeArea ?? true, v => {
-      state.params = { ...state.params, grid: { ...state.params.grid, fitWithinSafeArea: v } };
-      buildConfigEditor();
-      void renderStage();
-    })
-  ));
-
   if (grid.fitWithinSafeArea !== false) {
     const safeArea = state.params.safeArea;
     const safeFields = document.createElement("div");
@@ -2611,13 +2909,6 @@ function buildGridSection(): HTMLElement {
 
     body.append(safeFields);
   }
-
-  body.append(createFormGroup("Guides",
-    createSelectInput(state.guideMode,
-      [{ label: "Off", value: "off" }, { label: "Composition Grid", value: "composition" }, { label: "Baseline Grid", value: "baseline" }],
-      (v) => { state.guideMode = v as GuideMode; void renderStage(); }
-    )
-  ));
 
   return root;
 }
@@ -2875,25 +3166,37 @@ function buildHaloConfigSection(): HTMLElement {
 
   body.append(screensaverDetails);
 
-  /* pulse checkboxes */
-  body.append(createFormGroup("Pulse Orbits",
-    createCheckboxInput(hc.screensaver?.pulse_orbits ?? false, v => {
-      state.haloConfig = { ...hc, screensaver: { ...hc.screensaver!, pulse_orbits: v } }; void renderStage();
-    })
-  ));
+  const toggleFields = document.createElement("div");
+  toggleFields.className = "grid-row";
 
-  body.append(createFormGroup("Pulse Spokes",
-    createCheckboxInput(hc.screensaver?.pulse_spokes ?? false, v => {
-      state.haloConfig = { ...hc, screensaver: { ...hc.screensaver!, pulse_spokes: v } }; void renderStage();
-    })
-  ));
+  toggleFields.append(wrapCol(1, createCheckboxFormGroup(
+    "Pulse Orbits",
+    hc.screensaver?.pulse_orbits ?? false,
+    (pulseOrbits) => {
+      state.haloConfig = { ...hc, screensaver: { ...hc.screensaver!, pulse_orbits: pulseOrbits } };
+      void renderStage();
+    }
+  )));
 
-  /* release labels (spoke_text) */
-  body.append(createFormGroup("Show Release Labels",
-    createCheckboxInput(hc.spoke_text?.enabled ?? false, v => {
-      state.haloConfig = { ...hc, spoke_text: { ...hc.spoke_text!, enabled: v } }; void renderStage();
-    })
-  ));
+  toggleFields.append(wrapCol(1, createCheckboxFormGroup(
+    "Pulse Spokes",
+    hc.screensaver?.pulse_spokes ?? false,
+    (pulseSpokes) => {
+      state.haloConfig = { ...hc, screensaver: { ...hc.screensaver!, pulse_spokes: pulseSpokes } };
+      void renderStage();
+    }
+  )));
+
+  toggleFields.append(wrapCol(1, createCheckboxFormGroup(
+    "Release Labels",
+    hc.spoke_text?.enabled ?? false,
+    (enabled) => {
+      state.haloConfig = { ...hc, spoke_text: { ...hc.spoke_text!, enabled } };
+      void renderStage();
+    }
+  )));
+
+  body.append(toggleFields);
 
   if (hc.spoke_text?.enabled) {
     const labelFields = document.createElement("div");
@@ -2914,18 +3217,28 @@ function buildHaloConfigSection(): HTMLElement {
     body.append(labelFields);
   }
 
-  /* debug overlays */
-  body.append(createFormGroup("Show Reference Halo",
-    createCheckboxInput(hc.spoke_lines.show_reference_halo, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, show_reference_halo: v } }; void renderStage();
-    })
-  ));
+  const debugFields = document.createElement("div");
+  debugFields.className = "grid-row";
 
-  body.append(createFormGroup("Show Debug Masks",
-    createCheckboxInput(hc.spoke_lines.show_debug_masks, v => {
-      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, show_debug_masks: v } }; void renderStage();
-    })
-  ));
+  debugFields.append(wrapCol(1, createCheckboxFormGroup(
+    "Reference Halo",
+    hc.spoke_lines.show_reference_halo,
+    (showReferenceHalo) => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, show_reference_halo: showReferenceHalo } };
+      void renderStage();
+    }
+  )));
+
+  debugFields.append(wrapCol(1, createCheckboxFormGroup(
+    "Debug Masks",
+    hc.spoke_lines.show_debug_masks,
+    (showDebugMasks) => {
+      state.haloConfig = { ...hc, spoke_lines: { ...hc.spoke_lines, show_debug_masks: showDebugMasks } };
+      void renderStage();
+    }
+  )));
+
+  body.append(debugFields);
 
   return root;
 }
@@ -3511,8 +3824,12 @@ function handlePointerMove(e: PointerEvent) {
 
 function handlePointerUp(_e: PointerEvent) {
   if (currentDrag) {
+    const didMutateDocument = currentDrag.hasMoved;
     currentDrag = null;
     setDocumentSelectionSuppressed(false);
+    if (didMutateDocument) {
+      markDocumentDirty();
+    }
     buildConfigEditor();
     renderAuthoringUI();
   }
@@ -3570,7 +3887,7 @@ function handleKeyDown(e: KeyboardEvent) {
     return;
   }
 
-  if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+  if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === "s" || e.key === "S")) {
     e.preventDefault();
     void (async () => {
       try {
@@ -3580,6 +3897,17 @@ function handleKeyDown(e: KeyboardEvent) {
         setSourceDefaultStatus("Source default save failed.", "error");
       }
     })();
+    return;
+  }
+
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+    e.preventDefault();
+    if (e.shiftKey) {
+      void documentWorkspaceController.saveCurrentDocument(true);
+      return;
+    }
+
+    void documentWorkspaceController.saveCurrentDocument(false);
     return;
   }
 
@@ -3945,17 +4273,127 @@ async function exportPngSequence() {
 }
 
 function setupButtons() {
-  // All button event listeners are now created inline by
-  // buildPlaybackExportSection, buildOutputFormatSection,
-  // and buildPresetsSection inside buildConfigEditor().
-  // This stub remains for call-site compatibility.
+  const configEditor = getConfigEditor();
+  if (!configEditor) {
+    return;
+  }
+
+  const trackDocumentInput = (event: Event): void => {
+    const target = event.target;
+    if (
+      !(target instanceof HTMLInputElement) &&
+      !(target instanceof HTMLTextAreaElement) &&
+      !(target instanceof HTMLSelectElement)
+    ) {
+      return;
+    }
+
+    if (target instanceof HTMLInputElement && target.type === "file") {
+      return;
+    }
+
+    if (target instanceof HTMLInputElement && target.hasAttribute("data-preset-name-input")) {
+      return;
+    }
+
+    if (target instanceof HTMLInputElement && target.hasAttribute("data-document-name-input")) {
+      documentWorkspaceController.setName(target.value);
+      return;
+    }
+
+    markDocumentDirty();
+  };
+
+  configEditor.addEventListener("input", trackDocumentInput);
+  configEditor.addEventListener("change", trackDocumentInput);
+}
+
+function setupControlPanelResize() {
+  const appShell = getAppShellEl();
+  const handle = getControlPanelResizeHandle();
+  if (!appShell || !handle) {
+    return;
+  }
+
+  restoreDockedControlPanelWidth();
+
+  const commitWidth = (nextWidthPx: number, persist: boolean = true): void => {
+    applyDockedControlPanelWidth(nextWidthPx, persist);
+  };
+
+  handle.addEventListener("dblclick", () => {
+    localStorage.removeItem(CONTROL_PANEL_WIDTH_STORAGE_KEY);
+    appShell.style.removeProperty("--vr-application-aside-width");
+    updateControlPanelResizeHandleA11y();
+  });
+
+  handle.addEventListener("keydown", (event) => {
+    if (!document.body.classList.contains("editor-docked")) {
+      return;
+    }
+
+    const { minPx, maxPx } = getControlPanelWidthBounds();
+    const currentWidthPx = getCurrentControlPanelWidthPx();
+    const stepPx = event.shiftKey ? CONTROL_PANEL_WIDTH_STEP_PX * 3 : CONTROL_PANEL_WIDTH_STEP_PX;
+
+    if (event.key === "ArrowLeft") {
+      commitWidth(currentWidthPx + stepPx);
+      event.preventDefault();
+      return;
+    }
+
+    if (event.key === "ArrowRight") {
+      commitWidth(currentWidthPx - stepPx);
+      event.preventDefault();
+      return;
+    }
+
+    if (event.key === "Home") {
+      commitWidth(minPx);
+      event.preventDefault();
+      return;
+    }
+
+    if (event.key === "End") {
+      commitWidth(maxPx);
+      event.preventDefault();
+    }
+  });
+
+  handle.addEventListener("pointerdown", (event: PointerEvent) => {
+    if (event.button !== 0 || !document.body.classList.contains("editor-docked")) {
+      return;
+    }
+
+    event.preventDefault();
+    const shellRect = appShell.getBoundingClientRect();
+    appShell.classList.add("is-resizing-aside");
+    handle.setPointerCapture(event.pointerId);
+
+    const onPointerMove = (moveEvent: PointerEvent): void => {
+      const nextWidthPx = shellRect.right - moveEvent.clientX;
+      commitWidth(nextWidthPx, false);
+    };
+
+    const finishResize = (): void => {
+      appShell.classList.remove("is-resizing-aside");
+      commitWidth(getCurrentControlPanelWidthPx(), true);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", finishResize);
+      window.removeEventListener("pointercancel", finishResize);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", finishResize, { once: true });
+    window.addEventListener("pointercancel", finishResize, { once: true });
+  });
 }
 
 // ─── Window resize ───────────────────────────────────────────────────
 
 function setupResize() {
-  const appShell = document.querySelector<HTMLElement>(".mascot-app");
-  const aside = $<HTMLElement>("[data-control-panel]");
+  const appShell = getAppShellEl();
+  const aside = getControlPanelEl();
   const toggleBtn = $<HTMLElement>("[data-drawer-toggle]");
 
   function checkDock() {
@@ -3968,6 +4406,7 @@ function setupResize() {
       aside?.classList.remove("is-collapsed");
       document.body.classList.remove("drawer-open");
       toggleBtn?.setAttribute("aria-expanded", "true");
+      updateControlPanelResizeHandleA11y();
       return;
     }
 
@@ -3986,6 +4425,7 @@ async function init() {
   state.playbackTimeSec = 0;
   updateStageAspectRatio();
   initHaloRenderer();
+  await documentWorkspaceController.refreshRecentDocuments();
 
   // Load logo intrinsic dimensions for aspect-ratio-preserving scaling
   const logoPath = state.params.logo?.assetPath;
@@ -3997,6 +4437,7 @@ async function init() {
 
   setupDrawerToggle();
   setupButtons();
+  setupControlPanelResize();
   setupResize();
   initAuthoringLayer();
 

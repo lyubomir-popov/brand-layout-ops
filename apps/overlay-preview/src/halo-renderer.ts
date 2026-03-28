@@ -112,7 +112,8 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     canvas,
     alpha: true,
     antialias: true,
-    premultipliedAlpha: false
+    premultipliedAlpha: false,
+    preserveDrawingBuffer: true
   });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(stageW, stageH, false);

@@ -1,4 +1,3 @@
-import type { TextFieldPlacementSpec } from "@brand-layout-ops/core-types";
 import {
   DEFAULT_OUTPUT_PROFILE_KEY,
   getOutputProfile,
@@ -122,12 +121,12 @@ function denormalizeOverlayParams(
   return mergeWithDefaults(defaults, partialParams);
 }
 
-export function normalizePresetForPersistence(preset: Preset): PersistedPreset {
-  const outputProfileKey = preset.outputProfileKey ?? DEFAULT_OUTPUT_PROFILE_KEY;
-  const contentFormatKey = preset.contentFormatKey ?? OVERLAY_CONTENT_FORMAT_ORDER[0];
+function normalizeProfileFormatBucketsForPersistence(
+  profileFormatBuckets: ProfileFormatBuckets
+): Record<string, Record<string, unknown>> {
   const persistedBuckets: Record<string, Record<string, unknown>> = {};
 
-  for (const [profileKey, formatBuckets] of Object.entries(preset.profileFormatBuckets ?? {})) {
+  for (const [profileKey, formatBuckets] of Object.entries(profileFormatBuckets)) {
     const nextFormatBuckets: Record<string, unknown> = {};
     for (const [formatKey, params] of Object.entries(formatBuckets)) {
       nextFormatBuckets[formatKey] = normalizeOverlayParams(params, profileKey, formatKey);
@@ -135,13 +134,42 @@ export function normalizePresetForPersistence(preset: Preset): PersistedPreset {
     persistedBuckets[profileKey] = nextFormatBuckets;
   }
 
+  return persistedBuckets;
+}
+
+function denormalizeProfileFormatBucketsFromPersistence(rawProfileFormatBuckets: unknown): ProfileFormatBuckets {
+  const buckets: ProfileFormatBuckets = {};
+  if (!isRecord(rawProfileFormatBuckets)) {
+    return buckets;
+  }
+
+  for (const [profileKey, rawFormatBuckets] of Object.entries(rawProfileFormatBuckets)) {
+    if (!isRecord(rawFormatBuckets)) {
+      continue;
+    }
+
+    const nextFormatBuckets: Record<string, OverlayLayoutOperatorParams> = {};
+    for (const [formatKey, rawParams] of Object.entries(rawFormatBuckets)) {
+      nextFormatBuckets[formatKey] = denormalizeOverlayParams(rawParams, profileKey, formatKey);
+    }
+
+    buckets[profileKey] = nextFormatBuckets;
+  }
+
+  return buckets;
+}
+
+export function normalizePresetForPersistence(preset: Preset): PersistedPreset {
+  const outputProfileKey = preset.outputProfileKey ?? DEFAULT_OUTPUT_PROFILE_KEY;
+  const contentFormatKey = preset.contentFormatKey ?? OVERLAY_CONTENT_FORMAT_ORDER[0];
+
   return {
     id: preset.id,
     name: preset.name,
     config: normalizeOverlayParams(preset.config, outputProfileKey, contentFormatKey),
     outputProfileKey,
     contentFormatKey,
-    profileFormatBuckets: persistedBuckets,
+    profileFormatBuckets: normalizeProfileFormatBucketsForPersistence(preset.profileFormatBuckets ?? {}),
     contentFormatKeyByProfile: cloneJson(preset.contentFormatKeyByProfile ?? {}),
     exportSettingsByProfile: cloneJson(preset.exportSettingsByProfile ?? {}),
     haloConfigByProfile: cloneJson(preset.haloConfigByProfile ?? {})
@@ -167,21 +195,7 @@ export function denormalizePresetFromPersistence(rawPreset: unknown): Preset | n
     : OVERLAY_CONTENT_FORMAT_ORDER[0];
   const config = denormalizeOverlayParams(rawPreset.config, outputProfileKey, contentFormatKey);
 
-  const buckets: ProfileFormatBuckets = {};
-  if (isRecord(rawPreset.profileFormatBuckets)) {
-    for (const [profileKey, rawFormatBuckets] of Object.entries(rawPreset.profileFormatBuckets)) {
-      if (!isRecord(rawFormatBuckets)) {
-        continue;
-      }
-
-      const nextFormatBuckets: Record<string, OverlayLayoutOperatorParams> = {};
-      for (const [formatKey, rawParams] of Object.entries(rawFormatBuckets)) {
-        nextFormatBuckets[formatKey] = denormalizeOverlayParams(rawParams, profileKey, formatKey);
-      }
-
-      buckets[profileKey] = nextFormatBuckets;
-    }
-  }
+  const buckets = denormalizeProfileFormatBucketsFromPersistence(rawPreset.profileFormatBuckets);
 
   if (!buckets[outputProfileKey]) {
     buckets[outputProfileKey] = {};
@@ -226,6 +240,7 @@ export function denormalizePresetFromPersistence(rawPreset: unknown): Preset | n
       : {}
   };
 }
+
 
 const PRESET_STORAGE_KEY = "brand-layout-ops-presets-v1";
 const ACTIVE_PRESET_STORAGE_KEY = "brand-layout-ops-active-preset-v1";

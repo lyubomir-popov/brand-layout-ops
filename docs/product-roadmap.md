@@ -14,10 +14,18 @@ It should behave like a simplified Houdini for brand work with a rigorous, InDes
 The key product shape is not "Figma for brand design." It is a structured operator app where:
 
 - a document can target one or more output sizes
+- documents should be real local project files, not only browser-local state
 - layout stays rigorous and document-driven rather than freeform first
 - scene families can be swapped behind the same layout and export stack
 - halo, boids, phyllotaxis, and future generators should be peers at the scene layer rather than bespoke app branches
 - stills, video, SVG, PDF, and EPS remain backend concerns instead of mutating the kernel semantics
+
+The preferred document analogy is closer to draw.io or local Canva-style projects than browser-local preset CRUD:
+
+- open an existing local document
+- save the current state as a new document
+- persist in-editor text placement, added or removed text blocks, and logo changes in the document itself
+- treat CSV as an optional import or source path, not the primary persistence model for authored layout state
 
 It should not try to become a full freeform design tool first.
 
@@ -74,7 +82,27 @@ Success criteria:
 
 - one campaign document can mix structured layout with procedural motion without bespoke glue code, and can swap one scene family for another without rewriting the layout or export path
 
-### Stage 3. Stakeholder and operator surfaces
+### Stage 3. Local document model
+
+Goal:
+
+- make authored layout state persist as real local documents instead of transient browser state
+
+Deliverables:
+
+- local filesystem-backed document format for overlay and scene state
+- open, save, save-as, and recent-document workflow
+- persistence for in-editor text placement, added or removed text fields, logo asset changes, and per-document output settings
+- document-owned scene-family selection so the same document model can point at halo today and boids, phyllotaxis, or other background operator stacks later
+- document-owned target-size groups so one document can carry multiple output destinations instead of being trapped in a single preview session
+- clearer separation between authored document state and imported content sources like CSV
+
+Success criteria:
+
+- a user can treat the app like a real local project editor: open a document, edit text and placement, add or remove fields, change the logo, save, duplicate as a new document, and reopen later without relying on browser localStorage
+- the document model is broad enough that scene-family swaps, target-size additions, and PNG or image-sequence or MP4 export all remain document-driven instead of becoming preview-only glue
+
+### Stage 4. Stakeholder and operator surfaces
 
 Goal:
 
@@ -83,11 +111,14 @@ Goal:
 Deliverables:
 
 - operator mode for graph and parameter tuning
+- contextual parameter panels driven by the selected operator or graph node instead of one monolithic document accordion
+- a network-view or operator-selection workflow that lets the layout operator, scene operator, and future generators expose their own scoped controls
 - stakeholder mode for template, row, and format selection
 - document-size and template management without exposing low-level operator tuning
 - content validation and safer writeback
+- stakeholder actions that operate on document files instead of only transient browser state
 
-### Stage 4. Export backends
+### Stage 5. Export backends
 
 Goal:
 
@@ -100,7 +131,7 @@ Deliverables:
 - PDF or EPS-capable backend
 - CMYK intent path with controlled replacement or backend conversion
 
-### Stage 5. Broader brand scene system
+### Stage 6. Broader brand scene system
 
 Goal:
 

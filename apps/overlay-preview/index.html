@@ -22,6 +22,15 @@
     </main>
 
     <aside class="l-aside is-collapsed" id="control-drawer" data-control-panel aria-label="Animation controls">
+      <div
+        class="l-application__aside-resize-handle"
+        data-control-panel-resize-handle
+        role="separator"
+        tabindex="0"
+        aria-controls="control-drawer"
+        aria-label="Resize control panel"
+        aria-orientation="vertical"
+      ></div>
       <div class="p-panel drawer-panel">
         <div class="p-panel__header is-sticky">
           <h1 class="p-panel__title">Brand Layout Ops</h1>
@@ -30,9 +39,7 @@
           </div>
         </div>
         <div class="p-panel__content">
-          <div class="u-fixed-width">
-            <div class="config-sections" data-config-editor></div>
-          </div>
+          <div class="config-sections" data-config-editor></div>
         </div>
       </div>
     </aside>

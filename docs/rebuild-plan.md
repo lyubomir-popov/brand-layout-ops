@@ -6,13 +6,13 @@ Rebuild the current mascot-animation project in this new architecture and verify
 
 Work should now center on:
 
-- `h:\WSL_dev_projects\brand-layout-ops`
+- `c:\Users\lyubo\work\repos\brand-layout-ops`
 
 The original app remains the reference implementation for behavior and output, not the place to continue product architecture work.
 
 Reference source repo:
 
-- `h:\HOUDINI PROJECTS\RacoonTail\mascot-animation-clean-port`
+- `c:\Users\lyubo\work\repos\racoon-anim`
 
 ## Working Rules
 
@@ -39,7 +39,7 @@ Use this map before changing code so parity work stays anchored to the reference
 
 - Output profiles, presets, content formats, and source-default persistence:
 	- Reference repo: `c:\Users\lyubo\work\repos\racoon-anim\src\app\config-schema.js`, `default-config-source.js`, `editor-constants.js`, `index.js`
-	- Current repo: `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/sample-document.ts`, `packages/operator-overlay-layout/src/index.ts`
+	- Current repo: `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/preview-document.ts`, `apps/overlay-preview/src/sample-document.ts`, `packages/operator-overlay-layout/src/index.ts`
 - Motion look, halo-field masks, mascot composition, and guide geometry:
 	- Reference repo: `c:\Users\lyubo\work\repos\racoon-anim\src\app\rendering.js`, `halo-field.js`
 	- Current repo: `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/sample-motion.ts`, `packages/operator-orbits/src/index.ts`, `packages/operator-spokes/src/index.ts`
@@ -112,14 +112,18 @@ Port the current interaction model into `overlay-interaction` and `parameter-ui`
 - [x] Style-based labels in the selected-element editor.
 - [x] Resize handles for text fields with snapping to grid field widths and baselines.
 - [ ] CSV draft editing and source writeback staging at parity quality.
-	Current repo now preserves pending CSV drafts per profile and format bucket while switching, and the editor surfaces alias-based field mapping plus staged-versus-applied field values for the active format, but it still lacks fully reference-grade field-level pending-edit semantics and any final source-default writeback polish for format-scoped CSV content.
+	Current repo now preserves pending CSV drafts per profile and format bucket while switching, and the editor surfaces alias-based field mapping plus staged-versus-applied field values for the active format, but this is now explicitly deprioritized behind persistent document editing and local filesystem-backed document save/open flows.
+- [x] Persistent local document workflow for authored layout state.
+	The preview can now open, save, save as, duplicate, and reopen recent local `.brand-layout-ops.json` files that persist the current working snapshot plus the preset library instead of relying only on browser-local presets.
+	Follow-up anti-drift work remains: preview documents now persist the shared `operator-overlay-layout` document metadata/state envelope while `apps/overlay-preview/src/preview-document.ts` keeps preview-only extras and backward compatibility for earlier preview-local files; startup no longer seeds the working state from browser-local preset storage; preview-local file orchestration, dirty-state UI, recent-document reopen, and fallback download handling now live in `apps/overlay-preview/src/document-workspace.ts`; continue moving the remaining document serialization or state-application rules out of `apps/overlay-preview/src/main.ts`, and decide later whether those preview-only extras belong in a broader shared document package.
+	Longer-term document direction is now explicit: a document should grow beyond the current halo scene and own a swappable scene-family or background operator stack, one or more target output sizes, and exportable state while CSV stays secondary.
 - [x] Baseline guide showing at first baseline of text field, to aid alignment across columns.
 - [x] Text-box inset parity: text fields now clamp their first baseline to an ascent-aware minimum offset so the first line stays visibly inside the field bounds while remaining baseline-grid aligned.
 - [ ] Output-profile parity: named screen sizes, seeded safe areas, and reference frame-rate defaults.
 - [ ] Overlay content-format parity: `generic_social` and `speaker_highlight` field buckets with alias-based CSV matching.
 - [ ] Selected-element authoring parity: add text blocks, style assignment, and richer selected-item controls.
 - [x] Preset workflow parity: save, update, delete, import, and export presets.
-- [x] Shortcut parity: `W` guide toggle, `Ctrl`/`Cmd+S` source-default writeback, `Space` or `P` playback toggle, and inline-editor commit semantics.
+- [x] Shortcut parity: `W` guide toggle, `Ctrl`/`Cmd+S` document save, `Ctrl`/`Cmd+Shift+S` save as, `Ctrl`/`Cmd+Alt+S` source-default writeback, `Space` or `P` playback toggle, and inline-editor commit semantics.
 
 ### Phase 5. Port the animation background as coarse operators
 
@@ -188,6 +192,16 @@ Only after parity is proven in this repo should new feature work resume.
 	Reason: the highest-value anti-drift seam was to stop reimplementing active bucket selection in `main.ts` and to move the registry primitive into `parameter-ui` first, even though operator-owned panel manifests are still a later step.
 - [x] 2026-03-28: The preview's docked control shell was moved back onto `portable-vertical-rhythm`'s pinned-aside application layout before broader panel-registration work landed.
 	Reason: the preview had drifted into a local reserved-width and fixed-position dock that created empty panel space and fought the sibling package's shell ownership, so restoring the shared app-shell path was the higher-value anti-drift move.
+- [x] 2026-03-28: Source-default snapshot construction and sanitization were moved into `operator-overlay-layout` before the remaining writeback orchestration and panel-manifest work were finished.
+	Reason: the highest-value anti-drift seam was to move canonical snapshot shape and normalization rules out of `main.ts` first, even though the preview still owns the network writeback trigger and some surrounding editor flow.
+- [x] 2026-03-28: CSV parity polish was deprioritized behind a local filesystem-backed document workflow.
+	Reason: browser-local presets are the wrong long-term abstraction for authored layout state, and persistent in-editor document editing is a higher-value product seam than continuing to deepen CSV-first authoring behavior right now.
+- [x] 2026-03-28: The first file-backed document workflow landed in preview-local modules before broader shared document package extraction was finished.
+	Reason: getting authored state out of browser-local preset storage had higher product value than waiting for a perfect shared document boundary, and the schema can continue moving downward once the document shape stabilizes under real use.
+- [x] 2026-03-28: Browser-local preset storage was demoted from startup source-of-truth before the broader document package shape was finished.
+	Reason: the product direction is now explicit that documents, not browser presets, are the working unit, so the preview should not silently seed a new session from stale local preset state even while localStorage mirroring still exists as a temporary shell behavior.
+- [x] 2026-03-28: Preview-local document workspace orchestration was extracted into `apps/overlay-preview/src/document-workspace.ts` before the broader shared document shape was fully designed.
+	Reason: the highest-value next anti-drift move was to stop letting `apps/overlay-preview/src/main.ts` own recent-document reopen, file save or open orchestration, dirty-state UI, and fallback download plumbing, without prematurely freezing the broader shared document schema for scene-family selection and multi-target output.
 
 ## Parity Gap Audit — 2026-03-27
 
@@ -229,24 +243,31 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 
 8. **Preset workflow (PARTIAL).**
 	Save, update, delete presets in localStorage. Import/export as JSON files with auto-versioned naming. Active preset dirty-state now exists and payloads are normalized against generated defaults instead of always writing full snapshots. Presets now also carry the preview's per-profile export settings map and per-profile halo config map.
-	User direction on 2026-03-28: browser-local presets are probably the wrong long-term product shape; treat any filesystem-backed document/project model as a later architecture discussion after parity rather than continuing to deepen localStorage-first UX blindly.
+	A file-backed document workflow now persists the working snapshot plus the preset library into local `.brand-layout-ops.json` files via open, save, save-as, duplicate, and recent-document reopen actions, so browser localStorage is no longer the only persistence path.
+	Recent anti-drift pass: the persisted core document now routes through the shared overlay document metadata/state envelope, with `apps/overlay-preview/src/preview-document.ts` acting as a compatibility layer for preview-only extras and older preview-local files.
+	Recent anti-drift pass: startup no longer seeds the working state from browser-local preset storage, because documents are now the intended source of truth.
+	Recent anti-drift pass: preview-local document workspace state, recent-document rendering, file open or save orchestration, and fallback download handling now live in `apps/overlay-preview/src/document-workspace.ts` instead of `apps/overlay-preview/src/main.ts`.
+	Remaining gap: preview-local modules still own too much of the document serialization, state-application, and preview-only extras story instead of a broader shared document package.
+	User direction on 2026-03-28: browser-local presets are the wrong long-term product shape; a first pass of filesystem-backed documents is now landed, and follow-up work should keep extending that path instead of deepening localStorage-first UX blindly.
 	Reference files: `index.js` (save_preset, delete_active_preset, export_current_preset, import_presets_from_file, apply_preset_by_id).
 
 9. **Source-default writeback (PARTIAL).**
-	The preview shell now loads a source-default snapshot on startup, resets back to that authored snapshot, exposes a Write Source Default button, and writes the current snapshot to `/__authoring/source-default-config` via `Ctrl/Cmd+S` or the button. Active profile-format bucket normalization for those snapshots now routes through shared `operator-overlay-layout` helpers instead of preview-local code.
+	The preview shell now loads a source-default snapshot on startup, resets back to that authored snapshot, exposes a Write Source Default button, and writes the current snapshot to `/__authoring/source-default-config` via `Ctrl/Cmd+Alt+S` or the button. Active profile-format bucket normalization for those snapshots now routes through shared `operator-overlay-layout` helpers instead of preview-local code.
+	Typed source-default snapshot creation, fallback construction, cloning, and sanitization now also route through shared `operator-overlay-layout` helpers instead of preview-local snapshot structs in `main.ts`.
 	Reference files: `index.js` (write_source_default_snapshot, read_source_default_snapshot).
 
 10. **Export pipeline (PARTIAL).**
 	Single frame PNG ✔, PNG sequence with frame-range modal + File System Access directory picker ✔, headless Playwright PNG exporter (`scripts/export-headless.ts`) ✔, FFmpeg MP4 encoder (`scripts/encode-mp4.ts`) ✔ (libx264, CRF 10/14, yuv444p/yuv420p, slow preset, -tune animation, bt709). `window.__layoutOpsAutomation` API matches reference `__mascotAutomation` pattern. Transparent background option ✔.
 	End-to-end verification now confirmed with a 48-frame, 2-second headless export at 1080x1350 followed by MP4 encode on Windows using a local FFmpeg install, and fade-in/fade-out encode flags are verified against that frame sequence.
-	Remaining: any final `output/{dimensions}/` workflow polish.
+	The single-frame PNG regression that dropped the halo layer was fixed by switching the WebGL halo renderer to `preserveDrawingBuffer: true`, and the user manually revalidated that the halo layer is present again in still exports.
+	Remaining: finish any final `output/{dimensions}/` workflow polish.
 	Reference files: `index.js` (export_current_frame_png, export_png_sequence, export_current_mp4).
 
 11. **Guide toggle 3-state cycle (DONE).**
 	`W` and `G` cycle: off → composition → baseline → off. Matches reference `W` cycle. `GUIDE_MODES` array in `main.ts` drives `cycleGuideMode()`.
 
 12. **Keyboard shortcuts (PARTIAL).**
-	`Ctrl/Cmd+S` now writes source defaults, `Escape` closes the inline editor and drawer, and `P` or `Space` now toggles the preview motion loop.
+	`Ctrl/Cmd+S` now saves the current document, `Ctrl/Cmd+Shift+S` forces Save As, `Ctrl/Cmd+Alt+S` writes source defaults, `Escape` closes the inline editor and drawer, and `P` or `Space` now toggles the preview motion loop.
 	Remaining gap: shortcuts should still be blocked during any future export modal.
 	Reference files: `index.js` (keydown handler).
 
