@@ -46,7 +46,7 @@ All scoped under `@brand-layout-ops/`.
 - Headless PNG exporter (`scripts/export-headless.ts`) + FFmpeg MP4 encoder (`scripts/encode-mp4.ts`)
 - Logo intrinsic aspect ratio loading via `Image.naturalWidth/naturalHeight`
 - Column gutter, safe area override inputs, release label and screensaver pulse controls
-- Per-profile defaults: safe area, grid, font sizes, halo center Y offset
+- Per-profile defaults: safe area and halo center Y offset plus shared overlay-layout-owned grid and font-size defaults
 - Canvas scale-to-fit with `--stage-aspect-ratio` CSS variable (supports portrait/landscape)
 - Accordion mutual exclusion (one open section at a time)
 - Text north-corner resize now snaps vertically on the baseline grid instead of discarding vertical drag
@@ -72,12 +72,12 @@ All scoped under `@brand-layout-ops/`.
 - [x] **Fix safe area values** (`core-types/src/index.ts` — data fix)
   - instagram: `{0,0,0,0}`, screen: `{24,24,24,24}`, tablet: `{250,65,250,65}`
 
-- [x] **Per-profile grid defaults** (`sample-document.ts` — `PROFILE_GRID_DEFAULTS` table + `getDefaultGridForProfile`)
+- [x] **Per-profile grid defaults** (`packages/operator-overlay-layout/src/index.ts` — shared profile-default table + helper)
 
 - [x] **Per-profile halo center Y offset** (`operator-halo-field/src/index.ts` — `center_offset_y_px` in composition overrides)
   - landscape: -26, instagram: -121, story: -156, screen: +82, tablet: 0
 
-- [x] **Per-profile font sizes** (`sample-document.ts` — `PROFILE_TEXT_STYLE_OVERRIDES` table + `getTextStylesForProfile`)
+- [x] **Per-profile font sizes** (`packages/operator-overlay-layout/src/index.ts` — shared profile text-style override table + helper)
 
 ### B. UI organization
 
@@ -135,6 +135,7 @@ All scoped under `@brand-layout-ops/`.
 | Halo config + per-profile overrides | `packages/operator-halo-field/src/index.ts` |
 | App state, UI, profile switching | `apps/overlay-preview/src/main.ts` |
 | Default overlay/text params | `apps/overlay-preview/src/sample-document.ts` |
+| Shared profile defaults + content resolution | `packages/operator-overlay-layout/src/index.ts` |
 | Three.js halo renderer | `apps/overlay-preview/src/halo-renderer.ts` |
 
 ## Reference file map (for parity work)

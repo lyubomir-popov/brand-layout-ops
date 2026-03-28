@@ -39,7 +39,7 @@ Use this map before changing code so parity work stays anchored to the reference
 
 - Output profiles, presets, content formats, and source-default persistence:
 	- Reference repo: `c:\Users\lyubo\work\repos\racoon-anim\src\app\config-schema.js`, `default-config-source.js`, `editor-constants.js`, `index.js`
-	- Current repo: `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/sample-document.ts`
+	- Current repo: `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/sample-document.ts`, `packages/operator-overlay-layout/src/index.ts`
 - Motion look, halo-field masks, mascot composition, and guide geometry:
 	- Reference repo: `c:\Users\lyubo\work\repos\racoon-anim\src\app\rendering.js`, `halo-field.js`
 	- Current repo: `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/sample-motion.ts`, `packages/operator-orbits/src/index.ts`, `packages/operator-spokes/src/index.ts`

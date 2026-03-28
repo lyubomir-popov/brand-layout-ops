@@ -64,6 +64,103 @@ export interface CreateOverlayLayoutOperatorOptions {
   textMeasureOptions?: ApproximateTextMeasureOptions;
 }
 
+export interface OverlayProfileTextStyleOverrides {
+  title: { fontSizePx: number; lineHeightPx: number };
+  b_head: { fontSizePx: number; lineHeightPx: number };
+  paragraph: { fontSizePx: number; lineHeightPx: number };
+}
+
+export const OVERLAY_PROFILE_GRID_DEFAULTS: Record<string, GridSettings> = {
+  landscape_1280x720: {
+    baselineStepPx: 8,
+    rowCount: 4,
+    columnCount: 4,
+    marginTopBaselines: 4,
+    marginBottomBaselines: 4,
+    marginLeftBaselines: 5,
+    marginRightBaselines: 5,
+    rowGutterBaselines: 4,
+    columnGutterBaselines: 0,
+    fitWithinSafeArea: true
+  },
+  instagram_1080x1350: {
+    baselineStepPx: 8,
+    rowCount: 8,
+    columnCount: 4,
+    marginTopBaselines: 5,
+    marginBottomBaselines: 6,
+    marginLeftBaselines: 6,
+    marginRightBaselines: 6,
+    rowGutterBaselines: 0,
+    columnGutterBaselines: 0,
+    fitWithinSafeArea: true
+  },
+  story_1080x1920: {
+    baselineStepPx: 8,
+    rowCount: 4,
+    columnCount: 4,
+    marginTopBaselines: 6,
+    marginBottomBaselines: 9,
+    marginLeftBaselines: 0,
+    marginRightBaselines: 0,
+    rowGutterBaselines: 0,
+    columnGutterBaselines: 0,
+    fitWithinSafeArea: true
+  },
+  screen_3840x2160: {
+    baselineStepPx: 24,
+    rowCount: 4,
+    columnCount: 8,
+    marginTopBaselines: 4,
+    marginBottomBaselines: 4,
+    marginLeftBaselines: 4,
+    marginRightBaselines: 4,
+    rowGutterBaselines: 0,
+    columnGutterBaselines: 0,
+    fitWithinSafeArea: false
+  },
+  tablet_2560x1600: {
+    baselineStepPx: 8,
+    rowCount: 4,
+    columnCount: 4,
+    marginTopBaselines: 0,
+    marginBottomBaselines: 9,
+    marginLeftBaselines: 0,
+    marginRightBaselines: 0,
+    rowGutterBaselines: 4,
+    columnGutterBaselines: 4,
+    fitWithinSafeArea: true
+  }
+};
+
+export const OVERLAY_PROFILE_TEXT_STYLE_OVERRIDES: Record<string, OverlayProfileTextStyleOverrides> = {
+  landscape_1280x720: {
+    title: { fontSizePx: 42, lineHeightPx: 48 },
+    b_head: { fontSizePx: 24, lineHeightPx: 32 },
+    paragraph: { fontSizePx: 24, lineHeightPx: 32 }
+  },
+  instagram_1080x1350: {
+    title: { fontSizePx: 63, lineHeightPx: 64 },
+    b_head: { fontSizePx: 32, lineHeightPx: 36 },
+    paragraph: { fontSizePx: 32, lineHeightPx: 36 }
+  },
+  story_1080x1920: {
+    title: { fontSizePx: 63, lineHeightPx: 64 },
+    b_head: { fontSizePx: 32, lineHeightPx: 36 },
+    paragraph: { fontSizePx: 32, lineHeightPx: 36 }
+  },
+  screen_3840x2160: {
+    title: { fontSizePx: 110, lineHeightPx: 112 },
+    b_head: { fontSizePx: 55, lineHeightPx: 72 },
+    paragraph: { fontSizePx: 32, lineHeightPx: 36 }
+  },
+  tablet_2560x1600: {
+    title: { fontSizePx: 63, lineHeightPx: 64 },
+    b_head: { fontSizePx: 32, lineHeightPx: 36 },
+    paragraph: { fontSizePx: 32, lineHeightPx: 36 }
+  }
+};
+
 export const OVERLAY_LAYOUT_PARAMETER_SCHEMA: OperatorParameterSchema = {
   sections: [
     {
@@ -115,6 +212,25 @@ export const OVERLAY_LAYOUT_PARAMETER_SCHEMA: OperatorParameterSchema = {
     { kind: "number", sectionKey: "content", path: "csvContent.rowIndex", label: "CSV row", min: 1, step: 1, hint: "Used only when CSV content source is active." }
   ]
 };
+
+export function getDefaultOverlayGridForProfile(profileKey: string): GridSettings {
+  return {
+    ...(OVERLAY_PROFILE_GRID_DEFAULTS[profileKey] ?? OVERLAY_PROFILE_GRID_DEFAULTS.landscape_1280x720)
+  };
+}
+
+export function applyOverlayProfileTextStyleDefaults(
+  baseTextStyles: TextStyleSpec[],
+  profileKey: string
+): TextStyleSpec[] {
+  const overrides = OVERLAY_PROFILE_TEXT_STYLE_OVERRIDES[profileKey] ?? OVERLAY_PROFILE_TEXT_STYLE_OVERRIDES.landscape_1280x720;
+  return baseTextStyles.map((style) => {
+    const override = overrides[style.key as keyof OverlayProfileTextStyleOverrides];
+    return override
+      ? { ...style, fontSizePx: override.fontSizePx, lineHeightPx: override.lineHeightPx }
+      : { ...style };
+  });
+}
 
 function normalizeContentSource(contentSource?: OverlayContentSource): OverlayContentSource {
   return contentSource === "csv" ? "csv" : "inline";
