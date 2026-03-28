@@ -69,6 +69,7 @@ That starts a Vite app at `apps/overlay-preview/` which currently:
 - surfaces the main operator document controls from an operator parameter schema instead of only from preview-local hardcoded controls
 - includes left and right snapped resize handles for selected text fields, a first-baseline guide, and staged CSV apply or discard controls
 - persists local `.brand-layout-ops.json` documents through the shared overlay document metadata/state envelope plus shared scene-family or target `project` metadata, with preview-only preset and CSV-draft extras layered on top and legacy preview-file compatibility retained
+- lets the Output Format panel add or delete saved document sizes and edit the document scene-family metadata instead of treating the active screen size as only transient preview state
 - treats local documents as the source of truth for working state; browser-local preset storage is no longer supposed to seed a new session's working document
 
 Other useful local checks:

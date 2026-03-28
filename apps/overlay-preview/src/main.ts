@@ -57,6 +57,7 @@ import {
   normalizeOverlayProfileBucketState,
   normalizeOverlayParamsForEditing,
   normalizeOverlayTextFieldOffsetBaselines,
+  OVERLAY_SCENE_FAMILY_ORDER,
   OVERLAY_LAYOUT_OPERATOR_KEY,
   resolveOverlayContentFormatKeyForProfile,
   resolveOverlayTextValue,
@@ -65,6 +66,8 @@ import {
   syncOverlayParamsFrameToProfile,
   syncOverlaySharedProfileParams,
   type OverlayDocumentProject,
+  type OverlayDocumentTarget,
+  type OverlaySceneFamilyKey,
   type OverlayContentSource,
   type OverlayLayoutOperatorParams,
   type OverlaySourceDefaultSnapshot,
@@ -910,6 +913,189 @@ function discardStagedCsvDraft() {
 
 // ─── Profile / format / preset ────────────────────────────────────────
 
+function getDefaultDocumentTargetLabel(profileKey: string): string {
+  return OUTPUT_PROFILES[profileKey]?.label ?? profileKey;
+}
+
+function createDocumentTarget(profileKey: string): OverlayDocumentTarget {
+  return {
+    id: profileKey,
+    label: getDefaultDocumentTargetLabel(profileKey),
+    outputProfileKey: profileKey
+  };
+}
+
+function getDocumentTargetById(targetId: string | null | undefined = state.documentProject.activeTargetId): OverlayDocumentTarget | null {
+  if (!targetId) {
+    return null;
+  }
+
+  return state.documentProject.targets.find((target) => target.id === targetId) ?? null;
+}
+
+function getDocumentTargetByProfileKey(profileKey: string): OverlayDocumentTarget | null {
+  return state.documentProject.targets.find((target) => target.outputProfileKey === profileKey) ?? null;
+}
+
+function syncDocumentProjectToCurrentOutputProfile(): OverlayDocumentTarget {
+  const existingTarget = getDocumentTargetByProfileKey(state.outputProfileKey);
+  if (existingTarget) {
+    if (state.documentProject.activeTargetId !== existingTarget.id) {
+      state.documentProject = {
+        ...state.documentProject,
+        activeTargetId: existingTarget.id
+      };
+    }
+
+    return existingTarget;
+  }
+
+  const nextTarget = createDocumentTarget(state.outputProfileKey);
+  state.documentProject = {
+    ...state.documentProject,
+    activeTargetId: nextTarget.id,
+    targets: [...state.documentProject.targets, nextTarget]
+  };
+  return nextTarget;
+}
+
+function getUnusedDocumentTargetProfileKeys(currentProfileKey?: string): string[] {
+  return OUTPUT_PROFILE_ORDER.filter((profileKey) => (
+    profileKey === currentProfileKey || !state.documentProject.targets.some((target) => target.outputProfileKey === profileKey)
+  ));
+}
+
+function pruneDocumentTargetProfileState(profileKey: string): void {
+  if (state.documentProject.targets.some((target) => target.outputProfileKey === profileKey)) {
+    return;
+  }
+
+  delete state.profileFormatBuckets[profileKey];
+  delete state.contentFormatKeyByProfile[profileKey];
+  delete state.exportSettingsByProfile[profileKey];
+  delete state.haloConfigByProfile[profileKey];
+}
+
+function getSceneFamilyLabel(sceneFamilyKey: OverlaySceneFamilyKey): string {
+  return sceneFamilyKey
+    .split("-")
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+}
+
+function setActiveDocumentTarget(targetId: string): void {
+  const nextTarget = getDocumentTargetById(targetId);
+  if (!nextTarget) {
+    return;
+  }
+
+  state.documentProject = {
+    ...state.documentProject,
+    activeTargetId: nextTarget.id
+  };
+
+  if (nextTarget.outputProfileKey !== state.outputProfileKey) {
+    switchOutputProfile(nextTarget.outputProfileKey);
+  } else {
+    syncDocumentProjectToCurrentOutputProfile();
+  }
+}
+
+function addDocumentTarget(profileKey?: string): boolean {
+  const nextProfileKey = profileKey ?? getUnusedDocumentTargetProfileKeys()[0];
+  if (!nextProfileKey) {
+    return false;
+  }
+
+  const existingTarget = getDocumentTargetByProfileKey(nextProfileKey);
+  if (!existingTarget) {
+    state.documentProject = {
+      ...state.documentProject,
+      targets: [...state.documentProject.targets, createDocumentTarget(nextProfileKey)]
+    };
+  }
+
+  setActiveDocumentTarget(existingTarget?.id ?? nextProfileKey);
+  return true;
+}
+
+function updateActiveDocumentTargetLabel(rawLabel: string): void {
+  const activeTarget = getDocumentTargetById();
+  if (!activeTarget) {
+    return;
+  }
+
+  const nextLabel = rawLabel.trim() || getDefaultDocumentTargetLabel(activeTarget.outputProfileKey);
+  if (nextLabel === activeTarget.label) {
+    return;
+  }
+
+  state.documentProject = {
+    ...state.documentProject,
+    targets: state.documentProject.targets.map((target) => (
+      target.id === activeTarget.id
+        ? { ...target, label: nextLabel }
+        : target
+    ))
+  };
+}
+
+function updateActiveDocumentTargetProfile(nextProfileKey: string): void {
+  const activeTarget = getDocumentTargetById();
+  if (!activeTarget || activeTarget.outputProfileKey === nextProfileKey) {
+    return;
+  }
+
+  const existingTarget = getDocumentTargetByProfileKey(nextProfileKey);
+  if (existingTarget && existingTarget.id !== activeTarget.id) {
+    setActiveDocumentTarget(existingTarget.id);
+    return;
+  }
+
+  const oldProfileKey = activeTarget.outputProfileKey;
+  const shouldResetLabel = activeTarget.label.trim() === getDefaultDocumentTargetLabel(oldProfileKey);
+
+  state.documentProject = {
+    ...state.documentProject,
+    targets: state.documentProject.targets.map((target) => (
+      target.id === activeTarget.id
+        ? {
+          ...target,
+          outputProfileKey: nextProfileKey,
+          label: shouldResetLabel ? getDefaultDocumentTargetLabel(nextProfileKey) : target.label
+        }
+        : target
+    ))
+  };
+
+  setActiveDocumentTarget(activeTarget.id);
+  pruneDocumentTargetProfileState(oldProfileKey);
+}
+
+function removeActiveDocumentTarget(): boolean {
+  const activeTarget = getDocumentTargetById();
+  if (!activeTarget || state.documentProject.targets.length <= 1) {
+    return false;
+  }
+
+  const activeIndex = state.documentProject.targets.findIndex((target) => target.id === activeTarget.id);
+  const remainingTargets = state.documentProject.targets.filter((target) => target.id !== activeTarget.id);
+  const fallbackTarget = remainingTargets[Math.min(activeIndex, remainingTargets.length - 1)] ?? remainingTargets[0];
+  if (!fallbackTarget) {
+    return false;
+  }
+
+  state.documentProject = {
+    ...state.documentProject,
+    activeTargetId: fallbackTarget.id,
+    targets: remainingTargets
+  };
+
+  switchOutputProfile(fallbackTarget.outputProfileKey);
+  pruneDocumentTargetProfileState(activeTarget.outputProfileKey);
+  return true;
+}
+
 function switchOutputProfile(profileKey: string) {
   if (profileKey === state.outputProfileKey) return;
 
@@ -934,6 +1120,7 @@ function switchOutputProfile(profileKey: string) {
   normalizeSelection();
   syncHaloConfigToProfile(state.outputProfileKey);
   resizeRenderer();
+  syncDocumentProjectToCurrentOutputProfile();
   saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
 }
 
@@ -1217,6 +1404,7 @@ function loadPreset(preset: Preset) {
     };
   normalizeSelection();
   syncHaloConfigToProfile(state.outputProfileKey);
+    syncDocumentProjectToCurrentOutputProfile();
   saveActivePresetId(preset.id);
 }
 
@@ -1259,6 +1447,7 @@ function createCurrentSourceDefaultSnapshot(): SourceDefaultSnapshot {
 function applySourceDefaultSnapshot(snapshot: SourceDefaultSnapshot) {
   applySourceDefaultSnapshotToState(state, snapshot, previewDocumentBridge);
   state.documentProject = createOverlayDocumentProjectFromSnapshot(snapshot, state.documentProject);
+  syncDocumentProjectToCurrentOutputProfile();
   normalizeSelection();
 }
 
@@ -1651,43 +1840,153 @@ async function renderStage() {
 function buildOutputProfileOptions() {
   const container = getOutputProfileOptions();
   if (!container) return;
+
+  const activeTarget = syncDocumentProjectToCurrentOutputProfile();
   container.innerHTML = "";
+
+  const sceneFields = document.createElement("div");
+  sceneFields.className = "grid-row";
+
+  sceneFields.append(wrapCol(2, createFormGroup("Scene Family",
+    createSelectInput(
+      state.documentProject.sceneFamilyKey,
+      OVERLAY_SCENE_FAMILY_ORDER.map((sceneFamilyKey) => ({
+        label: getSceneFamilyLabel(sceneFamilyKey),
+        value: sceneFamilyKey
+      })),
+      (value) => {
+        state.documentProject = {
+          ...state.documentProject,
+          sceneFamilyKey: value as OverlaySceneFamilyKey
+        };
+        markDocumentDirty();
+        buildOutputProfileOptions();
+      }
+    )
+  )));
+
+  sceneFields.append(wrapCol(2, createFormGroup(
+    "Document Sizes",
+    createReadonlySpan(`${state.documentProject.targets.length} saved size${state.documentProject.targets.length === 1 ? "" : "s"}`)
+  )));
+
+  container.append(sceneFields);
+
+  const help = document.createElement("p");
+  help.className = "p-form-help-text control-help";
+  help.textContent = "Scene family now saves with the document. The size list below controls which output profiles stay in this document.";
+  container.append(help);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "preset-toolbar";
+
+  const addButton = document.createElement("button");
+  addButton.type = "button";
+  addButton.className = "p-button is-dense";
+  addButton.textContent = "Add Size";
+  addButton.disabled = getUnusedDocumentTargetProfileKeys().length === 0;
+  addButton.addEventListener("click", () => {
+    if (!addDocumentTarget()) {
+      return;
+    }
+
+    markDocumentDirty();
+    buildConfigEditor();
+    void renderStage();
+  });
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "p-button--base is-dense";
+  removeButton.textContent = "Delete Active Size";
+  removeButton.disabled = state.documentProject.targets.length <= 1;
+  removeButton.addEventListener("click", () => {
+    if (!removeActiveDocumentTarget()) {
+      return;
+    }
+
+    markDocumentDirty();
+    buildConfigEditor();
+    void renderStage();
+  });
+
+  toolbar.append(addButton, removeButton);
+  container.append(toolbar);
 
   const list = document.createElement("div");
   list.className = "preset-radio-list";
 
-  for (const key of OUTPUT_PROFILE_ORDER) {
-    const profile = OUTPUT_PROFILES[key];
+  for (const target of state.documentProject.targets) {
+    const profile = OUTPUT_PROFILES[target.outputProfileKey];
     const row = document.createElement("label");
     row.className = "preset-radio-row";
 
     const radio = document.createElement("input");
     radio.type = "radio";
-    radio.name = "output-profile";
-    radio.value = key;
-    radio.checked = key === state.outputProfileKey;
+    radio.name = "document-target";
+    radio.value = target.id;
+    radio.checked = target.id === activeTarget.id;
     radio.addEventListener("change", () => {
-      switchOutputProfile(key);
+      setActiveDocumentTarget(target.id);
       markDocumentDirty();
-      buildOutputProfileOptions();
-      buildPresetTabs();
       buildConfigEditor();
       void renderStage();
     });
 
     const nameSpan = document.createElement("span");
     nameSpan.className = "preset-radio-name";
-    nameSpan.textContent = profile.label;
+    nameSpan.textContent = target.label;
 
     const metaSpan = document.createElement("span");
     metaSpan.className = "preset-radio-status";
-    metaSpan.textContent = `${profile.widthPx}\u00D7${profile.heightPx}`;
+    const profileMeta = profile
+      ? `${profile.label} • ${profile.widthPx}x${profile.heightPx}`
+      : target.outputProfileKey;
+    metaSpan.textContent = radio.checked ? `${profileMeta} • Active` : profileMeta;
 
     row.append(radio, nameSpan, metaSpan);
     list.append(row);
   }
 
   container.append(list);
+
+  const details = document.createElement("div");
+  details.className = "grid-row";
+
+  const labelInput = document.createElement("input");
+  labelInput.type = "text";
+  labelInput.className = "p-form-validation__input is-dense";
+  labelInput.value = activeTarget.label;
+  labelInput.placeholder = getDefaultDocumentTargetLabel(activeTarget.outputProfileKey);
+  labelInput.addEventListener("change", () => {
+    updateActiveDocumentTargetLabel(labelInput.value);
+    markDocumentDirty();
+    buildOutputProfileOptions();
+  });
+
+  details.append(wrapCol(2, createFormGroup("Active Size Label", labelInput)));
+
+  details.append(wrapCol(2, createFormGroup(
+    "Active Size",
+    createSelectInput(
+      activeTarget.outputProfileKey,
+      getUnusedDocumentTargetProfileKeys(activeTarget.outputProfileKey).map((profileKey) => {
+        const profile = OUTPUT_PROFILES[profileKey];
+        return {
+          label: profile ? `${profile.label} • ${profile.widthPx}x${profile.heightPx}` : profileKey,
+          value: profileKey
+        };
+      }),
+      (value) => {
+        updateActiveDocumentTargetProfile(value);
+        markDocumentDirty();
+        buildConfigEditor();
+        void renderStage();
+      }
+    )
+  )));
+
+  container.append(details);
 }
 
 // ─── Aside panel: preset tabs ─────────────────────────────────────────
@@ -1917,7 +2216,7 @@ function buildOutputFormatSection(): HTMLElement {
 
   const helpText = document.createElement("p");
   helpText.className = "p-form-help-text u-no-margin--bottom";
-  helpText.textContent = "Switching format rebuilds the stage at that size and swaps in the layout settings stored for that screen size.";
+  helpText.textContent = "Document sizes now live here. Switching the active size rebuilds the stage at that screen size and loads the per-size layout or export state stored in the document.";
   body.append(helpText);
 
   const optionsContainer = document.createElement("div");
@@ -4422,6 +4721,13 @@ function getAutomationState() {
       height_px: profile.heightPx,
       label: profile.label
     },
+    document_scene_family_key: state.documentProject.sceneFamilyKey,
+    document_active_target_id: state.documentProject.activeTargetId,
+    document_targets: state.documentProject.targets.map((target) => ({
+      id: target.id,
+      label: target.label,
+      output_profile_key: target.outputProfileKey
+    })),
     frame_rate: Math.max(1, Math.round(state.exportSettings.frameRate)),
     current_playback_time_sec: state.playbackTimeSec,
     transparent_background: state.exportSettings.transparentBackground,
