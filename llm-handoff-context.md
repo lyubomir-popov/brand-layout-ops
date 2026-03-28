@@ -132,22 +132,21 @@ If you want the shortest high-level snapshot, read this file first.
 
 ## Current sprint TODO (do in order)
 
-### A. Per-profile document defaults
+**Active execution queue is in `docs/rebuild-plan.md` § "Approved Execution Queue".**
 
-- [x] **Fix safe area values** (`core-types/src/index.ts` — data fix)
-  - instagram: `{0,0,0,0}`, screen: `{24,24,24,24}`, tablet: `{250,65,250,65}`
+Items EQ-1 through EQ-9 are the user-directed priorities in dependency order:
 
-- [x] **Per-profile grid defaults** (`packages/operator-overlay-layout/src/index.ts` — shared profile-default table + helper)
+1. **EQ-1** — Switch UI library from `portable-vertical-rhythm` to `baseline-foundry` (panel preset). Foundational.
+2. **EQ-2** — Operator selector UI (radio list of operators → shows selected operator's params).
+3. **EQ-3** — Fuzzy boids parameter panel (numBoids, separation, alignment, cohesion, bounds, etc.).
+4. **EQ-4** — Phyllotaxis parameter panel (numPoints, radius, radiusFalloff, angleOffsetDeg, animation).
+5. **EQ-5** — Scatter operator (`operator-scatter`, scatter points inside SVG shape).
+6. **EQ-6** — Resolve or remove presets (documents replaced presets — clarify architecture).
+7. **EQ-7** — Content format cleanup (speaker_highlight → document-owned, inline text is fine).
+8. **EQ-8** — Paragraph styles conditional visibility (only when layout grid is active).
+9. **EQ-9** — Remove dead stat labels from scene-family preview canvas.
 
-- [x] **Per-profile halo center Y offset** (`operator-halo-field/src/index.ts` — `center_offset_y_px` in composition overrides)
-  - landscape: -26, instagram: -121, story: -156, screen: +82, tablet: 0
-
-- [x] **Per-profile font sizes** (`packages/operator-overlay-layout/src/index.ts` — shared profile text-style override table + helper)
-
-### B. UI organization
-
-- [x] **Accordion UI** for top sections (Playback & Export, Output Format, Document, Presets)
-- [x] **UI audit report** — `docs/ui-audit.md` (136 controls catalogued, 37% implemented, 57% missing)
+### Previous completed work (kept for reference)
 
 ### C. Remaining parity (see `docs/rebuild-plan.md` gap audit)
 

@@ -467,6 +467,80 @@ The product direction is a Houdini-like operator application for branded documen
 
 This does not need to land all at once. The extraction work above is the prerequisite: once section builders are out of `main.ts` and operators own their panels, the switch from "show all sections" to "show selected operator" is a composition-root change, not a rewrite.
 
+## Approved Execution Queue — 2026-03-28
+
+User-directed work items consolidated into execution order. These are now approved active work, sequenced by dependency.
+
+### EQ-1. Switch UI library from `portable-vertical-rhythm` to `baseline-foundry`
+
+Foundational — all subsequent panel work should build on the new library.
+
+- [ ] Replace the PVR dependency in `apps/overlay-preview` with `baseline-foundry`.
+- [ ] Use the dense panel preset (`config/presets/panel.json`) as the active styling source.
+- [ ] Port any missing panel-relevant components from PVR into `baseline-foundry` if needed.
+- [ ] Verify panel/inspector density and rhythm against the `baseline-foundry` component gate.
+- [ ] Reference: `baseline-foundry/docs/brand-layout-ops-agent-prompt.md` contains the detailed swap instructions.
+
+### EQ-2. Operator selector UI (Houdini-style parameter pane, stage 1)
+
+Replace the "show all accordion sections" model with a selectable operator list.
+
+- [ ] Add a radio list (or expandable accordion) at the top of the inspector showing all registered operators: `operator-overlay-layout`, `operator-halo-field`, `operator-fuzzy-boids`, `operator-phyllotaxis`, and future operators.
+- [ ] Selecting an operator shows only that operator's parameter panel in the inspector.
+- [ ] Shell-level concerns (playback, export, document, output format) remain above the operator selector as non-operator sections.
+- [ ] The existing section-registry primitive in `parameter-ui` should grow to support this selection model.
+
+### EQ-3. Fuzzy boids parameter panel
+
+The boids scene family has no UI for controlling its parameters.
+
+- [ ] Build a parameter panel for `operator-fuzzy-boids` exposing: `numBoids`, `separationRadiusPx`, `separationStrength`, `alignmentRadiusPx`, `alignmentStrength`, `cohesionRadiusPx`, `cohesionStrength`, `centerPullStrength`, `maxNeighbors`, `spawnRadiusPx`, `initialSpeedPxPerSecond`, `minSpeedPxPerSecond`, `maxSpeedPxPerSecond`, `maxAccelerationPxPerSecond2`, `bounds` (kind, radius, margin, force), `pscaleMin`, `pscaleMax`, `massMin`, `massMax`, `staggerStartSeconds`, `seed`.
+- [ ] Wire the panel to live-update the simulation through the `FuzzyBoidsSimulation` cache.
+- [ ] The panel should be registered as operator-owned so the operator selector (EQ-2) can show it.
+
+### EQ-4. Phyllotaxis parameter panel
+
+The phyllotaxis scene family has no UI for controlling its parameters.
+
+- [ ] Build a parameter panel for `operator-phyllotaxis` exposing: `numPoints`, `radius`, `radiusFalloff`, `angleOffsetDeg`, and animation speed control (or disable animation).
+- [ ] Wire the panel to live-update the phyllotaxis field.
+- [ ] Register as operator-owned for the operator selector.
+
+### EQ-5. Scatter operator
+
+New operator: scatter points inside an SVG shape, analogous to Houdini scatter SOP.
+
+- [ ] Create `@brand-layout-ops/operator-scatter`.
+- [ ] Input: an SVG path or shape definition, recreated in the operator (not in Three.js).
+- [ ] Output: a `PointField` of scattered points inside the shape boundary.
+- [ ] Parameters: point count, seed, distribution mode (uniform, density-weighted), margin.
+- [ ] Build a parameter panel and register it for the operator selector.
+
+### EQ-6. Resolve or remove presets
+
+Presets were a workaround for lack of multiple documents. Now that documents exist, clarify the architecture.
+
+- [ ] Evaluate whether presets still serve a purpose (e.g. quick document templates, variant snapshots within one document, or nothing).
+- [ ] If presets are demoted: remove the presets section from the inspector, remove localStorage preset seeding, simplify the document schema.
+- [ ] If presets become "document templates": rename and reframe them as template presets that seed new documents rather than living as a parallel persistence path.
+- [ ] Update the preset section builder and document workspace accordingly.
+
+### EQ-7. Content format cleanup
+
+- [ ] In the new architecture, `speaker_highlight` should be a property of the document rather than a global format toggle. Remove the global content-format selector if it no longer makes sense with document-owned formats.
+- [ ] Inline text is the current working mode and that is fine. CSV import remains a secondary path.
+- [ ] Clean up any content-format UI that is confusing or non-functional.
+
+### EQ-8. Paragraph styles — conditional visibility
+
+- [ ] The paragraph styles section should only appear when the layout grid is available/active.
+- [ ] Link the paragraph styles section visibility to the grid section state so they feel connected.
+
+### EQ-9. Remove dead stat labels from scene-family preview canvas
+
+- [ ] The scene-family preview canvas renders non-interactive text labels ("Arm sets 21 and 34", "Center 545, 54", "Radius ...px", etc.) that look like buttons but do nothing.
+- [ ] Remove these stat labels from the canvas. The information should come from the parameter panel instead once EQ-3 and EQ-4 land.
+
 ## Discussion Items Not Yet Scheduled
 
 These matter, but they are not approved active work until we discuss placement, cost, and effect on parity sequencing.
@@ -480,11 +554,11 @@ These matter, but they are not approved active work until we discuss placement, 
 - [ ] Move beyond a strict background or overlay abstraction toward a proper layer stack with blend modes.
 	Working assumption: do not widen the abstraction until parity is proven, but keep the future compositor layer in mind.
 - [x] Operator-registered accordion panels for the config editor UI.
-	Working assumption: each operator package self-registers an accordion tab+panel instead of the preview app hard-coding per-section builders. This keeps the UI organized as the control surface grows. Fits naturally into Stage 3 (operator surfaces) and the non-negotiable rule that parameter UI reads operator manifests. Update 2026-03-28: the preview now uses a keyed, ordered section registry with section-level post-render hooks, and that registry primitive now lives in `packages/parameter-ui/src/index.ts` instead of `main.ts`, but operator packages still do not self-register their own panels yet. **Promoted to approved work as part of the Houdini-like parameter pane extraction — see section above.**
+	Working assumption: promoted to EQ-2/EQ-3/EQ-4 above.
 - [x] Incremental control-surface swap from Vanilla to the sibling `portable-vertical-rhythm` package for the overlay-preview shell.
-	Working assumption: landed through the package's compatibility aliases first, keeps the sibling repo as the source of truth, and leaves any later `vr-*` class renames optional rather than blocking parity work.
+	Working assumption: landed, now being superseded by EQ-1 (swap to `baseline-foundry`).
 - [ ] Filesystem-backed document/project model instead of browser-local presets.
-	Working assumption: this is a product-architecture question closer to Canva-style projects than to preset polish, so it should be discussed and scheduled after parity rather than folded into current preview UX work.
+	Working assumption: partially landed. EQ-6 addresses the remaining presets question.
 
 ### Splits to not get bogged down with
 
