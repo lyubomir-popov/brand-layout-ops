@@ -55,6 +55,7 @@ All scoped under `@brand-layout-ops/`.
 - Selected text controls now expose direct style assignment plus font size, line height, and weight editing for the active style
 - Export settings now persist per output profile inside preview state, source-default snapshots, and preset payloads instead of resetting on every profile switch
 - Halo config now persists per output profile inside preview state, source-default snapshots, and preset payloads instead of regenerating from defaults on every profile switch
+- CSV authoring UI now shows row status, alias-based field mapping, and per-field staged-versus-applied values for the active format
 
 ## Current sprint TODO (do in order)
 

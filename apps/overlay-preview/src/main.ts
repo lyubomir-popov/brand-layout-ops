@@ -35,6 +35,7 @@ import type { DragAxisLock } from "@brand-layout-ops/overlay-interaction";
 import { moveLogo, moveTextField } from "@brand-layout-ops/overlay-interaction";
 import {
   createOverlayLayoutOperator,
+  inspectOverlayCsvDraft,
   OVERLAY_LAYOUT_OPERATOR_KEY,
   resolveOverlayTextValue,
   setOverlayTextValue,
@@ -2149,6 +2150,11 @@ function buildContentFormatSection(): HTMLElement {
   ));
 
   if (getContentSource() === "csv") {
+    const effectiveParams = getEffectiveParams();
+    const csvSummary = inspectOverlayCsvDraft(effectiveParams);
+    const appliedCsvSummary = inspectOverlayCsvDraft(state.params);
+    const formatSpec = OVERLAY_CONTENT_FORMATS[state.contentFormatKey];
+
     const textarea = document.createElement("textarea");
     textarea.className = "p-form-validation__input is-dense control-inline-text";
     textarea.rows = 5;
@@ -2187,6 +2193,66 @@ function buildContentFormatSection(): HTMLElement {
         }
       )
     ));
+
+    const csvStatus = document.createElement("p");
+    csvStatus.className = "p-form-help-text control-help";
+    csvStatus.textContent = csvSummary.selectedRowExists
+      ? `${csvSummary.rowCount} row(s) loaded. Editing row ${csvSummary.selectedRowIndex}.`
+      : `No CSV row ${csvSummary.selectedRowIndex} exists yet. ${csvSummary.rowCount} row(s) loaded.`;
+    body.append(csvStatus);
+
+    if (csvSummary.hasUnterminatedQuote) {
+      const warning = document.createElement("p");
+      warning.className = "p-form-help-text control-help";
+      warning.textContent = "CSV draft has an unterminated quoted field.";
+      body.append(warning);
+    }
+
+    if (hasStagedCsvDraft()) {
+      const pending = document.createElement("p");
+      pending.className = "p-form-help-text control-help";
+      pending.textContent = "Staged CSV changes are pending for this profile and format until you apply them.";
+      body.append(pending);
+    }
+
+    const fieldStatusList = document.createElement("div");
+    fieldStatusList.className = "style-palette";
+
+    for (const fieldSpec of formatSpec.fields) {
+      const field = state.params.textFields.find((candidate) => {
+        const contentFieldId = candidate.contentFieldId?.trim();
+        return candidate.id === fieldSpec.id || contentFieldId === fieldSpec.id;
+      });
+
+      const statusCard = document.createElement("div");
+      statusCard.className = "style-palette__button";
+
+      const label = document.createElement("span");
+      label.className = "style-palette__label";
+      label.textContent = fieldSpec.label;
+
+      const isMapped = !csvSummary.missingFieldKeys.includes(fieldSpec.id);
+      const appliedValue = field ? resolveOverlayTextValue(state.params, field) : "";
+      const effectiveValue = field ? resolveOverlayTextValue(effectiveParams, field) : "";
+      const isPending = hasStagedCsvDraft() && effectiveValue !== appliedValue;
+
+      const meta = document.createElement("span");
+      meta.className = "style-palette__meta";
+      meta.textContent = isMapped
+        ? (isPending ? "Mapped via CSV alias, staged changes pending" : "Mapped via CSV alias")
+        : "No matching CSV header found";
+
+      const value = document.createElement("span");
+      value.className = "style-palette__meta";
+      value.textContent = isPending
+        ? `Pending: ${effectiveValue || "(empty)"} | Applied: ${appliedValue || "(empty)"}`
+        : `Value: ${effectiveValue || "(empty)"}`;
+
+      statusCard.append(label, meta, value);
+      fieldStatusList.append(statusCard);
+    }
+
+    body.append(fieldStatusList);
   }
 
   return root;

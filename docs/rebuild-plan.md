@@ -100,7 +100,7 @@ Port the current interaction model into `overlay-interaction` and `parameter-ui`
 - [x] Style-based labels in the selected-element editor.
 - [x] Resize handles for text fields with snapping to grid field widths and baselines.
 - [ ] CSV draft editing and source writeback staging at parity quality.
-	Current repo now preserves pending CSV drafts per profile and format bucket while switching, but still lacks field-level pending-edit status and source-default writeback for format-scoped CSV content.
+	Current repo now preserves pending CSV drafts per profile and format bucket while switching, and the editor surfaces alias-based field mapping plus staged-versus-applied field values for the active format, but it still lacks fully reference-grade field-level pending-edit semantics and any final source-default writeback polish for format-scoped CSV content.
 - [x] Baseline guide showing at first baseline of text field, to aid alignment across columns.
 - [x] Text-box inset parity: text fields now clamp their first baseline to an ascent-aware minimum offset so the first line stays visibly inside the field bounds while remaining baseline-grid aligned.
 - [ ] Output-profile parity: named screen sizes, seeded safe areas, and reference frame-rate defaults.
