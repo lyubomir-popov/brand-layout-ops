@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "jszip": "^3.10.1",
-    "portable-vertical-rhythm": "file:../portable-vertical-rhythm",
+    "baseline-foundry": "file:../baseline-foundry",
     "sass": "^1.98.0",
     "three": "^0.183.2"
   }

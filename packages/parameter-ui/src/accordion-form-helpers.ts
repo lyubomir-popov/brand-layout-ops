@@ -2,7 +2,7 @@
  * Accordion form helpers — Vanilla-framework styled form primitives
  * used by preview-panel section builders.
  *
- * These use Vanilla Framework / portable-vertical-rhythm CSS classes
+ * These use Baseline Foundry / Vanilla Framework CSS classes
  * (p-form, p-accordion, p-checkbox) and are the working UI primitives
  * for the current accordion-based config editor.
  */

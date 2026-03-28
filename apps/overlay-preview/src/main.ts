@@ -6,12 +6,12 @@
  * 2. 2D canvas renders release labels (middle layer)
  * 3. SVG overlay renders text, logo, and composition guides (top layer)
  * 4. DOM authoring layer provides inline text editing
- * 5. Portable Vertical Rhythm themed aside panel provides all controls
+ * 5. Baseline Foundry themed aside panel provides all controls (dense panel preset)
  */
-import "portable-vertical-rhythm/styles.css";
+import "baseline-foundry/presets/panel.css";
 import "./styles.scss";
 
-import { initRangeControls } from "portable-vertical-rhythm";
+import { initRangeControls } from "baseline-foundry";
 
 import type {
   LayerScene,
