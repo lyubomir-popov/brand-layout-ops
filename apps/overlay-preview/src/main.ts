@@ -2217,15 +2217,12 @@ function getOverlayItemBounds(): OverlayItemBounds[] {
   if (!currentScene) return [];
   const items: OverlayItemBounds[] = [];
   const { widthPx, heightPx } = state.params.frame;
-  const grid = currentScene.grid;
-  const rowStepPx = grid.rowHeightPx + grid.rowGutterPx;
 
   for (const text of currentScene.texts) {
     const b = text.bounds;
     const authoringWidthPx = Math.max(text.maxWidthPx, b.width);
-    const rowTopPx = grid.contentTopPx + (text.rowIndex - 1) * rowStepPx;
-    const authoringTopPx = Math.min(rowTopPx, b.top);
-    const authoringHeightPx = Math.max(text.lineHeightPx, b.bottom - authoringTopPx);
+    const authoringTopPx = b.top;
+    const authoringHeightPx = Math.max(text.lineHeightPx, b.height);
     items.push({
       id: text.id,
       kind: "text",
