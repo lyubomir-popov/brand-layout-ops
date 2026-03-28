@@ -2582,14 +2582,15 @@ function findHitTarget(clientX: number, clientY: number): Selection | null {
   const { frameX, frameY } = pt;
   const overlayItems = getOverlayItemBounds();
 
-  // Check logo first
-  const logo = state.params.logo;
-  if (logo) {
+  // Check logo first (use resolved bounds which include safe-area offset)
+  const resolvedLogo = currentScene?.logo;
+  if (resolvedLogo) {
+    const lb = resolvedLogo.bounds;
     if (
-      frameX >= logo.xPx - HIT_SLOP_PX && frameX <= logo.xPx + logo.widthPx + HIT_SLOP_PX &&
-      frameY >= logo.yPx - HIT_SLOP_PX && frameY <= logo.yPx + logo.heightPx + HIT_SLOP_PX
+      frameX >= lb.left - HIT_SLOP_PX && frameX <= lb.right + HIT_SLOP_PX &&
+      frameY >= lb.top - HIT_SLOP_PX && frameY <= lb.bottom + HIT_SLOP_PX
     ) {
-      return { kind: "logo", id: logo.id ?? "logo" };
+      return { kind: "logo", id: resolvedLogo.id };
     }
   }
 
