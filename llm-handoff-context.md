@@ -60,7 +60,7 @@ All scoped under `@brand-layout-ops/`.
 - CSV authoring UI now shows row status, alias-based field mapping, and per-field staged-versus-applied values for the active format
 - `operator-ubuntu-summit-animation` now computes scene phase, runtime timing, loop timing, mascot-box metadata, reveal geometry, screensaver pulse counts, and transient spoke-transition state, and the preview renderer plus automation state now consume that descriptor path
 - `operator-ubuntu-summit-animation` now also emits mascot motion timing and motion-state metadata (blink, head turn, eye closure, sneeze/nose bob) through the scene descriptor and automation bridge
-- The preview renderer now draws the local mascot face asset, optional reference halo asset, and simple eye or nose motion on the overlay canvas using the scene-family operator's mascot box and motion state
+- The preview renderer now draws the local mascot face asset, optional reference halo asset, and reference-leaning eye or nose layering on the overlay canvas using the scene-family operator's mascot box and motion state
 - Linked title-to-logo sizing now normalizes through shared layout-engine helpers plus the shared overlay-layout path, so profile switches and loaded snapshots keep the A Head/logo lock intact while the canonical rule is no longer only preview-local
 - Style labels and ordinal field labels now also route through shared overlay-layout helpers instead of preview-local label maps
 - Base overlay text styles, seeded field layouts, seeded logo placement, sample CSV drafts, and `createDefaultOverlayParams` now also live in `operator-overlay-layout` instead of `sample-document.ts`

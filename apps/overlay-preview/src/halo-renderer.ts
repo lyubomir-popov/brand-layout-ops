@@ -41,6 +41,7 @@ const TEXT_LABEL_MARGIN_PX = 16;
 const MASCOT_FACE_ASSET_PATH = "/assets/racoon-mascot-face.svg";
 const MASCOT_HALO_ASSET_PATH = "/assets/racoon-mascot-halo.svg";
 const MASCOT_REFERENCE_HALO_OPACITY = 0.3;
+const MASCOT_VIEWBOX_SIZE = 600;
 const MASCOT_EYE_SPECS = [
   { cx: 260, cy: 290.25, radius: 8 },
   { cx: 340, cy: 290.25, radius: 8 }
@@ -933,6 +934,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     const bgColor = sceneDescriptor.haloConfig.composition.background_color || "#202020";
     const eyeScaleY = clamp(mascotMotion.eyeScaleY, 0.02, 1);
     const headTurnRad = -sceneDescriptor.frameState.mascotMotion.headTurnDeg * Math.PI / 180;
+    const unitScale = sizePx / MASCOT_VIEWBOX_SIZE;
     const haloAlpha = baseAlpha
       * clamp(sceneDescriptor.frameState.haloU, 0, 1)
       * MASCOT_REFERENCE_HALO_OPACITY;
@@ -940,8 +942,6 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     textCtx.save();
     textCtx.translate(centerX, centerY);
     textCtx.rotate(headTurnRad);
-    textCtx.globalAlpha = baseAlpha;
-    textCtx.drawImage(mascotFaceImage, -sizePx * 0.5, -sizePx * 0.5, sizePx, sizePx);
 
     if (sceneDescriptor.haloConfig.spoke_lines.show_reference_halo && mascotHaloImage && haloAlpha > 0) {
       textCtx.save();
@@ -951,24 +951,32 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     }
 
     textCtx.save();
+    textCtx.globalAlpha = baseAlpha;
+    textCtx.drawImage(mascotFaceImage, -sizePx * 0.5, -sizePx * 0.5, sizePx, sizePx);
+    textCtx.restore();
+
+    // Match the reference layering: fixed white nose, animated cutout above it, then eyes.
+    textCtx.save();
     textCtx.translate(-sizePx * 0.5, -sizePx * 0.5);
-    textCtx.scale(sizePx / 600, sizePx / 600);
-    textCtx.fillStyle = bgColor;
+    textCtx.scale(unitScale, unitScale);
+    textCtx.globalAlpha = baseAlpha;
+    textCtx.fillStyle = "#ffffff";
     textCtx.fill(MASCOT_NOSE_PATH);
     textCtx.restore();
 
     textCtx.save();
     textCtx.translate(-sizePx * 0.5, -sizePx * 0.5 - mascotMotion.noseBobPx);
-    textCtx.scale(sizePx / 600, sizePx / 600);
-    textCtx.fillStyle = "#ffffff";
+    textCtx.scale(unitScale, unitScale);
+    textCtx.globalAlpha = baseAlpha;
+    textCtx.fillStyle = bgColor;
     textCtx.fill(MASCOT_NOSE_PATH);
     textCtx.restore();
 
-    textCtx.fillStyle = bgColor;
+    textCtx.fillStyle = "#ffffff";
     for (const eye of MASCOT_EYE_SPECS) {
-      const localX = sizePx * (eye.cx / 600 - 0.5);
-      const localY = sizePx * (eye.cy / 600 - 0.5);
-      const radiusX = sizePx * (eye.radius / 600);
+      const localX = sizePx * (eye.cx / MASCOT_VIEWBOX_SIZE - 0.5);
+      const localY = sizePx * (eye.cy / MASCOT_VIEWBOX_SIZE - 0.5);
+      const radiusX = sizePx * (eye.radius / MASCOT_VIEWBOX_SIZE);
       const radiusY = Math.max(0.75, radiusX * eyeScaleY);
       textCtx.beginPath();
       textCtx.ellipse(localX, localY, radiusX, radiusY, 0, 0, Math.PI * 2);
