@@ -41,7 +41,7 @@ If you want the shortest high-level snapshot, read this file first.
 - After that document seam is stable, the next highest parity target is still the full Ubuntu Summit scene-family pass and remaining mascot or halo composition fidelity.
 - For architecture detail, read `docs/rebuild-plan.md`. For long-term direction, read `docs/product-roadmap.md`.
 
-## Current state (updated 2026-03-28)
+## Current state (updated 2025-07-17)
 
 **Stage 1 — Parity Rebuild** is in progress. The overlay-preview app has:
 
@@ -88,19 +88,20 @@ If you want the shortest high-level snapshot, read this file first.
 - Ascent-aware first-baseline inset normalization now also routes through shared overlay-layout editing helpers instead of preview-local code in `main.ts`
 - Profile-switch overlay carryover and frame resync now also route through shared overlay-layout helpers instead of preview-local sync logic in `main.ts`
 - MP4 export verification now covers both straight encode and fade-in/fade-out flags against a real 48-frame headless export on Windows
-- The preview control surface now imports the sibling `portable-vertical-rhythm` package instead of `vanilla-framework`, and Halo Field range controls render as real themed sliders again rather than bare native thumbs
-- The preview shell now uses `portable-vertical-rhythm`'s pinned-aside application layout with a 30rem dock cap instead of preview-local reserved-width dock CSS, and the stage is no longer wrapped in a fixed-width panel shell
-- The docked control panel is now resizable from the stage edge, persists its width in localStorage, and supports keyboard resizing while still driving the shared `--vr-application-aside-width` app-shell variable
+- The preview control surface now imports the sibling `baseline-foundry` package instead of `vanilla-framework`, and Halo Field range controls render as real themed sliders again rather than bare native thumbs
+- The preview shell now uses `baseline-foundry`'s pinned-aside application layout with a 30rem dock cap instead of preview-local reserved-width dock CSS, and the stage is no longer wrapped in a fixed-width panel shell
+- The docked control panel is now resizable from the stage edge, persists its width in localStorage, and supports keyboard resizing while still driving the shared `--bf-app-aside-width` app-shell variable
 - The preview config editor now builds its accordion from a keyed, ordered registry of section definitions with section-level post-render hooks instead of one fixed append sequence plus hardcoded follow-up wiring, as the next step back toward operator-registered control surfaces
 - The shared keyed section-registry primitive now lives in `packages/parameter-ui/src/index.ts` instead of `main.ts`, so future operator panels can register through shared parameter-surface infrastructure rather than preview-local maps
 - Overlay selection now starts empty and clears when the selected element disappears, so resize handles only arm after an explicit user selection instead of always falling back to another field
 - The logo panel now lets the user swap the logo asset path and toggle the A Head-to-logo size lock instead of forcing linked sizing at all times
-- Selected-element, grid, and halo control rows now rely on `portable-vertical-rhythm`'s shared `grid-row` and compact number-input styling instead of preview-local `overlay-control-grid` CSS overrides
+- Selected-element, grid, and halo control rows now rely on `baseline-foundry`'s shared `grid-row` and compact number-input styling instead of preview-local `overlay-control-grid` CSS overrides
 - Overlay pointer interactions now require a small movement threshold before drag or resize mutates text or logo items, so tap jitter does not accidentally move or resize fields
-- The docked config editor no longer wraps its accordion stack in a nested `u-fixed-width` container, so the PVR panel shell owns the control-surface spacing directly instead of double-padding the aside content
+- The docked config editor no longer wraps its accordion stack in a nested `u-fixed-width` container, so the baseline-foundry panel shell owns the control-surface spacing directly instead of double-padding the aside content
 - Source-default snapshot typing, built-in fallback construction, clone paths, and sanitization now also route through shared `operator-overlay-layout` helpers instead of preview-local snapshot structs in `main.ts`
-- Halo-field sliders in the preview now stack the range track above the numeric input, so narrow inspector columns stay usable even though PVR still only exposes the shared horizontal slider pair
+- Halo-field sliders in the preview now stack the range track above the numeric input, so narrow inspector columns stay usable even though baseline-foundry still only exposes the shared horizontal slider pair
 - Preview checkbox and metadata controls now use denser grid-row packing instead of leaving multiple full-height standalone form groups outside the shared panel grid
+- All CSS classes now use native `bf-*` baseline-foundry names instead of `p-*`/`vr-*`/`vf-*` aliases (commit `fc35f96`)
 
 **Preview shell extraction progress** (see `docs/rebuild-plan.md` § Preview Shell Audit):
 - Generic form helpers (createFormGroup, createSliderInput, etc.) extracted to `packages/parameter-ui/src/accordion-form-helpers.ts`; `buildSectionEl` renamed `buildAccordionSectionEl` across all call sites
@@ -116,19 +117,20 @@ If you want the shortest high-level snapshot, read this file first.
 - Ascent-aware first-baseline inset normalization now also routes through shared overlay-layout editing helpers instead of preview-local code in `main.ts`
 - Profile-switch overlay carryover and frame resync now also route through shared overlay-layout helpers instead of preview-local sync logic in `main.ts`
 - MP4 export verification now covers both straight encode and fade-in/fade-out flags against a real 48-frame headless export on Windows
-- The preview control surface now imports the sibling `portable-vertical-rhythm` package instead of `vanilla-framework`, and Halo Field range controls render as real themed sliders again rather than bare native thumbs
-- The preview shell now uses `portable-vertical-rhythm`'s pinned-aside application layout with a 30rem dock cap instead of preview-local reserved-width dock CSS, and the stage is no longer wrapped in a fixed-width panel shell
-- The docked control panel is now resizable from the stage edge, persists its width in localStorage, and supports keyboard resizing while still driving the shared `--vr-application-aside-width` app-shell variable
+- The preview control surface now imports the sibling `baseline-foundry` package instead of `vanilla-framework`, and Halo Field range controls render as real themed sliders again rather than bare native thumbs
+- The preview shell now uses `baseline-foundry`'s pinned-aside application layout with a 30rem dock cap instead of preview-local reserved-width dock CSS, and the stage is no longer wrapped in a fixed-width panel shell
+- The docked control panel is now resizable from the stage edge, persists its width in localStorage, and supports keyboard resizing while still driving the shared `--bf-app-aside-width` app-shell variable
 - The preview config editor now builds its accordion from a keyed, ordered registry of section definitions with section-level post-render hooks instead of one fixed append sequence plus hardcoded follow-up wiring, as the next step back toward operator-registered control surfaces
 - The shared keyed section-registry primitive now lives in `packages/parameter-ui/src/index.ts` instead of `main.ts`, so future operator panels can register through shared parameter-surface infrastructure rather than preview-local maps
 - Overlay selection now starts empty and clears when the selected element disappears, so resize handles only arm after an explicit user selection instead of always falling back to another field
 - The logo panel now lets the user swap the logo asset path and toggle the A Head-to-logo size lock instead of forcing linked sizing at all times
-- Selected-element, grid, and halo control rows now rely on `portable-vertical-rhythm`'s shared `grid-row` and compact number-input styling instead of preview-local `overlay-control-grid` CSS overrides
+- Selected-element, grid, and halo control rows now rely on `baseline-foundry`'s shared `grid-row` and compact number-input styling instead of preview-local `overlay-control-grid` CSS overrides
 - Overlay pointer interactions now require a small movement threshold before drag or resize mutates text or logo items, so tap jitter does not accidentally move or resize fields
-- The docked config editor no longer wraps its accordion stack in a nested `u-fixed-width` container, so the PVR panel shell owns the control-surface spacing directly instead of double-padding the aside content
+- The docked config editor no longer wraps its accordion stack in a nested `u-fixed-width` container, so the baseline-foundry panel shell owns the control-surface spacing directly instead of double-padding the aside content
 - Source-default snapshot typing, built-in fallback construction, clone paths, and sanitization now also route through shared `operator-overlay-layout` helpers instead of preview-local snapshot structs in `main.ts`
-- Halo-field sliders in the preview now stack the range track above the numeric input, so narrow inspector columns stay usable even though PVR still only exposes the shared horizontal slider pair
+- Halo-field sliders in the preview now stack the range track above the numeric input, so narrow inspector columns stay usable even though baseline-foundry still only exposes the shared horizontal slider pair
 - Preview checkbox and metadata controls now use denser grid-row packing instead of leaving multiple full-height standalone form groups outside the shared panel grid
+- All CSS classes now use native `bf-*` baseline-foundry names instead of `p-*`/`vr-*`/`vf-*` aliases (commit `fc35f96`)
 
 ## Current sprint TODO (do in order)
 
@@ -136,15 +138,15 @@ If you want the shortest high-level snapshot, read this file first.
 
 Items EQ-1 through EQ-9 are the user-directed priorities in dependency order:
 
-1. **EQ-1** — Switch UI library from `portable-vertical-rhythm` to `baseline-foundry` (panel preset). Foundational.
-2. **EQ-2** — Operator selector UI (radio list of operators → shows selected operator's params).
+1. **EQ-1** — ~~Switch UI library from `portable-vertical-rhythm` to `baseline-foundry` (panel preset).~~ **DONE** (commits `50f4c4f` + `fc35f96`). Dependency swapped, all CSS class names migrated from `p-*`/`vr-*`/`vf-*` to native `bf-*`.
+2. **EQ-2** — Operator selector UI (radio list of operators → shows selected operator's params). **← NEXT**
 3. **EQ-3** — Fuzzy boids parameter panel (numBoids, separation, alignment, cohesion, bounds, etc.).
 4. **EQ-4** — Phyllotaxis parameter panel (numPoints, radius, radiusFalloff, angleOffsetDeg, animation).
 5. **EQ-5** — Scatter operator (`operator-scatter`, scatter points inside SVG shape).
 6. **EQ-6** — Resolve or remove presets (documents replaced presets — clarify architecture).
 7. **EQ-7** — Content format cleanup (speaker_highlight → document-owned, inline text is fine).
 8. **EQ-8** — Paragraph styles conditional visibility (only when layout grid is active).
-9. **EQ-9** — Remove dead stat labels from scene-family preview canvas.
+9. **EQ-9** — ~~Remove dead stat labels from scene-family preview canvas.~~ **DONE** (commit `fc35f96`). Removed `title`, `subtitle`, `stats` from preview state/snapshot, deleted `drawPreviewLabel`.
 
 ### Previous completed work (kept for reference)
 
@@ -183,10 +185,10 @@ Items EQ-1 through EQ-9 are the user-directed priorities in dependency order:
   - **Next extraction prerequisite**: design a state-sharing protocol (context object, extracted state module, or dependency-injected callbacks) so section builders, authoring controller, and export controller can leave main.ts without simply moving closure coupling to a different file
   - Move remaining source-default writeback orchestration, export-state, and scene-family document rules toward shared layout or operator paths where parity permits
   - Replace preview-owned section definitions with package-registered or manifest-driven panels on top of the shared `parameter-ui` registry instead of expanding bespoke shell code indefinitely
-  - Continue trimming preview-local control-surface CSS so `portable-vertical-rhythm` remains the styling owner and only genuinely preview-specific rules stay in `apps/overlay-preview/src/styles.scss`
-  - Keep the docked shell on PVR's app-shell primitives; avoid reintroducing preview-local reserved-width or fixed-position aside hacks now that the 30rem docked panel cap lives in the shared layout path
-  - If another consumer needs docked panel resizing, upstream the current preview-local resize-handle behavior into `portable-vertical-rhythm` instead of forking more app-shell logic in the preview
-  - Upstream the preview's stacked narrow-panel slider treatment into `portable-vertical-rhythm` once the shared package has an explicit range-above-number inspector variant
+  - Continue trimming preview-local control-surface CSS so `baseline-foundry` remains the styling owner and only genuinely preview-specific rules stay in `apps/overlay-preview/src/styles.scss`
+  - Keep the docked shell on baseline-foundry's app-shell primitives; avoid reintroducing preview-local reserved-width or fixed-position aside hacks now that the 30rem docked panel cap lives in the shared layout path
+  - If another consumer needs docked panel resizing, upstream the current preview-local resize-handle behavior into `baseline-foundry` instead of forking more app-shell logic in the preview
+  - Upstream the preview's stacked narrow-panel slider treatment into `baseline-foundry` once the shared package has an explicit range-above-number inspector variant
 - [ ] Persistent local document model and file-backed projects
   - Landed: the preview can now open, save, save as, duplicate, and reopen recent local `.brand-layout-ops.json` files that carry the current working snapshot plus the preset library
   - Landed follow-up: preview-document persistence helpers now live in `apps/overlay-preview/src/preview-document.ts` instead of `apps/overlay-preview/src/sample-document.ts`
@@ -258,7 +260,7 @@ If the gap is visual, run both apps and compare screenshots before changing code
 
 Use this to resume work in a new chat:
 
-Continue work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\lyubo\work\repos\racoon-anim` as the reference app. Read `AGENTS.md`, `llm-handoff-context.md`, `docs/rebuild-plan.md`, `docs/product-roadmap.md`, and `README.md` first. The current product direction is explicit: documents, not browser presets, are the real unit of work. A document should eventually own the swappable scene-family or background operator stack such as halo, boids, or phyllotaxis, plus one or more target output sizes, layout state, and export settings. The preview already opens, saves, save-as, duplicates, and reopens recent `.brand-layout-ops.json` files through `apps/overlay-preview/src/preview-document.ts`, which stores the shared overlay document metadata/state envelope plus shared `project` metadata for scene family and document targets while still carrying preview-only extras and backward compatibility for earlier preview-local files. Preview-local file orchestration, recent-document handling, dirty-state UI, and fallback download behavior now live in `apps/overlay-preview/src/document-workspace.ts`, while preview-side snapshot plus document build/apply/reset logic now live in `apps/overlay-preview/src/preview-document-bridge.ts` instead of `apps/overlay-preview/src/main.ts`. The Output Format panel now edits that shared project metadata for scene family and saved document sizes, deleted sizes prune their saved per-profile state from future document saves, and non-halo scene families now render through `apps/overlay-preview/src/scene-family-preview.ts` in both the live stage and composed-frame export path with richer family-specific canvas rendering rather than only flat point dots. Startup no longer seeds the working state from browser-local preset storage, but localStorage mirroring still exists inside the preview shell and should not become the canonical model again. CSV authoring is now a secondary import and staging path, not the main editing seam. The single-frame PNG halo export regression is manually revalidated and no longer the active blocker. Next, add dedicated parameter surfaces and document-owned scene-family settings for non-halo families instead of leaving phyllotaxis and fuzzy-boids on preview-local defaults, and keep any remaining canonical document rules moving out of the preview shell rather than rebuilding more preview-local state. Keep parity-first and anti-drift discipline, keep the preview as an adapter, keep `portable-vertical-rhythm` as the styling owner, and if you touch stacked sliders or shell primitives, coordinate with `c:\Users\lyubo\work\repos\portable-vertical-rhythm`, where the shared narrow-panel stacked-slider follow-up is already documented in `llm-handoff-context.md` and `todo.md`.
+Continue work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\lyubo\work\repos\racoon-anim` as the reference app. Read `AGENTS.md`, `llm-handoff-context.md`, `docs/rebuild-plan.md`, `docs/product-roadmap.md`, and `README.md` first. The current product direction is explicit: documents, not browser presets, are the real unit of work. A document should eventually own the swappable scene-family or background operator stack such as halo, boids, or phyllotaxis, plus one or more target output sizes, layout state, and export settings. The preview already opens, saves, save-as, duplicates, and reopens recent `.brand-layout-ops.json` files through `apps/overlay-preview/src/preview-document.ts`, which stores the shared overlay document metadata/state envelope plus shared `project` metadata for scene family and document targets while still carrying preview-only extras and backward compatibility for earlier preview-local files. Preview-local file orchestration, recent-document handling, dirty-state UI, and fallback download behavior now live in `apps/overlay-preview/src/document-workspace.ts`, while preview-side snapshot plus document build/apply/reset logic now live in `apps/overlay-preview/src/preview-document-bridge.ts` instead of `apps/overlay-preview/src/main.ts`. The Output Format panel now edits that shared project metadata for scene family and saved document sizes, deleted sizes prune their saved per-profile state from future document saves, and non-halo scene families now render through `apps/overlay-preview/src/scene-family-preview.ts` in both the live stage and composed-frame export path with richer family-specific canvas rendering rather than only flat point dots. Startup no longer seeds the working state from browser-local preset storage, but localStorage mirroring still exists inside the preview shell and should not become the canonical model again. CSV authoring is now a secondary import and staging path, not the main editing seam. The single-frame PNG halo export regression is manually revalidated and no longer the active blocker. Next, add dedicated parameter surfaces and document-owned scene-family settings for non-halo families instead of leaving phyllotaxis and fuzzy-boids on preview-local defaults, and keep any remaining canonical document rules moving out of the preview shell rather than rebuilding more preview-local state. Keep parity-first and anti-drift discipline, keep the preview as an adapter, keep `baseline-foundry` as the styling owner, and if you touch stacked sliders or shell primitives, coordinate with `c:\Users\lyubo\work\repos\baseline-foundry`, where the shared narrow-panel stacked-slider follow-up is already documented.
 
 ## Open Questions To Discuss Later
 
@@ -301,56 +303,36 @@ Continue work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\ly
 - The current `operator-spokes` should stay coarse for parity; later decomposition may split it toward reusable wave, mask, and polar-field operators.
 - user note: I want to be able to transition from one operator to the next, for example, for a video  Imight start with a phylotaxis with 500 points; I animate it to expand, then I group points based on proximity to another set of focal points, and seamlessly animate 0 them to smaller pools of boids lets say that circle aroudn those focal points; think how this behavior can be broken down into modular operators that create points, animate them for a while, then hand them over to other operators to continue the animation.
 
-## Consumer handoff: portable-vertical-rhythm
+## Consumer handoff: baseline-foundry
 
-There is now a sibling repo at `c:\Users\lyubo\work\repos\portable-vertical-rhythm` that should replace the current Vanilla control-surface dependency incrementally in `apps/overlay-preview`.
+The sibling repo at `c:\Users\lyubo\work\repos\baseline-foundry` provides all control-surface styling for `apps/overlay-preview`.
 
 Use this package as a prebuilt local dependency, not as source to copy inline.
 
 ### Package surface
 
-- package name: `portable-vertical-rhythm`
-- CSS entry: `portable-vertical-rhythm/styles.css`
-- browser JS entry: `portable-vertical-rhythm`
-- Node build entry: `portable-vertical-rhythm/build` (do not import this in the Vite app)
+- package name: `baseline-foundry`
+- CSS entry: `baseline-foundry/styles.css`
+- browser JS entry: `baseline-foundry`
+- Panel preset: `baseline-foundry/presets/panel.css` (0.75rem body, IBM Plex Sans, dense controls)
 
 ### What it currently provides
 
-- dense body/UI text at `0.75rem` with `1rem` line-height
-- one heading size for actual UI section headings at `1rem` with `1.5rem` line-height
-- `p-muted-heading` style treatment using semibold Ubuntu Sans, small caps, muted color
-- text/form/button/panel/accordion styling
-- `u-baseline-grid` utility for alignment inspection
-- `initAccordions()` and `initBaselineGridToggles()` browser helpers
-- Vanilla-compatible aliases for `p-button`, `p-form__*`, `p-panel__*`, `p-accordion__*`, `p-muted-heading`, and `u-baseline-grid`
+- dense body/UI text with baseline-aligned vertical rhythm
+- `bf-*` class namespace: `bf-button`, `bf-field`, `bf-panel`, `bf-accordion`, `bf-tabs`, `bf-checkbox`, `bf-slider`, `bf-form-help`, `bf-input`, `bf-application`, `bf-aside`, `bf-main`, `bf-fixed-width`, `bf-theme`
+- custom properties: `--bf-color-*`, `--bf-app-aside-width-*`, `--bf-control-block-size-dense`
+- `initRangeControls()`, `initAccordions()`, `initTabs()`, `setupRangeControl()` browser helpers
+- Backward-compatible `p-*`/`vr-*` aliases via the CSS compat layer (but source now uses native `bf-*` names)
 
-### Recommended integration steps
+### Integration
 
-1. Add a local dependency in `brand-layout-ops/package.json`:
-  - `"portable-vertical-rhythm": "file:../portable-vertical-rhythm"`
-2. Run install from `c:\Users\lyubo\work\repos\brand-layout-ops`.
-3. In `apps/overlay-preview/src/main.ts`, import:
-  - `import "portable-vertical-rhythm/styles.css";`
-  - `import { initAccordions, initBaselineGridToggles } from "portable-vertical-rhythm";`
-4. Keep the existing DOM markup where possible and let the alias layer style current Vanilla-shaped classes first.
-5. Call `initAccordions()` after the panel DOM exists.
-6. Only call `initBaselineGridToggles()` if the preview includes a checkbox with `.js-baseline-toggle[aria-controls]` wired to a target carrying `u-baseline-grid`.
-
-### Migration guidance
-
-- Start by replacing the stylesheet dependency for the preview panel surface, not the whole app.
-- Remove `vanilla-framework` imports from the preview surface only when the portable package is covering that same area.
-- Prefer the package's current compatibility classes first, then optionally rename markup to `vr-*` later.
-- Do not import the package's Node build entry into Vite; generation stays in the package repo.
-
-### Important behavior constraints from the package
-
-- single-direction spacing discipline: margin-bottom only; padding-top is reserved for nudges
-- borders are compensated so they do not push components off the baseline rhythm
-- `hr`/rule thickness is accounted for against the next baseline unit
-- anchor links inside the themed surface inherit body text sizing and line-height
-- accordion tabs intentionally use body text sizing, not heading sizing
+1. Local dependency in `brand-layout-ops/package.json`:
+   - `"baseline-foundry": "file:../baseline-foundry"`
+2. In `apps/overlay-preview/src/main.ts`, import:
+   - `import "baseline-foundry/presets/panel.css";`
+   - `import { initRangeControls } from "baseline-foundry";`
+3. All source markup uses `bf-*` class names natively.
 
 ### If the next agent needs to change the package
 
-Make changes in `c:\Users\lyubo\work\repos\portable-vertical-rhythm`, rebuild there, then return to this repo and verify the preview again. Do not fork or duplicate its CSS into `brand-layout-ops` unless explicitly requested.
+Make changes in `c:\Users\lyubo\work\repos\baseline-foundry`, rebuild there, then return to this repo and verify the preview again. Do not fork or duplicate its CSS into `brand-layout-ops` unless explicitly requested.

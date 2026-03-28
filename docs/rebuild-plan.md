@@ -471,15 +471,16 @@ This does not need to land all at once. The extraction work above is the prerequ
 
 User-directed work items consolidated into execution order. These are now approved active work, sequenced by dependency.
 
-### EQ-1. Switch UI library from `portable-vertical-rhythm` to `baseline-foundry`
+### EQ-1. Switch UI library from `portable-vertical-rhythm` to `baseline-foundry` ✅
 
 Foundational — all subsequent panel work should build on the new library.
 
-- [ ] Replace the PVR dependency in `apps/overlay-preview` with `baseline-foundry`.
-- [ ] Use the dense panel preset (`config/presets/panel.json`) as the active styling source.
-- [ ] Port any missing panel-relevant components from PVR into `baseline-foundry` if needed.
-- [ ] Verify panel/inspector density and rhythm against the `baseline-foundry` component gate.
-- [ ] Reference: `baseline-foundry/docs/brand-layout-ops-agent-prompt.md` contains the detailed swap instructions.
+- [x] Replace the PVR dependency in `apps/overlay-preview` with `baseline-foundry`.
+- [x] Use the dense panel preset (`config/presets/panel.json`) as the active styling source.
+- [x] Port any missing panel-relevant components from PVR into `baseline-foundry` if needed.
+- [x] Verify panel/inspector density and rhythm against the `baseline-foundry` component gate.
+- [x] Reference: `baseline-foundry/docs/brand-layout-ops-agent-prompt.md` contains the detailed swap instructions.
+- [x] Migrate all CSS class names from `p-*`/`vr-*`/`vf-*` to native `bf-*` baseline-foundry equivalents across 15 source files (commit `fc35f96`).
 
 ### EQ-2. Operator selector UI (Houdini-style parameter pane, stage 1)
 
@@ -536,10 +537,11 @@ Presets were a workaround for lack of multiple documents. Now that documents exi
 - [ ] The paragraph styles section should only appear when the layout grid is available/active.
 - [ ] Link the paragraph styles section visibility to the grid section state so they feel connected.
 
-### EQ-9. Remove dead stat labels from scene-family preview canvas
+### EQ-9. Remove dead stat labels from scene-family preview canvas ✅
 
-- [ ] The scene-family preview canvas renders non-interactive text labels ("Arm sets 21 and 34", "Center 545, 54", "Radius ...px", etc.) that look like buttons but do nothing.
-- [ ] Remove these stat labels from the canvas. The information should come from the parameter panel instead once EQ-3 and EQ-4 land.
+- [x] The scene-family preview canvas renders non-interactive text labels ("Arm sets 21 and 34", "Center 545, 54", "Radius ...px", etc.) that look like buttons but do nothing.
+- [x] Remove these stat labels from the canvas. The information should come from the parameter panel instead once EQ-3 and EQ-4 land.
+- [x] Removed `title`, `subtitle`, `stats` from `BaseSceneFamilyPreviewState` and `SceneFamilyPreviewSnapshot`, deleted `drawPreviewLabel` function (commit `fc35f96`).
 
 ## Discussion Items Not Yet Scheduled
 
