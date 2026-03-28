@@ -1,18 +1,62 @@
-import type { ColorRgba, PointField, PointRecord, Vector3 } from "@brand-layout-ops/core-types";
-import { resolveFuzzyBoidOutputs } from "@brand-layout-ops/operator-fuzzy-boids";
+import type { BoidField, BoidRecord, ColorRgba, PointField, PointRecord, Vector3 } from "@brand-layout-ops/core-types";
+import { resolveFuzzyBoidOutputs, type FuzzyBoidsBoundsParams } from "@brand-layout-ops/operator-fuzzy-boids";
 import { resolvePhyllotaxisField } from "@brand-layout-ops/operator-phyllotaxis";
 import type { HaloFieldConfig } from "@brand-layout-ops/operator-halo-field";
 import type { OverlaySceneFamilyKey } from "@brand-layout-ops/operator-overlay-layout";
 
 type PreviewableSceneFamilyKey = Exclude<OverlaySceneFamilyKey, "halo">;
 
-export interface SceneFamilyPreviewState {
-  sceneFamilyKey: PreviewableSceneFamilyKey;
+interface BaseSceneFamilyPreviewState {
   title: string;
   subtitle: string;
   stats: string[];
   pointField: PointField;
+  center: Vector3;
 }
+
+export interface PhyllotaxisSceneFamilyPreviewState extends BaseSceneFamilyPreviewState {
+  sceneFamilyKey: "phyllotaxis";
+  maxRadiusPx: number;
+  armSteps: number[];
+}
+
+export interface FuzzyBoidsSceneFamilyPreviewState extends BaseSceneFamilyPreviewState {
+  sceneFamilyKey: "fuzzy-boids";
+  boidField: BoidField;
+  seedField: PointField;
+  bounds: FuzzyBoidsBoundsParams;
+  linkRadiusPx: number;
+}
+
+export type SceneFamilyPreviewState =
+  | PhyllotaxisSceneFamilyPreviewState
+  | FuzzyBoidsSceneFamilyPreviewState;
+
+interface SceneFamilyPalette {
+  point: ColorRgba;
+  accent: ColorRgba;
+  echo: ColorRgba;
+  reference: ColorRgba;
+}
+
+interface LinkSegment {
+  from: Vector3;
+  to: Vector3;
+  alpha: number;
+}
+
+interface PointRenderStyle {
+  color: ColorRgba;
+  alpha: number;
+  radiusPx: number;
+}
+
+const DEFAULT_SCENE_FAMILY_COLOR: ColorRgba = {
+  r: 255,
+  g: 255,
+  b: 255,
+  a: 1
+};
 
 export interface BuildSceneFamilyPreviewStateOptions {
   sceneFamilyKey: OverlaySceneFamilyKey;
@@ -33,6 +77,39 @@ export interface RenderSceneFamilyPreviewFrameOptions {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function mix(left: number, right: number, amount: number): number {
+  return left + (right - left) * clamp(amount, 0, 1);
+}
+
+function lengthOf(vector: Vector3): number {
+  return Math.hypot(vector.x, vector.y, vector.z);
+}
+
+function divideVector(vector: Vector3, scalar: number): Vector3 {
+  if (scalar === 0) {
+    return { x: 0, y: 0, z: 0 };
+  }
+
+  return {
+    x: vector.x / scalar,
+    y: vector.y / scalar,
+    z: vector.z / scalar
+  };
+}
+
+function normalizeVector(vector: Vector3, fallback: Vector3 = { x: 1, y: 0, z: 0 }): Vector3 {
+  const magnitude = lengthOf(vector);
+  if (magnitude <= 0.00001) {
+    return fallback;
+  }
+
+  return divideVector(vector, magnitude);
+}
+
+function createPerpendicularUp(normal: Vector3): Vector3 {
+  return normalizeVector({ x: -normal.y, y: normal.x, z: 0 }, { x: 0, y: 1, z: 0 });
 }
 
 function normalizeCanvasSize(canvas: HTMLCanvasElement, widthPx: number, heightPx: number): void {
@@ -74,6 +151,34 @@ function parseHexColor(rawColor: string): ColorRgba | null {
   return null;
 }
 
+function normalizeColor(color: ColorRgba | string | undefined, fallback: ColorRgba = DEFAULT_SCENE_FAMILY_COLOR): ColorRgba {
+  if (!color) {
+    return { ...fallback };
+  }
+
+  if (typeof color === "string") {
+    return parseHexColor(color) ?? { ...fallback };
+  }
+
+  return {
+    r: Number(color.r ?? fallback.r),
+    g: Number(color.g ?? fallback.g),
+    b: Number(color.b ?? fallback.b),
+    a: Number(color.a ?? fallback.a ?? 1)
+  };
+}
+
+function mixColors(left: ColorRgba | string, right: ColorRgba | string, amount: number): ColorRgba {
+  const safeLeft = normalizeColor(left);
+  const safeRight = normalizeColor(right);
+  return {
+    r: mix(safeLeft.r, safeRight.r, amount),
+    g: mix(safeLeft.g, safeRight.g, amount),
+    b: mix(safeLeft.b, safeRight.b, amount),
+    a: mix(typeof safeLeft.a === "number" ? safeLeft.a : 1, typeof safeRight.a === "number" ? safeRight.a : 1, amount)
+  };
+}
+
 function toCanvasColor(color: ColorRgba | string, alpha = 1): string {
   if (typeof color === "string") {
     const parsed = parseHexColor(color);
@@ -96,17 +201,13 @@ function getPreviewCenter(widthPx: number, heightPx: number, haloConfig: HaloFie
   };
 }
 
-function buildPreviewPalette(haloConfig: HaloFieldConfig): ColorRgba[] {
-  const palette = [
-    haloConfig.point_style.color,
-    haloConfig.spoke_lines.color,
-    haloConfig.spoke_lines.echo_color,
-    haloConfig.spoke_lines.reference_color
-  ];
-
-  return palette
-    .map((color) => (typeof color === "string" ? parseHexColor(color) : null))
-    .filter((color): color is ColorRgba => color !== null);
+function buildPreviewPalette(haloConfig: HaloFieldConfig): SceneFamilyPalette {
+  return {
+    point: normalizeColor(haloConfig.point_style.color),
+    accent: normalizeColor(haloConfig.spoke_lines.color, normalizeColor(haloConfig.point_style.color)),
+    echo: normalizeColor(haloConfig.spoke_lines.echo_color, normalizeColor(haloConfig.point_style.color)),
+    reference: normalizeColor(haloConfig.spoke_lines.reference_color, normalizeColor(haloConfig.spoke_lines.color))
+  };
 }
 
 function getPointRadius(point: PointRecord, pointIndex: number, pointCount: number, sceneFamilyKey: PreviewableSceneFamilyKey): number {
@@ -133,13 +234,166 @@ function drawPreviewLabel(ctx: CanvasRenderingContext2D, previewState: SceneFami
   const insetY = Math.round(heightPx * 0.06);
 
   ctx.save();
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
   ctx.font = '600 16px "Ubuntu Sans", "Ubuntu", sans-serif';
   ctx.fillText(previewState.title, insetX, insetY);
-  ctx.fillStyle = "rgba(255,255,255,0.62)";
+  ctx.fillStyle = "rgba(255,255,255,0.68)";
   ctx.font = '400 12px "Ubuntu Sans", "Ubuntu", sans-serif';
   ctx.fillText(previewState.subtitle, insetX, insetY + 18);
+
+  let statY = insetY + 42;
+  for (const stat of previewState.stats) {
+    ctx.fillStyle = "rgba(255,255,255,0.54)";
+    ctx.font = '400 11px "Ubuntu Sans", "Ubuntu", sans-serif';
+    ctx.fillText(stat, insetX, statY);
+    statY += 14;
+  }
   ctx.restore();
+}
+
+function drawSoftGlow(
+  ctx: CanvasRenderingContext2D,
+  center: Vector3,
+  radiusPx: number,
+  color: ColorRgba | string,
+  innerAlpha: number,
+  outerAlpha = 0
+): void {
+  const gradient = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, radiusPx);
+  gradient.addColorStop(0, toCanvasColor(color, innerAlpha));
+  gradient.addColorStop(1, toCanvasColor(color, outerAlpha));
+
+  ctx.save();
+  ctx.fillStyle = gradient;
+  ctx.fillRect(center.x - radiusPx, center.y - radiusPx, radiusPx * 2, radiusPx * 2);
+  ctx.restore();
+}
+
+function drawGuideRing(
+  ctx: CanvasRenderingContext2D,
+  center: Vector3,
+  radiusPx: number,
+  strokeStyle: string,
+  lineWidthPx: number,
+  lineDash: number[] = []
+): void {
+  ctx.save();
+  ctx.strokeStyle = strokeStyle;
+  ctx.lineWidth = lineWidthPx;
+  ctx.setLineDash(lineDash);
+  ctx.beginPath();
+  ctx.arc(center.x, center.y, radiusPx, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPointDot(
+  ctx: CanvasRenderingContext2D,
+  point: PointRecord,
+  style: PointRenderStyle
+): void {
+  ctx.save();
+  ctx.fillStyle = toCanvasColor(style.color, style.alpha);
+  ctx.beginPath();
+  ctx.arc(point.position.x, point.position.y, style.radiusPx, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawPhyllotaxisArmSet(
+  ctx: CanvasRenderingContext2D,
+  points: PointRecord[],
+  armStep: number,
+  strokeColor: ColorRgba | string,
+  alpha: number,
+  lineWidthPx: number
+): void {
+  if (armStep < 2 || points.length < armStep * 2) {
+    return;
+  }
+
+  const arms = Array.from({ length: armStep }, () => [] as PointRecord[]);
+  points.forEach((point, index) => {
+    arms[index % armStep].push(point);
+  });
+
+  ctx.save();
+  ctx.strokeStyle = toCanvasColor(strokeColor, alpha);
+  ctx.lineWidth = lineWidthPx;
+
+  for (const arm of arms) {
+    if (arm.length < 2) {
+      continue;
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(arm[0].position.x, arm[0].position.y);
+    for (let index = 1; index < arm.length; index += 1) {
+      ctx.lineTo(arm[index].position.x, arm[index].position.y);
+    }
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function getPhyllotaxisPointStyle(
+  point: PointRecord,
+  pointIndex: number,
+  pointCount: number,
+  previewState: PhyllotaxisSceneFamilyPreviewState,
+  palette: SceneFamilyPalette
+): PointRenderStyle {
+  const pointRadius = Number(point.attributes.philo_radius ?? 0);
+  const normalizedRadius = previewState.maxRadiusPx <= 0
+    ? (pointCount <= 1 ? 0 : pointIndex / Math.max(1, pointCount - 1))
+    : clamp(pointRadius / previewState.maxRadiusPx, 0, 1);
+
+  return {
+    color: mixColors(palette.point, palette.reference, normalizedRadius * 0.72),
+    alpha: 0.18 + normalizedRadius * 0.72,
+    radiusPx: 0.9 + normalizedRadius * 2.5
+  };
+}
+
+function drawPhyllotaxisPreview(
+  ctx: CanvasRenderingContext2D,
+  previewState: PhyllotaxisSceneFamilyPreviewState,
+  haloConfig: HaloFieldConfig,
+  widthPx: number,
+  heightPx: number
+): void {
+  const palette = buildPreviewPalette(haloConfig);
+
+  drawSoftGlow(ctx, previewState.center, previewState.maxRadiusPx * 1.18, palette.reference, 0.14);
+  drawSoftGlow(ctx, previewState.center, previewState.maxRadiusPx * 0.48, palette.accent, 0.12);
+
+  [0.25, 0.5, 0.75, 1].forEach((ratio, index) => {
+    drawGuideRing(
+      ctx,
+      previewState.center,
+      previewState.maxRadiusPx * ratio,
+      toCanvasColor(index === 3 ? palette.reference : palette.echo, index === 3 ? 0.2 : 0.1),
+      index === 3 ? 1.25 : 1,
+      index === 3 ? [] : [4, 8]
+    );
+  });
+
+  previewState.armSteps.forEach((armStep, armIndex) => {
+    const strokeColor = armIndex === 0 ? palette.echo : palette.reference;
+    drawPhyllotaxisArmSet(ctx, previewState.pointField.points, armStep, strokeColor, armIndex === 0 ? 0.24 : 0.14, armIndex === 0 ? 1.15 : 0.8);
+  });
+
+  previewState.pointField.points.forEach((point, pointIndex) => {
+    drawPointDot(
+      ctx,
+      point,
+      getPhyllotaxisPointStyle(point, pointIndex, previewState.pointField.points.length, previewState, palette)
+    );
+  });
+
+  drawGuideRing(ctx, previewState.center, Math.max(3, previewState.maxRadiusPx * 0.025), toCanvasColor(palette.point, 0.7), 1.25);
+  drawPreviewLabel(ctx, previewState, widthPx, heightPx);
 }
 
 function drawFuzzyBoidVelocity(
@@ -166,13 +420,222 @@ function drawFuzzyBoidVelocity(
   ctx.strokeStyle = strokeStyle;
   ctx.lineWidth = Math.max(1, pointRadiusPx * 0.6);
   ctx.beginPath();
-  ctx.moveTo(point.position.x, point.position.y);
+  ctx.moveTo(
+    point.position.x - directionX * trailLengthPx,
+    point.position.y - directionY * trailLengthPx
+  );
   ctx.lineTo(
-    point.position.x + directionX * trailLengthPx,
-    point.position.y + directionY * trailLengthPx
+    point.position.x,
+    point.position.y
   );
   ctx.stroke();
   ctx.restore();
+}
+
+function drawFuzzyBoidGlyph(
+  ctx: CanvasRenderingContext2D,
+  boid: BoidRecord,
+  radiusPx: number,
+  fillStyle: string,
+  strokeStyle: string
+): void {
+  const direction = normalizeVector(boid.velocity, { x: 1, y: 0, z: 0 });
+  const perpendicular = createPerpendicularUp(direction);
+  const head = {
+    x: boid.position.x + direction.x * radiusPx * 1.55,
+    y: boid.position.y + direction.y * radiusPx * 1.55
+  };
+  const left = {
+    x: boid.position.x - direction.x * radiusPx * 0.7 + perpendicular.x * radiusPx * 0.8,
+    y: boid.position.y - direction.y * radiusPx * 0.7 + perpendicular.y * radiusPx * 0.8
+  };
+  const right = {
+    x: boid.position.x - direction.x * radiusPx * 0.7 - perpendicular.x * radiusPx * 0.8,
+    y: boid.position.y - direction.y * radiusPx * 0.7 - perpendicular.y * radiusPx * 0.8
+  };
+
+  ctx.save();
+  ctx.fillStyle = fillStyle;
+  ctx.strokeStyle = strokeStyle;
+  ctx.lineWidth = Math.max(0.75, radiusPx * 0.2);
+  ctx.beginPath();
+  ctx.moveTo(head.x, head.y);
+  ctx.lineTo(left.x, left.y);
+  ctx.lineTo(right.x, right.y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSeedField(
+  ctx: CanvasRenderingContext2D,
+  seedField: PointField,
+  palette: SceneFamilyPalette
+): void {
+  seedField.points.forEach((point, pointIndex) => {
+    const radiusPx = 0.7 + clamp(pointIndex / Math.max(1, seedField.points.length - 1), 0, 1) * 0.8;
+    drawPointDot(ctx, point, {
+      color: mixColors(palette.reference, palette.echo, 0.35),
+      alpha: 0.08,
+      radiusPx
+    });
+  });
+}
+
+function getFuzzyBoidLinks(
+  boids: BoidRecord[],
+  linkRadiusPx: number,
+  maxLinks = 280
+): LinkSegment[] {
+  const links: LinkSegment[] = [];
+
+  for (let leftIndex = 0; leftIndex < boids.length; leftIndex += 1) {
+    const left = boids[leftIndex];
+    if (!Boolean(left.attributes.boid_active)) {
+      continue;
+    }
+
+    for (let rightIndex = leftIndex + 1; rightIndex < boids.length; rightIndex += 1) {
+      const right = boids[rightIndex];
+      if (!Boolean(right.attributes.boid_active)) {
+        continue;
+      }
+
+      const distancePx = Math.hypot(
+        left.position.x - right.position.x,
+        left.position.y - right.position.y
+      );
+      if (distancePx > linkRadiusPx) {
+        continue;
+      }
+
+      const alpha = Math.pow(1 - clamp(distancePx / Math.max(1, linkRadiusPx), 0, 1), 2) * 0.18;
+      if (alpha < 0.015) {
+        continue;
+      }
+
+      links.push({ from: left.position, to: right.position, alpha });
+      if (links.length >= maxLinks) {
+        return links;
+      }
+    }
+  }
+
+  return links;
+}
+
+function drawFuzzyBoidLinks(
+  ctx: CanvasRenderingContext2D,
+  links: LinkSegment[],
+  strokeColor: ColorRgba | string
+): void {
+  ctx.save();
+  ctx.lineWidth = 1;
+
+  for (const link of links) {
+    ctx.strokeStyle = toCanvasColor(strokeColor, link.alpha);
+    ctx.beginPath();
+    ctx.moveTo(link.from.x, link.from.y);
+    ctx.lineTo(link.to.x, link.to.y);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawBoundsGuide(
+  ctx: CanvasRenderingContext2D,
+  center: Vector3,
+  bounds: FuzzyBoidsBoundsParams,
+  palette: SceneFamilyPalette
+): void {
+  if (bounds.kind === "radial") {
+    const radiusPx = Math.max(1, Number(bounds.radiusPx ?? 0));
+    const marginPx = Math.max(0, Number(bounds.marginPx ?? 0));
+
+    drawGuideRing(ctx, center, radiusPx, toCanvasColor(palette.reference, 0.24), 1.2);
+    if (marginPx > 0 && radiusPx > marginPx) {
+      drawGuideRing(ctx, center, radiusPx - marginPx, toCanvasColor(palette.echo, 0.12), 1, [5, 9]);
+    }
+    return;
+  }
+
+  if (bounds.kind !== "box") {
+    return;
+  }
+
+  const widthPx = Math.max(1, Number(bounds.widthPx ?? 0));
+  const heightPx = Math.max(1, Number(bounds.heightPx ?? 0));
+  const marginPx = Math.max(0, Number(bounds.marginPx ?? 0));
+
+  ctx.save();
+  ctx.strokeStyle = toCanvasColor(palette.reference, 0.22);
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(center.x - widthPx * 0.5, center.y - heightPx * 0.5, widthPx, heightPx);
+
+  if (marginPx > 0 && widthPx > marginPx * 2 && heightPx > marginPx * 2) {
+    ctx.setLineDash([5, 9]);
+    ctx.strokeStyle = toCanvasColor(palette.echo, 0.12);
+    ctx.lineWidth = 1;
+    ctx.strokeRect(
+      center.x - widthPx * 0.5 + marginPx,
+      center.y - heightPx * 0.5 + marginPx,
+      widthPx - marginPx * 2,
+      heightPx - marginPx * 2
+    );
+  }
+
+  ctx.restore();
+}
+
+function drawFuzzyBoidsPreview(
+  ctx: CanvasRenderingContext2D,
+  previewState: FuzzyBoidsSceneFamilyPreviewState,
+  haloConfig: HaloFieldConfig,
+  widthPx: number,
+  heightPx: number
+): void {
+  const palette = buildPreviewPalette(haloConfig);
+  drawSoftGlow(ctx, previewState.center, previewState.linkRadiusPx * 2.4, palette.accent, 0.16);
+  drawSoftGlow(ctx, previewState.center, previewState.linkRadiusPx * 1.15, palette.reference, 0.1);
+
+  drawBoundsGuide(ctx, previewState.center, previewState.bounds, palette);
+  drawSeedField(ctx, previewState.seedField, palette);
+  drawFuzzyBoidLinks(ctx, getFuzzyBoidLinks(previewState.boidField.boids, previewState.linkRadiusPx), palette.echo);
+
+  previewState.boidField.boids.forEach((boid, pointIndex) => {
+    const point = previewState.pointField.points[pointIndex];
+    if (!point) {
+      return;
+    }
+
+    const pointRadiusPx = getPointRadius(point, pointIndex, previewState.pointField.points.length, previewState.sceneFamilyKey);
+    const pointAlpha = getPointAlpha(point, pointIndex, previewState.pointField.points.length, previewState.sceneFamilyKey);
+    const pointColor = normalizeColor(boid.attributes.color as ColorRgba | undefined, palette.echo);
+    const isActive = Boolean(boid.attributes.boid_active);
+
+    if (!isActive) {
+      drawPointDot(ctx, point, { color: mixColors(pointColor, palette.reference, 0.55), alpha: 0.12, radiusPx: pointRadiusPx * 0.75 });
+      return;
+    }
+
+    drawFuzzyBoidVelocity(ctx, point, pointRadiusPx, toCanvasColor(pointColor, pointAlpha * 0.52));
+    drawFuzzyBoidGlyph(
+      ctx,
+      boid,
+      Math.max(1.2, pointRadiusPx * 0.95),
+      toCanvasColor(pointColor, Math.max(0.34, pointAlpha)),
+      toCanvasColor(mixColors(pointColor, palette.reference, 0.28), pointAlpha * 0.72)
+    );
+    drawPointDot(ctx, point, {
+      color: mixColors(pointColor, palette.point, 0.2),
+      alpha: Math.min(1, pointAlpha + 0.12),
+      radiusPx: Math.max(0.95, pointRadiusPx * 0.45)
+    });
+  });
+
+  drawPreviewLabel(ctx, previewState, widthPx, heightPx);
 }
 
 export function clearSceneFamilyPreviewCanvas(canvas: HTMLCanvasElement, widthPx: number, heightPx: number): void {
@@ -207,12 +670,16 @@ export function buildSceneFamilyPreviewState(
     return {
       sceneFamilyKey: "phyllotaxis",
       title: "Phyllotaxis",
-      subtitle: `${pointField.points.length} procedural points`,
+      subtitle: `${pointField.points.length} points with spiral arm guides`,
       stats: [
         `Center ${Math.round(center.x)}, ${Math.round(center.y)}`,
-        `Radius ${Math.round(minDimensionPx * 0.34)}px`
+        `Radius ${Math.round(minDimensionPx * 0.34)}px`,
+        "Arm sets 21 and 34"
       ],
-      pointField
+      pointField,
+      center,
+      maxRadiusPx: Number(pointField.detail.max_radius ?? minDimensionPx * 0.34),
+      armSteps: [21, 34]
     };
   }
 
@@ -250,18 +717,31 @@ export function buildSceneFamilyPreviewState(
       marginPx: minDimensionPx * 0.08,
       forcePxPerSecond2: minDimensionPx * 0.32
     },
-    palette: buildPreviewPalette(options.haloConfig)
+    palette: Object.values(buildPreviewPalette(options.haloConfig))
   }, center, seedField);
+
+  const bounds: FuzzyBoidsBoundsParams = {
+    kind: "radial",
+    radiusPx: minDimensionPx * 0.28,
+    marginPx: minDimensionPx * 0.08,
+    forcePxPerSecond2: minDimensionPx * 0.32
+  };
 
   return {
     sceneFamilyKey: "fuzzy-boids",
     title: "Fuzzy Boids",
-    subtitle: `${fuzzyBoids.boidField.simulation.activeBoidCount}/${fuzzyBoids.boidField.boids.length} active`,
+    subtitle: `${fuzzyBoids.boidField.simulation.activeBoidCount}/${fuzzyBoids.boidField.boids.length} active boids with flock links`,
     stats: [
       `Center ${Math.round(center.x)}, ${Math.round(center.y)}`,
-      `Playback ${options.playbackTimeSec.toFixed(2)}s`
+      `Playback ${options.playbackTimeSec.toFixed(2)}s`,
+      `Bounds ${Math.round(minDimensionPx * 0.28)}px`
     ],
-    pointField: fuzzyBoids.pointField
+    pointField: fuzzyBoids.pointField,
+    center,
+    boidField: fuzzyBoids.boidField,
+    seedField,
+    bounds,
+    linkRadiusPx: minDimensionPx * 0.09
   };
 }
 
@@ -281,45 +761,19 @@ export function renderSceneFamilyPreviewFrame(
     context.fillRect(0, 0, options.widthPx, options.heightPx);
   }
 
-  const center = getPreviewCenter(options.widthPx, options.heightPx, options.haloConfig);
+  const palette = buildPreviewPalette(options.haloConfig);
+  const center = options.previewState.center;
   const gradientRadiusPx = Math.min(options.widthPx, options.heightPx) * 0.42;
   const gradient = context.createRadialGradient(center.x, center.y, 0, center.x, center.y, gradientRadiusPx);
-  gradient.addColorStop(0, toCanvasColor(options.haloConfig.spoke_lines.reference_color, 0.12));
+  gradient.addColorStop(0, toCanvasColor(palette.reference, 0.12));
   gradient.addColorStop(1, "rgba(0,0,0,0)");
   context.fillStyle = gradient;
   context.fillRect(0, 0, options.widthPx, options.heightPx);
 
-  const defaultPointColor = options.previewState.sceneFamilyKey === "fuzzy-boids"
-    ? options.haloConfig.spoke_lines.echo_color || options.haloConfig.point_style.color
-    : options.haloConfig.point_style.color;
+  if (options.previewState.sceneFamilyKey === "phyllotaxis") {
+    drawPhyllotaxisPreview(context, options.previewState, options.haloConfig, options.widthPx, options.heightPx);
+    return;
+  }
 
-  options.previewState.pointField.points.forEach((point, pointIndex) => {
-    const pointRadiusPx = getPointRadius(
-      point,
-      pointIndex,
-      options.previewState.pointField.points.length,
-      options.previewState.sceneFamilyKey
-    );
-    const pointAlpha = getPointAlpha(
-      point,
-      pointIndex,
-      options.previewState.pointField.points.length,
-      options.previewState.sceneFamilyKey
-    );
-    const pointColor = (point.attributes.color as ColorRgba | undefined) ?? defaultPointColor;
-    const fillStyle = toCanvasColor(pointColor, pointAlpha);
-
-    context.save();
-    context.fillStyle = fillStyle;
-    context.beginPath();
-    context.arc(point.position.x, point.position.y, pointRadiusPx, 0, Math.PI * 2);
-    context.fill();
-    context.restore();
-
-    if (options.previewState.sceneFamilyKey === "fuzzy-boids" && Boolean(point.attributes.boid_active)) {
-      drawFuzzyBoidVelocity(context, point, pointRadiusPx, toCanvasColor(pointColor, pointAlpha * 0.55));
-    }
-  });
-
-  drawPreviewLabel(context, options.previewState, options.widthPx, options.heightPx);
+  drawFuzzyBoidsPreview(context, options.previewState, options.haloConfig, options.widthPx, options.heightPx);
 }

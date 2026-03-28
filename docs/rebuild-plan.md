@@ -115,7 +115,7 @@ Port the current interaction model into `overlay-interaction` and `parameter-ui`
 	Current repo now preserves pending CSV drafts per profile and format bucket while switching, and the editor surfaces alias-based field mapping plus staged-versus-applied field values for the active format, but this is now explicitly deprioritized behind persistent document editing and local filesystem-backed document save/open flows.
 - [x] Persistent local document workflow for authored layout state.
 	The preview can now open, save, save as, duplicate, and reopen recent local `.brand-layout-ops.json` files that persist the current working snapshot plus the preset library instead of relying only on browser-local presets.
-	Follow-up anti-drift work remains: preview documents now persist the shared `operator-overlay-layout` document metadata/state envelope plus shared `project` metadata for scene-family selection and document targets while `apps/overlay-preview/src/preview-document.ts` keeps preview-only extras and backward compatibility for earlier preview-local files; startup no longer seeds the working state from browser-local preset storage; preview-local file orchestration, dirty-state UI, recent-document reopen, and fallback download handling now live in `apps/overlay-preview/src/document-workspace.ts`; preview-side source-default snapshot plus document build/apply/reset plumbing now live in `apps/overlay-preview/src/preview-document-bridge.ts`; the Output Format panel now edits scene family plus add or delete document sizes against that shared schema; non-halo scene families now render through `apps/overlay-preview/src/scene-family-preview.ts`; decide later whether those preview-only extras belong in a broader shared document package and how non-halo scene families should gain dedicated controls or richer parity.
+	Follow-up anti-drift work remains: preview documents now persist the shared `operator-overlay-layout` document metadata/state envelope plus shared `project` metadata for scene-family selection and document targets while `apps/overlay-preview/src/preview-document.ts` keeps preview-only extras and backward compatibility for earlier preview-local files; startup no longer seeds the working state from browser-local preset storage; preview-local file orchestration, dirty-state UI, recent-document reopen, and fallback download handling now live in `apps/overlay-preview/src/document-workspace.ts`; preview-side source-default snapshot plus document build/apply/reset plumbing now live in `apps/overlay-preview/src/preview-document-bridge.ts`; the Output Format panel now edits scene family plus add or delete document sizes against that shared schema; non-halo scene families now render through `apps/overlay-preview/src/scene-family-preview.ts` with richer family-specific canvas passes; decide later whether those preview-only extras belong in a broader shared document package and how non-halo scene families should gain dedicated controls plus document-owned settings.
 	Longer-term document direction is now explicit: a document should grow beyond the current halo scene and own a swappable scene-family or background operator stack, one or more target output sizes, and exportable state while CSV stays secondary.
 - [x] Baseline guide showing at first baseline of text field, to aid alignment across columns.
 - [x] Text-box inset parity: text fields now clamp their first baseline to an ascent-aware minimum offset so the first line stays visibly inside the field bounds while remaining baseline-grid aligned.
@@ -251,7 +251,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	Recent anti-drift pass: startup no longer seeds the working state from browser-local preset storage, because documents are now the intended source of truth.
 	Recent anti-drift pass: preview-local document workspace state, recent-document rendering, file open or save orchestration, and fallback download handling now live in `apps/overlay-preview/src/document-workspace.ts` instead of `apps/overlay-preview/src/main.ts`.
 	Recent anti-drift pass: preview-side source-default snapshot plus document build/apply/reset logic now live in `apps/overlay-preview/src/preview-document-bridge.ts` instead of `apps/overlay-preview/src/main.ts`.
-	Remaining gap: preview-only extras still live in preview-local modules, and the current phyllotaxis or fuzzy-boids scene-family previews still rely on adapter defaults rather than dedicated parameter surfaces or reference-grade rendering paths.
+	Remaining gap: preview-only extras still live in preview-local modules, and phyllotaxis or fuzzy-boids still lack dedicated parameter surfaces and document-owned settings even though their adapter-side rendering is now materially richer than the initial flat point preview.
 	User direction on 2026-03-28: browser-local presets are the wrong long-term product shape; a first pass of filesystem-backed documents is now landed, and follow-up work should keep extending that path instead of deepening localStorage-first UX blindly.
 	Reference files: `index.js` (save_preset, delete_active_preset, export_current_preset, import_presets_from_file, apply_preset_by_id).
 
@@ -401,6 +401,68 @@ It reflects the current repo after the overlay-preview rebuild, reference-doc re
 - [x] Spokes.
 - [ ] Mask operators.
 
+## Preview Shell Audit — 2026-03-28
+
+### Problem
+
+`apps/overlay-preview/src/main.ts` is 4 187 lines with 200+ named functions. The operator and kernel architecture is holding — layout math, grid, text, interaction, field generation, and document-schema authority are in shared packages. But the preview composition root has accumulated adapter-side responsibilities that belong in separate modules.
+
+### Concentration points
+
+| Concern | Lines | Issue |
+|---------|-------|-------|
+| Form helpers (`createFormGroup`, `createSliderInput`, `createNumberInput`, etc.) | ~2 433–2 631 | Generic DOM builders with zero closure dependencies. Belong in `parameter-ui`. |
+| SVG overlay adapter (`renderSvgOverlay`, `createGuideMarkup`, `createSafeAreaMarkup`, `createTextMarkup`, `createLogoMarkup`) | ~1 718–1 880 | Pure adapter functions that answer "how do I draw this?" — per architecture.md L57 these belong in a dedicated adapter module, not the composition root. |
+| Inline section builders (content format, overlay, paragraph, grid, halo config) | ~2 669–3 588 | 9 hardcoded section registrations at L2 379. The registry primitive exists in `parameter-ui` but no operator package uses it. |
+| Authoring interaction (hit testing, pointer capture, inline editing, selection) | ~3 589–4 195 | One large local controller with tight but extractable closure coupling. |
+| Export + automation (export modal, PNG sequence, headless API) | ~4 200–4 905 | Bolted onto the same file; can be a separate controller. |
+
+### What is holding
+
+- Canonical layout rules are in `layout-engine`, `layout-grid`, `layout-text`.
+- Document persistence routed through `preview-document.ts`, `preview-document-bridge.ts`, `document-workspace.ts`.
+- Halo rendering in `halo-renderer.ts`, scene-family preview in `scene-family-preview.ts`.
+- Section registry primitive in `parameter-ui`.
+
+### Extraction order
+
+1. Form helpers → `parameter-ui` (zero risk, ~200 lines, no closure deps).
+2. SVG overlay → `svg-overlay-adapter.ts` (pure functions, ~160 lines).
+3. Section builders → individual panel modules; operators self-register through the existing `parameter-ui` registry.
+4. Authoring interaction → `authoring-controller.ts`.
+5. Export + automation → `export-controller.ts`.
+6. Leave `main.ts` as a thin composition root that wires state, controllers, and renderers.
+
+## Houdini-Like Parameter Pane — Architectural North Star
+
+The product direction is a Houdini-like operator application for branded documents. The current multi-accordion panel with all sections visible at once is an interim shape. The target UI model is:
+
+### Network view
+
+- The document's active operator graph is visible as a list or simple node graph (list first, graph later).
+- Each operator node shows its key, display name, and connection state.
+- Selecting an operator in the network view shows only that operator's parameters in the parameter pane.
+- Document-level concerns (output profiles, document metadata, presets) remain in a separate top-level section or header.
+
+### Parameter pane
+
+- When an operator is selected in the network view, the parameter pane shows only that operator's typed parameters.
+- The pane is built from the operator's manifest or schema, not from a hardcoded section builder in the preview shell.
+- Operators register their parameter surfaces through `parameter-ui`, not through preview-local factory functions.
+- The pane supports the same form primitives (number, slider, checkbox, select, text area, color) but driven by operator metadata.
+
+### Implications for current work
+
+- Every section builder currently inline in `main.ts` should become an operator-owned panel module instead.
+- The `parameter-ui` package should grow to support manifest-driven panel generation, not just the section registry primitive.
+- The config editor should switch from "render all accordion sections" to "render the selected operator's panel."
+- Overlay-level settings (content format, paragraph styles, grid, selected element) are parameters of `operator-overlay-layout`.
+- Halo config is parameters of `operator-halo-field`.
+- Scene-family preview settings are parameters of the active scene-family operator.
+- Playback, export, and document settings are shell-level concerns, not operator parameters.
+
+This does not need to land all at once. The extraction work above is the prerequisite: once section builders are out of `main.ts` and operators own their panels, the switch from "show all sections" to "show selected operator" is a composition-root change, not a rewrite.
+
 ## Discussion Items Not Yet Scheduled
 
 These matter, but they are not approved active work until we discuss placement, cost, and effect on parity sequencing.
@@ -413,8 +475,8 @@ These matter, but they are not approved active work until we discuss placement, 
 	Working assumption: keep the current `operator-spokes` coarse for parity, then later split toward a wave operator that can run in cartesian and polar coordinates, separate mask operators, and a polar field or radial layout operator for instanced shapes and text.
 - [ ] Move beyond a strict background or overlay abstraction toward a proper layer stack with blend modes.
 	Working assumption: do not widen the abstraction until parity is proven, but keep the future compositor layer in mind.
-- [ ] Operator-registered accordion panels for the config editor UI.
-	Working assumption: each operator package self-registers an accordion tab+panel instead of the preview app hard-coding per-section builders. This keeps the UI organized as the control surface grows. Fits naturally into Stage 3 (operator surfaces) and the non-negotiable rule that parameter UI reads operator manifests. Update 2026-03-28: the preview now uses a keyed, ordered section registry with section-level post-render hooks, and that registry primitive now lives in `packages/parameter-ui/src/index.ts` instead of `main.ts`, but operator packages still do not self-register their own panels yet.
+- [x] Operator-registered accordion panels for the config editor UI.
+	Working assumption: each operator package self-registers an accordion tab+panel instead of the preview app hard-coding per-section builders. This keeps the UI organized as the control surface grows. Fits naturally into Stage 3 (operator surfaces) and the non-negotiable rule that parameter UI reads operator manifests. Update 2026-03-28: the preview now uses a keyed, ordered section registry with section-level post-render hooks, and that registry primitive now lives in `packages/parameter-ui/src/index.ts` instead of `main.ts`, but operator packages still do not self-register their own panels yet. **Promoted to approved work as part of the Houdini-like parameter pane extraction — see section above.**
 - [x] Incremental control-surface swap from Vanilla to the sibling `portable-vertical-rhythm` package for the overlay-preview shell.
 	Working assumption: landed through the package's compatibility aliases first, keeps the sibling repo as the source of truth, and leaves any later `vr-*` class renames optional rather than blocking parity work.
 - [ ] Filesystem-backed document/project model instead of browser-local presets.

@@ -3227,7 +3227,7 @@ function buildHaloConfigSection(): HTMLElement {
 
     const helpText = document.createElement("p");
     helpText.className = "p-form-help-text u-no-margin--bottom";
-    helpText.textContent = "This scene family now affects the stage renderer. Dedicated controls are not surfaced yet, so the preview uses adapter defaults rather than the halo inspector.";
+    helpText.textContent = "This scene family now affects the stage renderer and composed-frame export path. Dedicated controls are still not surfaced yet, but the preview now uses a richer adapter-side render pass instead of the halo inspector.";
     body.append(helpText);
 
     if (previewState) {
