@@ -178,7 +178,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 1. **Output profiles (PARTIAL).**
 	Reference has 5 named profiles with per-profile center, scale, safe area, frame rate, grid, text, logo, motion, and mascot configs. Global shared paths (colors, title, logo asset, content format) propagate across profiles.
 	Profiles: `landscape_1280x720`, `instagram_1080x1350`, `story_1080x1920` (default), `screen_3840x2160`, `tablet_2560x1600`.
-	Current repo now has profile switching, per-profile overlay buckets, per-profile export settings in preview state and source-default snapshots, and seeded frame-rate defaults, but it still lacks full profile-owned motion, halo, mascot, and source-default scene trees matching the reference app.
+	Current repo now has profile switching, per-profile overlay buckets, per-profile export settings, and per-profile halo config persistence in preview state, source-default snapshots, and presets, but it still lacks full profile-owned motion, mascot, and complete source-default scene trees matching the reference app.
 	Reference files: `config-schema.js` (`OUTPUT_PROFILES`, `get_output_profile_metrics`), `default-config-source.js` (per-profile full configs), `index.js` (profile architecture init, profile tab UI).
 
 2. **Content format system (PARTIAL).**
@@ -207,7 +207,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	Reference files: `editor-constants.js` (`OVERLAY_TEXT_STYLE_TAB_SPECS`, `OVERLAY_LOGO_CONTROL_ROWS`, `OVERLAY_GRID_CONTROL_ROWS`), `index.js` (editor panel architecture).
 
 8. **Preset workflow (PARTIAL).**
-	Save, update, delete presets in localStorage. Import/export as JSON files with auto-versioned naming. Active preset dirty-state now exists and payloads are normalized against generated defaults instead of always writing full snapshots. Presets now also carry the preview's per-profile export settings map.
+	Save, update, delete presets in localStorage. Import/export as JSON files with auto-versioned naming. Active preset dirty-state now exists and payloads are normalized against generated defaults instead of always writing full snapshots. Presets now also carry the preview's per-profile export settings map and per-profile halo config map.
 	Reference files: `index.js` (save_preset, delete_active_preset, export_current_preset, import_presets_from_file, apply_preset_by_id).
 
 9. **Source-default writeback (PARTIAL).**

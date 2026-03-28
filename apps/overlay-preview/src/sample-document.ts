@@ -366,6 +366,7 @@ export interface Preset {
   contentFormatKey?: string;
   profileFormatBuckets?: ProfileFormatBuckets;
   exportSettingsByProfile?: Record<string, ExportSettings>;
+  haloConfigByProfile?: Record<string, unknown>;
 }
 
 export type ProfileFormatBuckets = Record<string, Record<string, OverlayLayoutOperatorParams>>;
@@ -378,6 +379,7 @@ export interface PersistedPreset {
   contentFormatKey?: string;
   profileFormatBuckets?: unknown;
   exportSettingsByProfile?: unknown;
+  haloConfigByProfile?: unknown;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -485,7 +487,8 @@ export function normalizePresetForPersistence(preset: Preset): PersistedPreset {
     outputProfileKey,
     contentFormatKey,
     profileFormatBuckets: persistedBuckets,
-    exportSettingsByProfile: cloneJson(preset.exportSettingsByProfile ?? {})
+    exportSettingsByProfile: cloneJson(preset.exportSettingsByProfile ?? {}),
+    haloConfigByProfile: cloneJson(preset.haloConfigByProfile ?? {})
   };
 }
 
@@ -550,7 +553,10 @@ export function denormalizePresetFromPersistence(rawPreset: unknown): Preset | n
     outputProfileKey,
     contentFormatKey,
     profileFormatBuckets: buckets,
-    exportSettingsByProfile
+    exportSettingsByProfile,
+    haloConfigByProfile: isRecord(rawPreset.haloConfigByProfile)
+      ? cloneJson(rawPreset.haloConfigByProfile)
+      : {}
   };
 }
 

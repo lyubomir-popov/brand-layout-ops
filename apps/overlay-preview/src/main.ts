@@ -118,6 +118,7 @@ interface PreviewState {
   exportSettings: ExportSettings;
   exportSettingsByProfile: Record<string, ExportSettings>;
   haloConfig: HaloFieldConfig;
+  haloConfigByProfile: Record<string, HaloFieldConfig>;
   sourceDefaults: SourceDefaultSnapshot;
   isPlaying: boolean;
   playbackTimeSec: number;
@@ -130,6 +131,7 @@ interface SourceDefaultSnapshot {
   exportSettings: ExportSettings;
   exportSettingsByProfile: Record<string, ExportSettings>;
   haloConfig: HaloFieldConfig;
+  haloConfigByProfile: Record<string, HaloFieldConfig>;
   guideMode: GuideMode;
 }
 
@@ -153,12 +155,18 @@ function cloneExportSettingsByProfile(
   return JSON.parse(JSON.stringify(exportSettingsByProfile));
 }
 
+function cloneHaloConfigByProfile(
+  haloConfigByProfile: Record<string, HaloFieldConfig>
+): Record<string, HaloFieldConfig> {
+  return JSON.parse(JSON.stringify(haloConfigByProfile));
+}
+
 function createDebugHaloFieldConfig(baseConfig: HaloFieldConfig = createDefaultHaloFieldConfig()): HaloFieldConfig {
   return { ...baseConfig };
 }
 
-function mergeHaloConfigWithDefaults(rawHaloConfig: unknown): HaloFieldConfig {
-  const defaults = createDebugHaloFieldConfig(createDefaultHaloFieldConfig());
+function mergeHaloConfigWithBaseConfig(baseConfig: HaloFieldConfig, rawHaloConfig: unknown): HaloFieldConfig {
+  const defaults = createDebugHaloFieldConfig(baseConfig);
   if (!isRecord(rawHaloConfig)) {
     return defaults;
   }
@@ -210,8 +218,21 @@ function mergeHaloConfigWithDefaults(rawHaloConfig: unknown): HaloFieldConfig {
   } as HaloFieldConfig;
 }
 
+function mergeHaloConfigWithDefaults(rawHaloConfig: unknown): HaloFieldConfig {
+  return mergeHaloConfigWithBaseConfig(createDefaultHaloFieldConfig(), rawHaloConfig);
+}
+
+function getHaloConfigForProfile(profileKey: string, rawHaloConfig?: unknown): HaloFieldConfig {
+  const config = mergeHaloConfigWithBaseConfig(createHaloFieldConfigForProfile(profileKey), rawHaloConfig);
+  const metrics = getOutputProfileMetrics(profileKey);
+  config.composition.center_x_px = metrics.centerXPx;
+  config.composition.center_y_px = metrics.centerYPx + (config.composition.center_offset_y_px ?? 0);
+  return config;
+}
+
 function createBuiltInSourceDefaultSnapshot(): SourceDefaultSnapshot {
   const exportSettings = createDefaultExportSettings(INITIAL_PROFILE_KEY);
+  const haloConfig = getHaloConfigForProfile(INITIAL_PROFILE_KEY);
   return {
     outputProfileKey: INITIAL_PROFILE_KEY,
     contentFormatKey: INITIAL_FORMAT_KEY,
@@ -224,7 +245,10 @@ function createBuiltInSourceDefaultSnapshot(): SourceDefaultSnapshot {
     exportSettingsByProfile: {
       [INITIAL_PROFILE_KEY]: exportSettings
     },
-    haloConfig: createDebugHaloFieldConfig(),
+    haloConfig,
+    haloConfigByProfile: {
+      [INITIAL_PROFILE_KEY]: haloConfig
+    },
     guideMode: "composition"
   };
 }
@@ -250,7 +274,10 @@ const state: PreviewState = {
   exportSettingsByProfile: {
     [_startProfileKey]: createDefaultExportSettings(_startProfileKey)
   },
-  haloConfig: createHaloFieldConfigForProfile(_startProfileKey),
+  haloConfig: getHaloConfigForProfile(_startProfileKey),
+  haloConfigByProfile: {
+    [_startProfileKey]: getHaloConfigForProfile(_startProfileKey)
+  },
   sourceDefaults: cloneSourceDefaultSnapshot(INITIAL_SOURCE_DEFAULTS),
   isPlaying: true,
   playbackTimeSec: 0
@@ -417,8 +444,20 @@ function getOrCreateExportSettingsForProfile(profileKey: string): ExportSettings
   return JSON.parse(JSON.stringify(state.exportSettingsByProfile[profileKey])) as ExportSettings;
 }
 
+function getOrCreateHaloConfigForProfile(profileKey: string): HaloFieldConfig {
+  if (!state.haloConfigByProfile[profileKey]) {
+    state.haloConfigByProfile[profileKey] = getHaloConfigForProfile(profileKey);
+  }
+
+  return JSON.parse(JSON.stringify(state.haloConfigByProfile[profileKey])) as HaloFieldConfig;
+}
+
 function persistActiveExportSettings(): void {
   state.exportSettingsByProfile[state.outputProfileKey] = JSON.parse(JSON.stringify(state.exportSettings)) as ExportSettings;
+}
+
+function persistActiveHaloConfig(): void {
+  state.haloConfigByProfile[state.outputProfileKey] = JSON.parse(JSON.stringify(state.haloConfig)) as HaloFieldConfig;
 }
 
 function updateExportSettings(updater: (settings: ExportSettings) => ExportSettings): void {
@@ -532,11 +571,7 @@ function getOrCreateProfileFormatParams(
 }
 
 function syncHaloConfigToProfile(profileKey: string) {
-  const cfg = createHaloFieldConfigForProfile(profileKey);
-  const metrics = getOutputProfileMetrics(profileKey);
-  cfg.composition.center_x_px = metrics.centerXPx;
-  cfg.composition.center_y_px = metrics.centerYPx + (cfg.composition.center_offset_y_px ?? 0);
-  state.haloConfig = cfg;
+  state.haloConfig = getOrCreateHaloConfigForProfile(profileKey);
 }
 
 function normalizeSelection() {
@@ -800,6 +835,7 @@ function switchOutputProfile(profileKey: string) {
 
   persistActiveProfileBuckets();
   persistActiveExportSettings();
+  persistActiveHaloConfig();
   state.outputProfileKey = profileKey;
   state.params = normalizeParamsTextFieldOffsets(
     cloneOverlayParams(getOrCreateProfileFormatParams(profileKey, state.contentFormatKey))
@@ -831,6 +867,7 @@ function switchContentFormat(formatKey: string) {
 function buildCurrentPresetPayload(overrides?: Partial<Pick<Preset, "id" | "name">>): Preset {
   persistActiveProfileBuckets();
   persistActiveExportSettings();
+  persistActiveHaloConfig();
   return {
     id: overrides?.id ?? createPresetId(),
     name: overrides?.name ?? getNextPresetName(state.presets),
@@ -838,7 +875,8 @@ function buildCurrentPresetPayload(overrides?: Partial<Pick<Preset, "id" | "name
     outputProfileKey: state.outputProfileKey,
     contentFormatKey: state.contentFormatKey,
     profileFormatBuckets: cloneProfileFormatBuckets(state.profileFormatBuckets),
-    exportSettingsByProfile: cloneExportSettingsByProfile(state.exportSettingsByProfile)
+    exportSettingsByProfile: cloneExportSettingsByProfile(state.exportSettingsByProfile),
+    haloConfigByProfile: cloneHaloConfigByProfile(state.haloConfigByProfile)
   };
 }
 
@@ -999,6 +1037,13 @@ function loadPreset(preset: Preset) {
     [state.outputProfileKey]: createDefaultExportSettings(state.outputProfileKey)
   });
   state.exportSettings = getOrCreateExportSettingsForProfile(state.outputProfileKey);
+  state.haloConfigByProfile = isRecord(preset.haloConfigByProfile)
+    ? Object.fromEntries(
+      Object.entries(preset.haloConfigByProfile).map(([profileKey, rawHaloConfig]) => [profileKey, getHaloConfigForProfile(profileKey, rawHaloConfig)])
+    )
+    : {
+      [state.outputProfileKey]: getHaloConfigForProfile(state.outputProfileKey)
+    };
   normalizeSelection();
   syncHaloConfigToProfile(state.outputProfileKey);
   saveActivePresetId(preset.id);
@@ -1065,7 +1110,15 @@ function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnaps
     : exportSettingsByProfile[outputProfileKey] ?? createDefaultExportSettings(outputProfileKey);
 
   exportSettingsByProfile[outputProfileKey] ??= JSON.parse(JSON.stringify(exportSettings)) as ExportSettings;
-  const haloConfig = mergeHaloConfigWithDefaults(rawSnapshot.haloConfig);
+  const haloConfigByProfile: Record<string, HaloFieldConfig> = {};
+  if (isRecord(rawSnapshot.haloConfigByProfile)) {
+    for (const [profileKey, rawHaloConfig] of Object.entries(rawSnapshot.haloConfigByProfile)) {
+      haloConfigByProfile[profileKey] = getHaloConfigForProfile(profileKey, rawHaloConfig);
+    }
+  }
+
+  const haloConfig = haloConfigByProfile[outputProfileKey] ?? getHaloConfigForProfile(outputProfileKey, rawSnapshot.haloConfig);
+  haloConfigByProfile[outputProfileKey] ??= JSON.parse(JSON.stringify(haloConfig)) as HaloFieldConfig;
   const guideMode = rawSnapshot.guideMode === "off" || rawSnapshot.guideMode === "baseline"
     ? rawSnapshot.guideMode
     : "composition";
@@ -1077,6 +1130,7 @@ function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnaps
     exportSettings,
     exportSettingsByProfile,
     haloConfig,
+    haloConfigByProfile,
     guideMode
   };
 }
@@ -1084,6 +1138,7 @@ function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnaps
 function createCurrentSourceDefaultSnapshot(): SourceDefaultSnapshot {
   persistActiveProfileBuckets();
   persistActiveExportSettings();
+  persistActiveHaloConfig();
   return {
     outputProfileKey: state.outputProfileKey,
     contentFormatKey: state.contentFormatKey,
@@ -1091,6 +1146,7 @@ function createCurrentSourceDefaultSnapshot(): SourceDefaultSnapshot {
     exportSettings: JSON.parse(JSON.stringify(state.exportSettings)) as ExportSettings,
     exportSettingsByProfile: cloneExportSettingsByProfile(state.exportSettingsByProfile),
     haloConfig: JSON.parse(JSON.stringify(state.haloConfig)) as HaloFieldConfig,
+    haloConfigByProfile: cloneHaloConfigByProfile(state.haloConfigByProfile),
     guideMode: state.guideMode
   };
 }
@@ -1107,7 +1163,10 @@ function applySourceDefaultSnapshot(snapshot: SourceDefaultSnapshot) {
   state.exportSettings = JSON.parse(JSON.stringify(
     state.exportSettingsByProfile[state.outputProfileKey] ?? snapshot.exportSettings
   )) as ExportSettings;
-  state.haloConfig = JSON.parse(JSON.stringify(snapshot.haloConfig)) as HaloFieldConfig;
+  state.haloConfigByProfile = cloneHaloConfigByProfile(snapshot.haloConfigByProfile);
+  state.haloConfig = JSON.parse(JSON.stringify(
+    state.haloConfigByProfile[state.outputProfileKey] ?? snapshot.haloConfig
+  )) as HaloFieldConfig;
   state.guideMode = snapshot.guideMode;
   state.overlayVisible = false;
   state.selected = { kind: "text", id: "main_heading" };
