@@ -514,6 +514,8 @@ The phyllotaxis scene family has no UI for controlling its parameters.
 
 New operator: scatter points inside an SVG shape, analogous to Houdini scatter SOP.
 
+Current constraint: the preview's operator selector is still driven by `documentProject.sceneFamilyKey`, so landing scatter cleanly in that selector requires either generalizing the selector beyond scene families or promoting scatter to a first-class document scene family.
+
 - [ ] Create `@brand-layout-ops/operator-scatter`.
 - [ ] Input: an SVG path or shape definition, recreated in the operator (not in Three.js).
 - [ ] Output: a `PointField` of scattered points inside the shape boundary.

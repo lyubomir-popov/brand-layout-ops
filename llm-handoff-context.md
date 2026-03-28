@@ -169,7 +169,7 @@ Items EQ-1 through EQ-9 are the user-directed priorities in dependency order:
 
 ### Immediate next steps
 
-**Next queue item: EQ-5 scatter operator** — create `@brand-layout-ops/operator-scatter`, define SVG-shape input plus `PointField` output, then add an operator-owned panel and selector registration.
+**Next queue item: EQ-5 scatter operator** — create `@brand-layout-ops/operator-scatter`, define SVG-shape input plus `PointField` output, then add an operator-owned panel and selector registration. Current constraint: the operator selector is still keyed to `documentProject.sceneFamilyKey`, so `scatter` needs either a broader selector model or promotion to a document scene family before it can surface cleanly there.
 
 **Bug: Halo scale zoom coverage** — `getGeometryScale` now falls back to `composition.scale` when no mascot box (commit `5b927dd`), so background spokes and echo shapes scale with the slider. Release labels already scaled. Verify visually that all elements (dots, spokes, shapes, labels, strokes) zoom uniformly; if any element still ignores scale, trace its geometry path.
 
