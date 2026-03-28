@@ -55,6 +55,7 @@ import {
 import { createHaloRenderer, type HaloRenderer } from "./halo-renderer.js";
 import {
   cloneOverlayParams,
+  cloneProfileContentFormatMap,
   cloneProfileFormatBuckets,
   createDefaultExportSettings,
   createDefaultOverlayParams,
@@ -72,6 +73,7 @@ import {
   saveOutputFormatKey,
   TEXT_STYLE_DISPLAY_LABELS,
   type ExportSettings,
+  type ProfileContentFormatMap,
   type PersistedPreset,
   type ProfileFormatBuckets,
   type Preset
@@ -117,6 +119,7 @@ interface PreviewState {
   outputProfileKey: string;
   contentFormatKey: string;
   profileFormatBuckets: ProfileFormatBuckets;
+  contentFormatKeyByProfile: ProfileContentFormatMap;
   presets: Preset[];
   activePresetId: string | null;
   exportSettings: ExportSettings;
@@ -132,6 +135,7 @@ interface SourceDefaultSnapshot {
   outputProfileKey: string;
   contentFormatKey: string;
   profileFormatBuckets: ProfileFormatBuckets;
+  contentFormatKeyByProfile: ProfileContentFormatMap;
   exportSettings: ExportSettings;
   exportSettingsByProfile: Record<string, ExportSettings>;
   haloConfig: HaloFieldConfig;
@@ -163,6 +167,30 @@ function cloneHaloConfigByProfile(
   haloConfigByProfile: Record<string, HaloFieldConfig>
 ): Record<string, HaloFieldConfig> {
   return JSON.parse(JSON.stringify(haloConfigByProfile));
+}
+
+function resolveContentFormatKeyForProfile(
+  profileKey: string,
+  contentFormatKeyByProfile: ProfileContentFormatMap,
+  profileFormatBuckets: ProfileFormatBuckets,
+  fallbackFormatKey: string = INITIAL_FORMAT_KEY
+): string {
+  const profileBucket = profileFormatBuckets[profileKey] ?? {};
+  const profileBucketKeys = Object.keys(profileBucket);
+  const candidates = [
+    contentFormatKeyByProfile[profileKey],
+    fallbackFormatKey,
+    ...profileBucketKeys,
+    OVERLAY_CONTENT_FORMAT_ORDER[0]
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.length > 0 && OVERLAY_CONTENT_FORMATS[candidate]) {
+      return candidate;
+    }
+  }
+
+  return OVERLAY_CONTENT_FORMAT_ORDER[0];
 }
 
 function createDebugHaloFieldConfig(baseConfig: HaloFieldConfig = createDefaultHaloFieldConfig()): HaloFieldConfig {
@@ -245,6 +273,9 @@ function createBuiltInSourceDefaultSnapshot(): SourceDefaultSnapshot {
         [INITIAL_FORMAT_KEY]: cloneOverlayParams(INITIAL_PARAMS)
       }
     },
+    contentFormatKeyByProfile: {
+      [INITIAL_PROFILE_KEY]: INITIAL_FORMAT_KEY
+    },
     exportSettings,
     exportSettingsByProfile: {
       [INITIAL_PROFILE_KEY]: exportSettings
@@ -271,6 +302,9 @@ const state: PreviewState = {
     [_startProfileKey]: {
       [_startFormatKey]: cloneOverlayParams(INITIAL_PARAMS)
     }
+  },
+  contentFormatKeyByProfile: {
+    [_startProfileKey]: _startFormatKey
   },
   presets: loadPresets(),
   activePresetId: loadActivePresetId(),
@@ -870,7 +904,15 @@ function switchOutputProfile(profileKey: string) {
   persistActiveProfileBuckets();
   persistActiveExportSettings();
   persistActiveHaloConfig();
+  state.contentFormatKeyByProfile[state.outputProfileKey] = state.contentFormatKey;
   state.outputProfileKey = profileKey;
+  state.contentFormatKey = resolveContentFormatKeyForProfile(
+    profileKey,
+    state.contentFormatKeyByProfile,
+    state.profileFormatBuckets,
+    state.contentFormatKey
+  );
+  state.contentFormatKeyByProfile[profileKey] = state.contentFormatKey;
   state.params = normalizeParamsTextFieldOffsets(
     cloneOverlayParams(getOrCreateProfileFormatParams(profileKey, state.contentFormatKey))
   );
@@ -893,6 +935,7 @@ function switchContentFormat(formatKey: string) {
 
   getProfileFormatBucket(state.outputProfileKey)[formatKey] = cloneOverlayParams(nextParams);
   state.contentFormatKey = formatKey;
+  state.contentFormatKeyByProfile[state.outputProfileKey] = formatKey;
   state.params = normalizeParamsTextFieldOffsets(cloneOverlayParams(nextParams));
   normalizeSelection();
   saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
@@ -909,6 +952,7 @@ function buildCurrentPresetPayload(overrides?: Partial<Pick<Preset, "id" | "name
     outputProfileKey: state.outputProfileKey,
     contentFormatKey: state.contentFormatKey,
     profileFormatBuckets: cloneProfileFormatBuckets(state.profileFormatBuckets),
+    contentFormatKeyByProfile: cloneProfileContentFormatMap(state.contentFormatKeyByProfile),
     exportSettingsByProfile: cloneExportSettingsByProfile(state.exportSettingsByProfile),
     haloConfigByProfile: cloneHaloConfigByProfile(state.haloConfigByProfile)
   };
@@ -1007,7 +1051,12 @@ function normalizeImportedPreset(
     id,
     name,
     config: cloneOverlayParams(preset.config),
-    profileFormatBuckets: cloneProfileFormatBuckets(preset.profileFormatBuckets ?? {})
+    profileFormatBuckets: cloneProfileFormatBuckets(preset.profileFormatBuckets ?? {}),
+    contentFormatKeyByProfile: cloneProfileContentFormatMap(preset.contentFormatKeyByProfile ?? {}),
+    exportSettingsByProfile: cloneExportSettingsByProfile(preset.exportSettingsByProfile ?? {}),
+    haloConfigByProfile: cloneHaloConfigByProfile(
+      isRecord(preset.haloConfigByProfile) ? (preset.haloConfigByProfile as Record<string, HaloFieldConfig>) : {}
+    )
   };
 
   if (preset.outputProfileKey) {
@@ -1054,14 +1103,23 @@ async function importPresetsFromFiles(files: FileList | null): Promise<void> {
 
 function loadPreset(preset: Preset) {
   state.outputProfileKey = preset.outputProfileKey ?? DEFAULT_OUTPUT_PROFILE_KEY;
-  state.contentFormatKey = preset.contentFormatKey ?? INITIAL_FORMAT_KEY;
   state.profileFormatBuckets = preset.profileFormatBuckets
     ? cloneProfileFormatBuckets(preset.profileFormatBuckets)
     : {
       [state.outputProfileKey]: {
-        [state.contentFormatKey]: cloneOverlayParams(preset.config)
+        [preset.contentFormatKey ?? INITIAL_FORMAT_KEY]: cloneOverlayParams(preset.config)
       }
     };
+  state.contentFormatKeyByProfile = cloneProfileContentFormatMap(preset.contentFormatKeyByProfile ?? {
+    [state.outputProfileKey]: preset.contentFormatKey ?? INITIAL_FORMAT_KEY
+  });
+  state.contentFormatKey = resolveContentFormatKeyForProfile(
+    state.outputProfileKey,
+    state.contentFormatKeyByProfile,
+    state.profileFormatBuckets,
+    preset.contentFormatKey ?? INITIAL_FORMAT_KEY
+  );
+  state.contentFormatKeyByProfile[state.outputProfileKey] = state.contentFormatKey;
   state.params = normalizeParamsTextFieldOffsets(cloneOverlayParams(
     getOrCreateProfileFormatParams(state.outputProfileKey, state.contentFormatKey)
   ));
@@ -1121,8 +1179,34 @@ function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnaps
     ? cloneProfileFormatBuckets(rawSnapshot.profileFormatBuckets as ProfileFormatBuckets)
     : cloneProfileFormatBuckets(INITIAL_SOURCE_DEFAULTS.profileFormatBuckets);
 
+  const contentFormatKeyByProfile: ProfileContentFormatMap = {};
+  if (isRecord(rawSnapshot.contentFormatKeyByProfile)) {
+    for (const [profileKey, rawFormatKey] of Object.entries(rawSnapshot.contentFormatKeyByProfile)) {
+      if (typeof rawFormatKey === "string") {
+        contentFormatKeyByProfile[profileKey] = rawFormatKey;
+      }
+    }
+  }
+
+  for (const profileKey of Object.keys(profileFormatBuckets)) {
+    contentFormatKeyByProfile[profileKey] = resolveContentFormatKeyForProfile(
+      profileKey,
+      contentFormatKeyByProfile,
+      profileFormatBuckets,
+      contentFormatKey
+    );
+  }
+
+  const activeContentFormatKey = resolveContentFormatKeyForProfile(
+    outputProfileKey,
+    contentFormatKeyByProfile,
+    profileFormatBuckets,
+    contentFormatKey
+  );
+  contentFormatKeyByProfile[outputProfileKey] = activeContentFormatKey;
+
   const activeProfileBucket = profileFormatBuckets[outputProfileKey] ??= {};
-  activeProfileBucket[contentFormatKey] ??= createDefaultOverlayParams(outputProfileKey, contentFormatKey);
+  activeProfileBucket[activeContentFormatKey] ??= createDefaultOverlayParams(outputProfileKey, activeContentFormatKey);
 
   const exportSettingsByProfile: Record<string, ExportSettings> = {};
   if (isRecord(rawSnapshot.exportSettingsByProfile)) {
@@ -1159,8 +1243,9 @@ function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnaps
 
   return {
     outputProfileKey,
-    contentFormatKey,
+    contentFormatKey: activeContentFormatKey,
     profileFormatBuckets,
+    contentFormatKeyByProfile,
     exportSettings,
     exportSettingsByProfile,
     haloConfig,
@@ -1173,10 +1258,12 @@ function createCurrentSourceDefaultSnapshot(): SourceDefaultSnapshot {
   persistActiveProfileBuckets();
   persistActiveExportSettings();
   persistActiveHaloConfig();
+  state.contentFormatKeyByProfile[state.outputProfileKey] = state.contentFormatKey;
   return {
     outputProfileKey: state.outputProfileKey,
     contentFormatKey: state.contentFormatKey,
     profileFormatBuckets: cloneProfileFormatBuckets(state.profileFormatBuckets),
+    contentFormatKeyByProfile: cloneProfileContentFormatMap(state.contentFormatKeyByProfile),
     exportSettings: JSON.parse(JSON.stringify(state.exportSettings)) as ExportSettings,
     exportSettingsByProfile: cloneExportSettingsByProfile(state.exportSettingsByProfile),
     haloConfig: JSON.parse(JSON.stringify(state.haloConfig)) as HaloFieldConfig,
@@ -1188,8 +1275,15 @@ function createCurrentSourceDefaultSnapshot(): SourceDefaultSnapshot {
 function applySourceDefaultSnapshot(snapshot: SourceDefaultSnapshot) {
   state.sourceDefaults = cloneSourceDefaultSnapshot(snapshot);
   state.outputProfileKey = snapshot.outputProfileKey;
-  state.contentFormatKey = snapshot.contentFormatKey;
   state.profileFormatBuckets = cloneProfileFormatBuckets(snapshot.profileFormatBuckets);
+  state.contentFormatKeyByProfile = cloneProfileContentFormatMap(snapshot.contentFormatKeyByProfile);
+  state.contentFormatKey = resolveContentFormatKeyForProfile(
+    state.outputProfileKey,
+    state.contentFormatKeyByProfile,
+    state.profileFormatBuckets,
+    snapshot.contentFormatKey
+  );
+  state.contentFormatKeyByProfile[state.outputProfileKey] = state.contentFormatKey;
   state.params = normalizeParamsTextFieldOffsets(cloneOverlayParams(
     getOrCreateProfileFormatParams(state.outputProfileKey, state.contentFormatKey)
   ));

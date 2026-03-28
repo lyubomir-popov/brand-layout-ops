@@ -315,7 +315,8 @@ It reflects the current repo after the overlay-preview rebuild, reference-doc re
 
 4. **Output profiles still do not own the whole scene.**
 	The reference app stores per-profile text, logo, layout, motion, mascot, safe area, and content-format buckets.
-	The current repo has profile metadata, but not profile-owned scene defaults and switching semantics.
+	The current repo now restores per-profile overlay buckets, export settings, halo config, and active content-format selection through live state, source-default snapshots, and presets.
+	Remaining gap: the scene still lacks profile-owned motion and mascot defaults at the same completeness as the reference architecture.
 
 5. **Logo semantics remain incomplete even though basic coupling exists.**
 	Missing reference behaviors:

@@ -365,11 +365,13 @@ export interface Preset {
   outputProfileKey?: string;
   contentFormatKey?: string;
   profileFormatBuckets?: ProfileFormatBuckets;
+  contentFormatKeyByProfile?: ProfileContentFormatMap;
   exportSettingsByProfile?: Record<string, ExportSettings>;
   haloConfigByProfile?: Record<string, unknown>;
 }
 
 export type ProfileFormatBuckets = Record<string, Record<string, OverlayLayoutOperatorParams>>;
+export type ProfileContentFormatMap = Record<string, string>;
 
 export interface PersistedPreset {
   id: string;
@@ -378,6 +380,7 @@ export interface PersistedPreset {
   outputProfileKey?: string;
   contentFormatKey?: string;
   profileFormatBuckets?: unknown;
+  contentFormatKeyByProfile?: unknown;
   exportSettingsByProfile?: unknown;
   haloConfigByProfile?: unknown;
 }
@@ -449,6 +452,10 @@ export function cloneProfileFormatBuckets(buckets: ProfileFormatBuckets): Profil
   return cloneJson(buckets);
 }
 
+export function cloneProfileContentFormatMap(contentFormatKeyByProfile: ProfileContentFormatMap): ProfileContentFormatMap {
+  return cloneJson(contentFormatKeyByProfile);
+}
+
 function normalizeOverlayParams(
   params: OverlayLayoutOperatorParams,
   profileKey: string,
@@ -487,6 +494,7 @@ export function normalizePresetForPersistence(preset: Preset): PersistedPreset {
     outputProfileKey,
     contentFormatKey,
     profileFormatBuckets: persistedBuckets,
+    contentFormatKeyByProfile: cloneJson(preset.contentFormatKeyByProfile ?? {}),
     exportSettingsByProfile: cloneJson(preset.exportSettingsByProfile ?? {}),
     haloConfigByProfile: cloneJson(preset.haloConfigByProfile ?? {})
   };
@@ -534,6 +542,16 @@ export function denormalizePresetFromPersistence(rawPreset: unknown): Preset | n
     buckets[outputProfileKey][contentFormatKey] = cloneOverlayParams(config);
   }
 
+  const contentFormatKeyByProfile: ProfileContentFormatMap = {};
+  if (isRecord(rawPreset.contentFormatKeyByProfile)) {
+    for (const [profileKey, rawFormatKey] of Object.entries(rawPreset.contentFormatKeyByProfile)) {
+      if (typeof rawFormatKey === "string") {
+        contentFormatKeyByProfile[profileKey] = rawFormatKey;
+      }
+    }
+  }
+  contentFormatKeyByProfile[outputProfileKey] ??= contentFormatKey;
+
   const exportSettingsByProfile: Record<string, ExportSettings> = {};
   if (isRecord(rawPreset.exportSettingsByProfile)) {
     for (const [profileKey, rawExportSettings] of Object.entries(rawPreset.exportSettingsByProfile)) {
@@ -553,6 +571,7 @@ export function denormalizePresetFromPersistence(rawPreset: unknown): Preset | n
     outputProfileKey,
     contentFormatKey,
     profileFormatBuckets: buckets,
+    contentFormatKeyByProfile,
     exportSettingsByProfile,
     haloConfigByProfile: isRecord(rawPreset.haloConfigByProfile)
       ? cloneJson(rawPreset.haloConfigByProfile)

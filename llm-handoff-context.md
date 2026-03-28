@@ -55,6 +55,7 @@ All scoped under `@brand-layout-ops/`.
 - Selected text controls now expose direct style assignment plus font size, line height, and weight editing for the active style
 - Export settings now persist per output profile inside preview state, source-default snapshots, and preset payloads instead of resetting on every profile switch
 - Halo config now persists per output profile inside preview state, source-default snapshots, and preset payloads instead of regenerating from defaults on every profile switch
+- Active content formats now persist per output profile inside preview state, source-default snapshots, and preset payloads, so profile switches restore the intended format bucket instead of reusing one global selection
 - CSV authoring UI now shows row status, alias-based field mapping, and per-field staged-versus-applied values for the active format
 - `operator-ubuntu-summit-animation` now computes scene phase, runtime timing, loop timing, mascot-box metadata, reveal geometry, screensaver pulse counts, and transient spoke-transition state, and the preview renderer plus automation state now consume that descriptor path
 - Linked title-to-logo sizing now normalizes through shared preview-state params, so profile switches and loaded snapshots keep the A Head/logo lock intact
