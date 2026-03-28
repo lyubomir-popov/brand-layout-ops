@@ -35,6 +35,10 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
 
   const { root, body } = buildAccordionSectionEl("Halo Field");
   const hc = state.haloConfig;
+  const updateHaloConfig = (updater: (config: typeof state.haloConfig) => typeof state.haloConfig) => {
+    state.haloConfig = updater(state.haloConfig);
+    void ctx.renderStage();
+  };
 
   const compositionFields = document.createElement("div");
   compositionFields.className = "grid-row";
@@ -290,6 +294,244 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   )));
 
   body.append(screensaverDetails);
+
+  const motionToggleFields = document.createElement("div");
+  motionToggleFields.className = "grid-row";
+
+  motionToggleFields.append(wrapCol(1, createCheckboxFormGroup(
+    "Mascot Fade",
+    hc.mascot_fade.enabled,
+    (enabled) => {
+      updateHaloConfig((config) => ({
+        ...config,
+        mascot_fade: { ...config.mascot_fade, enabled }
+      }));
+    }
+  )));
+
+  motionToggleFields.append(wrapCol(1, createCheckboxFormGroup(
+    "Head Turn",
+    hc.head_turn.enabled,
+    (enabled) => {
+      updateHaloConfig((config) => ({
+        ...config,
+        head_turn: { ...config.head_turn, enabled }
+      }));
+    }
+  )));
+
+  motionToggleFields.append(wrapCol(1, createCheckboxFormGroup(
+    "Closing Blink",
+    hc.blink.enabled,
+    (enabled) => {
+      updateHaloConfig((config) => ({
+        ...config,
+        blink: { ...config.blink, enabled }
+      }));
+    }
+  )));
+
+  motionToggleFields.append(wrapCol(1, createCheckboxFormGroup(
+    "Finale Sweep",
+    hc.finale?.enabled ?? true,
+    (enabled) => {
+      updateHaloConfig((config) => ({
+        ...config,
+        finale: { ...config.finale!, enabled }
+      }));
+    }
+  )));
+
+  body.append(motionToggleFields);
+
+  const motionTimingFields = document.createElement("div");
+  motionTimingFields.className = "grid-row";
+
+  motionTimingFields.append(wrapCol(1, createFormGroup("Fade Duration",
+    createSliderInput(hc.mascot_fade.duration_sec, { min: 0, max: 3, step: 0.01 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        mascot_fade: { ...config.mascot_fade, duration_sec: v }
+      }));
+    })
+  )));
+
+  motionTimingFields.append(wrapCol(1, createFormGroup("Head Turn Duration",
+    createSliderInput(hc.head_turn.duration_sec, { min: 0, max: 1, step: 0.01 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        head_turn: { ...config.head_turn, duration_sec: v }
+      }));
+    })
+  )));
+
+  motionTimingFields.append(wrapCol(1, createFormGroup("Dot Overlap",
+    createSliderInput(hc.head_turn.dot_overlap_sec, { min: 0, max: 1, step: 0.01 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        head_turn: { ...config.head_turn, dot_overlap_sec: v }
+      }));
+    })
+  )));
+
+  motionTimingFields.append(wrapCol(1, createFormGroup("Blink Delay",
+    createSliderInput(hc.blink.start_delay_sec, { min: 0, max: 1, step: 0.01 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        blink: { ...config.blink, start_delay_sec: v }
+      }));
+    })
+  )));
+
+  body.append(motionTimingFields);
+
+  const finaleMotionFields = document.createElement("div");
+  finaleMotionFields.className = "grid-row";
+
+  finaleMotionFields.append(wrapCol(1, createFormGroup("Finale Delay",
+    createSliderInput(hc.finale?.delay_after_dots_sec ?? 0, { min: 0, max: 4, step: 0.01 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        finale: { ...config.finale!, delay_after_dots_sec: v }
+      }));
+    })
+  )));
+
+  finaleMotionFields.append(wrapCol(1, createFormGroup("Finale Duration",
+    createSliderInput(hc.finale?.duration_sec ?? 0.75, { min: 0, max: 6, step: 0.01 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        finale: { ...config.finale!, duration_sec: v }
+      }));
+    })
+  )));
+
+  finaleMotionFields.append(wrapCol(1, createFormGroup("Blink Duration",
+    createSliderInput(hc.blink.duration_sec, { min: 0, max: 1, step: 0.01 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        blink: { ...config.blink, duration_sec: v }
+      }));
+    })
+  )));
+
+  finaleMotionFields.append(wrapCol(1, createFormGroup("Nose Bob",
+    createSliderInput(hc.sneeze.nose_bob_up_px, { min: 0, max: 20, step: 0.1 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        sneeze: { ...config.sneeze, nose_bob_up_px: v }
+      }));
+    })
+  )));
+
+  body.append(finaleMotionFields);
+
+  const headTurnFields = document.createElement("div");
+  headTurnFields.className = "grid-row";
+
+  headTurnFields.append(wrapCol(1, createFormGroup("Peak Angle",
+    createSliderInput(hc.head_turn.peak_angle_deg, { min: -90, max: 90, step: 0.1 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        head_turn: { ...config.head_turn, peak_angle_deg: v }
+      }));
+    })
+  )));
+
+  headTurnFields.append(wrapCol(1, createFormGroup("Reverse Angle",
+    createSliderInput(hc.head_turn.reverse_angle_deg, { min: -90, max: 90, step: 0.1 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        head_turn: { ...config.head_turn, reverse_angle_deg: v }
+      }));
+    })
+  )));
+
+  headTurnFields.append(wrapCol(1, createFormGroup("Overshoot Angle",
+    createSliderInput(hc.head_turn.overshoot_angle_deg, { min: -90, max: 90, step: 0.1 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        head_turn: { ...config.head_turn, overshoot_angle_deg: v }
+      }));
+    })
+  )));
+
+  headTurnFields.append(wrapCol(1, createCheckboxFormGroup(
+    "Loop Sneeze",
+    hc.sneeze.enabled,
+    (enabled) => {
+      updateHaloConfig((config) => ({
+        ...config,
+        sneeze: { ...config.sneeze, enabled }
+      }));
+    }
+  )));
+
+  body.append(headTurnFields);
+
+  const motionCurveFields = document.createElement("div");
+  motionCurveFields.className = "grid-row";
+
+  motionCurveFields.append(wrapCol(1, createFormGroup("Peak Timing",
+    createSliderInput(hc.head_turn.peak_frac, { min: 0, max: 1, step: 0.01 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        head_turn: { ...config.head_turn, peak_frac: v }
+      }));
+    })
+  )));
+
+  motionCurveFields.append(wrapCol(1, createFormGroup("Reverse Timing",
+    createSliderInput(hc.head_turn.reverse_frac, { min: 0, max: 1, step: 0.01 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        head_turn: { ...config.head_turn, reverse_frac: v }
+      }));
+    })
+  )));
+
+  motionCurveFields.append(wrapCol(1, createFormGroup("Overshoot Timing",
+    createSliderInput(hc.head_turn.overshoot_frac, { min: 0, max: 1, step: 0.01 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        head_turn: { ...config.head_turn, overshoot_frac: v }
+      }));
+    })
+  )));
+
+  motionCurveFields.append(wrapCol(1, createFormGroup("Closed Eye Scale",
+    createSliderInput(hc.blink.eye_scale_y_closed, { min: 0, max: 1, step: 0.01 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        blink: { ...config.blink, eye_scale_y_closed: v }
+      }));
+    })
+  )));
+
+  body.append(motionCurveFields);
+
+  const blinkCurveFields = document.createElement("div");
+  blinkCurveFields.className = "grid-row";
+
+  blinkCurveFields.append(wrapCol(1, createFormGroup("Blink Close",
+    createSliderInput(hc.blink.close_frac, { min: 0, max: 1, step: 0.01 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        blink: { ...config.blink, close_frac: v }
+      }));
+    })
+  )));
+
+  blinkCurveFields.append(wrapCol(1, createFormGroup("Hold Closed",
+    createSliderInput(hc.blink.hold_closed_frac, { min: 0, max: 1, step: 0.01 }, v => {
+      updateHaloConfig((config) => ({
+        ...config,
+        blink: { ...config.blink, hold_closed_frac: v }
+      }));
+    })
+  )));
+
+  body.append(blinkCurveFields);
 
   const toggleFields = document.createElement("div");
   toggleFields.className = "grid-row";

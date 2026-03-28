@@ -229,6 +229,10 @@ function mergeHaloConfigWithBaseConfig(baseConfig: HaloFieldConfig, rawHaloConfi
     return defaults;
   }
 
+  const mascotFade = isRecord(rawHaloConfig.mascot_fade) ? rawHaloConfig.mascot_fade : {};
+  const headTurn = isRecord(rawHaloConfig.head_turn) ? rawHaloConfig.head_turn : {};
+  const blink = isRecord(rawHaloConfig.blink) ? rawHaloConfig.blink : {};
+  const sneeze = isRecord(rawHaloConfig.sneeze) ? rawHaloConfig.sneeze : {};
   const composition = isRecord(rawHaloConfig.composition) ? rawHaloConfig.composition : {};
   const generatorWrangle = isRecord(rawHaloConfig.generator_wrangle) ? rawHaloConfig.generator_wrangle : {};
   const transitionWrangle = isRecord(rawHaloConfig.transition_wrangle) ? rawHaloConfig.transition_wrangle : {};
@@ -236,11 +240,28 @@ function mergeHaloConfigWithBaseConfig(baseConfig: HaloFieldConfig, rawHaloConfi
   const spokeLines = isRecord(rawHaloConfig.spoke_lines) ? rawHaloConfig.spoke_lines : {};
   const spokeText = isRecord(rawHaloConfig.spoke_text) ? rawHaloConfig.spoke_text : {};
   const screensaver = isRecord(rawHaloConfig.screensaver) ? rawHaloConfig.screensaver : {};
+  const finale = isRecord(rawHaloConfig.finale) ? rawHaloConfig.finale : {};
   const vignette = isRecord(rawHaloConfig.vignette) ? rawHaloConfig.vignette : {};
 
   return {
     ...defaults,
     ...rawHaloConfig,
+    mascot_fade: {
+      ...defaults.mascot_fade,
+      ...mascotFade
+    },
+    head_turn: {
+      ...defaults.head_turn,
+      ...headTurn
+    },
+    blink: {
+      ...defaults.blink,
+      ...blink
+    },
+    sneeze: {
+      ...defaults.sneeze,
+      ...sneeze
+    },
     composition: {
       ...defaults.composition,
       ...composition
@@ -268,6 +289,10 @@ function mergeHaloConfigWithBaseConfig(baseConfig: HaloFieldConfig, rawHaloConfi
     screensaver: {
       ...defaults.screensaver!,
       ...screensaver
+    },
+    finale: {
+      ...defaults.finale!,
+      ...finale
     },
     vignette: {
       ...defaults.vignette!,

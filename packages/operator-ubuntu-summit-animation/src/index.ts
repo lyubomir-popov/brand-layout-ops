@@ -37,38 +37,38 @@ export interface UbuntuSummitAnimationRevealState {
 
 interface UbuntuSummitMascotFadeConfig {
   enabled: boolean;
-  durationSec: number;
+  duration_sec: number;
 }
 
 interface UbuntuSummitHeadTurnConfig {
   enabled: boolean;
-  durationSec: number;
-  peakAngleDeg: number;
-  reverseAngleDeg: number;
-  overshootAngleDeg: number;
-  peakFrac: number;
-  reverseFrac: number;
-  dotOverlapSec: number;
-  overshootFrac: number;
+  duration_sec: number;
+  peak_angle_deg: number;
+  reverse_angle_deg: number;
+  overshoot_angle_deg: number;
+  peak_frac: number;
+  reverse_frac: number;
+  dot_overlap_sec: number;
+  overshoot_frac: number;
 }
 
 interface UbuntuSummitBlinkConfig {
   enabled: boolean;
-  startDelaySec: number;
-  durationSec: number;
-  closeFrac: number;
-  holdClosedFrac: number;
-  eyeScaleYClosed: number;
+  start_delay_sec: number;
+  duration_sec: number;
+  close_frac: number;
+  hold_closed_frac: number;
+  eye_scale_y_closed: number;
 }
 
 interface UbuntuSummitSneezeConfig {
   enabled: boolean;
-  noseBobUpPx: number;
+  nose_bob_up_px: number;
 }
 
 interface UbuntuSummitMascotMotionConfig {
-  mascotFade: UbuntuSummitMascotFadeConfig;
-  headTurn: UbuntuSummitHeadTurnConfig;
+  mascot_fade: UbuntuSummitMascotFadeConfig;
+  head_turn: UbuntuSummitHeadTurnConfig;
   blink: UbuntuSummitBlinkConfig;
   sneeze: UbuntuSummitSneezeConfig;
 }
@@ -140,34 +140,55 @@ function toNumber(value: unknown, fallback: number): number {
 }
 
 const DEFAULT_MASCOT_MOTION_CONFIG: UbuntuSummitMascotMotionConfig = {
-  mascotFade: {
+  mascot_fade: {
     enabled: false,
-    durationSec: 3
+    duration_sec: 3
   },
-  headTurn: {
+  head_turn: {
     enabled: true,
-    durationSec: 0.333,
-    peakAngleDeg: -30,
-    reverseAngleDeg: 30,
-    overshootAngleDeg: -3,
-    peakFrac: 0.25,
-    reverseFrac: 0.56,
-    dotOverlapSec: 1,
-    overshootFrac: 0.75
+    duration_sec: 0.333,
+    peak_angle_deg: -30,
+    reverse_angle_deg: 30,
+    overshoot_angle_deg: -3,
+    peak_frac: 0.25,
+    reverse_frac: 0.56,
+    dot_overlap_sec: 1,
+    overshoot_frac: 0.75
   },
   blink: {
     enabled: true,
-    startDelaySec: 0.04,
-    durationSec: 0.12,
-    closeFrac: 0.42,
-    holdClosedFrac: 0.12,
-    eyeScaleYClosed: 0.08
+    start_delay_sec: 0.04,
+    duration_sec: 0.12,
+    close_frac: 0.42,
+    hold_closed_frac: 0.12,
+    eye_scale_y_closed: 0.08
   },
   sneeze: {
     enabled: true,
-    noseBobUpPx: 1.5
+    nose_bob_up_px: 1.5
   }
 };
+
+function resolveMotionConfig(config: HaloFieldConfig): UbuntuSummitMascotMotionConfig {
+  return {
+    mascot_fade: {
+      ...DEFAULT_MASCOT_MOTION_CONFIG.mascot_fade,
+      ...config.mascot_fade
+    },
+    head_turn: {
+      ...DEFAULT_MASCOT_MOTION_CONFIG.head_turn,
+      ...config.head_turn
+    },
+    blink: {
+      ...DEFAULT_MASCOT_MOTION_CONFIG.blink,
+      ...config.blink
+    },
+    sneeze: {
+      ...DEFAULT_MASCOT_MOTION_CONFIG.sneeze,
+      ...config.sneeze
+    }
+  };
+}
 
 function buildUbuntuSummitMotionTiming(
   config: HaloFieldConfig,
@@ -176,46 +197,27 @@ function buildUbuntuSummitMotionTiming(
   runtimeTiming: RuntimeTiming;
   motionTiming: UbuntuSummitAnimationMotionTiming;
 } {
-  const transition = config.transition_wrangle;
-  const generator = config.generator_wrangle;
-  const mascotFadeDurationSec = motionConfig.mascotFade.enabled
-    ? Math.max(0, motionConfig.mascotFade.durationSec)
+  const runtimeTiming = buildRuntimeTiming(config);
+  const mascotFadeDurationSec = motionConfig.mascot_fade.enabled
+    ? Math.max(0, motionConfig.mascot_fade.duration_sec)
     : 0;
-  const headTurnDurationSec = motionConfig.headTurn.enabled
-    ? Math.max(0, motionConfig.headTurn.durationSec)
+  const headTurnDurationSec = motionConfig.head_turn.enabled
+    ? Math.max(0, motionConfig.head_turn.duration_sec)
     : 0;
-  const headTurnOverlapSec = motionConfig.headTurn.enabled
-    ? clamp(motionConfig.headTurn.dotOverlapSec, 0, headTurnDurationSec)
+  const headTurnOverlapSec = motionConfig.head_turn.enabled
+    ? clamp(motionConfig.head_turn.dot_overlap_sec, 0, headTurnDurationSec)
     : 0;
-  const startDelaySec = Math.max(
-    mascotFadeDurationSec,
-    Math.max(0, headTurnDurationSec - headTurnOverlapSec)
-  );
-  const durationSec = Math.max(0.001, transition.duration_sec);
-  const dotEndSec = startDelaySec + durationSec;
   const finaleEnabled = config.finale?.enabled ?? false;
-  const finaleDelaySec = Math.max(0, config.finale?.delay_after_dots_sec ?? 0);
-  const finaleStartSec = dotEndSec + finaleDelaySec;
-  const finaleEndSec = finaleEnabled
-    ? finaleStartSec + Math.max(0.001, config.finale?.duration_sec ?? 1)
-    : finaleStartSec;
-  const blinkAnchorSec = finaleEnabled ? finaleEndSec : dotEndSec;
-  const blinkStartSec = blinkAnchorSec + Math.max(0, motionConfig.blink.startDelaySec);
+  const blinkAnchorSec = finaleEnabled ? runtimeTiming.finale_end_sec : runtimeTiming.dot_end_sec;
+  const blinkStartSec = blinkAnchorSec + Math.max(0, motionConfig.blink.start_delay_sec);
   const blinkEndSec = motionConfig.blink.enabled
-    ? blinkStartSec + Math.max(0.0001, motionConfig.blink.durationSec)
+    ? blinkStartSec + Math.max(0.0001, motionConfig.blink.duration_sec)
     : blinkAnchorSec;
-  const rotationRad = radians(config.composition.global_rotation_deg || 0);
-  const spawnAngleRad =
-    radians((generator.anim_start_angle_deg ?? 0) + transition.spawn_angle_offset_deg) + rotationRad;
 
   return {
     runtimeTiming: {
-      start_delay_sec: startDelaySec,
-      dot_end_sec: dotEndSec,
-      finale_start_sec: finaleStartSec,
-      finale_end_sec: finaleEndSec,
-      playback_end_sec: Math.max(finaleEndSec, blinkEndSec),
-      spawn_angle_rad: spawnAngleRad
+      ...runtimeTiming,
+      playback_end_sec: Math.max(runtimeTiming.finale_end_sec, blinkEndSec)
     },
     motionTiming: {
       mascotFadeDurationSec,
@@ -232,53 +234,53 @@ function computeMascotFadeAmount(
   playbackTimeSec: number,
   motionConfig: UbuntuSummitMascotMotionConfig
 ): number {
-  if (!motionConfig.mascotFade.enabled) {
+  if (!motionConfig.mascot_fade.enabled) {
     return 1;
   }
 
-  return smoothstep(0, Math.max(0.0001, motionConfig.mascotFade.durationSec), playbackTimeSec);
+  return smoothstep(0, Math.max(0.0001, motionConfig.mascot_fade.duration_sec), playbackTimeSec);
 }
 
 function computeHeadTurnDeg(
   localTimeSec: number,
   motionConfig: UbuntuSummitMascotMotionConfig
 ): number {
-  if (!motionConfig.headTurn.enabled) {
+  if (!motionConfig.head_turn.enabled) {
     return 0;
   }
 
-  const durationSec = Math.max(0.0001, motionConfig.headTurn.durationSec);
+  const durationSec = Math.max(0.0001, motionConfig.head_turn.duration_sec);
   if (localTimeSec <= 0 || localTimeSec >= durationSec) {
     return 0;
   }
 
   const turnU = clamp(localTimeSec / durationSec, 0, 1);
-  const peakFrac = clamp(motionConfig.headTurn.peakFrac, 0.05, 0.45);
-  const reverseFrac = clamp(motionConfig.headTurn.reverseFrac, peakFrac + 0.05, 0.85);
-  const overshootFrac = clamp(motionConfig.headTurn.overshootFrac, reverseFrac + 0.05, 0.98);
+  const peakFrac = clamp(motionConfig.head_turn.peak_frac, 0.05, 0.45);
+  const reverseFrac = clamp(motionConfig.head_turn.reverse_frac, peakFrac + 0.05, 0.85);
+  const overshootFrac = clamp(motionConfig.head_turn.overshoot_frac, reverseFrac + 0.05, 0.98);
 
   if (turnU < peakFrac) {
-    return lerp(0, motionConfig.headTurn.peakAngleDeg, smoothstep(0, peakFrac, turnU));
+    return lerp(0, motionConfig.head_turn.peak_angle_deg, smoothstep(0, peakFrac, turnU));
   }
 
   if (turnU < reverseFrac) {
     return lerp(
-      motionConfig.headTurn.peakAngleDeg,
-      motionConfig.headTurn.reverseAngleDeg,
+      motionConfig.head_turn.peak_angle_deg,
+      motionConfig.head_turn.reverse_angle_deg,
       smoothstep(peakFrac, reverseFrac, turnU)
     );
   }
 
   if (turnU < overshootFrac) {
     return lerp(
-      motionConfig.headTurn.reverseAngleDeg,
-      motionConfig.headTurn.overshootAngleDeg,
+      motionConfig.head_turn.reverse_angle_deg,
+      motionConfig.head_turn.overshoot_angle_deg,
       smoothstep(reverseFrac, overshootFrac, turnU)
     );
   }
 
   return lerp(
-    motionConfig.headTurn.overshootAngleDeg,
+    motionConfig.head_turn.overshoot_angle_deg,
     0,
     smoothstep(overshootFrac, 1, turnU)
   );
@@ -288,9 +290,9 @@ function computeBlinkCurve(
   blinkU: number,
   motionConfig: UbuntuSummitMascotMotionConfig
 ): number {
-  const closeFrac = clamp(motionConfig.blink.closeFrac, 0.05, 0.9);
+  const closeFrac = clamp(motionConfig.blink.close_frac, 0.05, 0.9);
   const holdEndFrac = clamp(
-    closeFrac + motionConfig.blink.holdClosedFrac,
+    closeFrac + motionConfig.blink.hold_closed_frac,
     closeFrac,
     0.98
   );
@@ -320,7 +322,7 @@ function computeClosingBlinkAmount(
   }
 
   const blinkU = clamp(
-    (playbackTimeSec - motionTiming.blinkStartSec) / Math.max(0.0001, motionConfig.blink.durationSec),
+    (playbackTimeSec - motionTiming.blinkStartSec) / Math.max(0.0001, motionConfig.blink.duration_sec),
     0,
     1
   );
@@ -348,7 +350,7 @@ function computeLoopBlinkAmount(
     return 0;
   }
 
-  const sneezeDurationSec = Math.max(0.0001, motionConfig.blink.durationSec);
+  const sneezeDurationSec = Math.max(0.0001, motionConfig.blink.duration_sec);
   const loopTimeSec = playbackTimeSec - runtimeTiming.playback_end_sec;
   const nearestEventIndex = Math.round(loopTimeSec / eventSpacingSec);
   const nearestEventTimeSec = nearestEventIndex * eventSpacingSec;
@@ -366,11 +368,11 @@ function computeHeadTurnEyeSquintAmount(
   playbackTimeSec: number,
   motionConfig: UbuntuSummitMascotMotionConfig
 ): number {
-  if (!motionConfig.headTurn.enabled) {
+  if (!motionConfig.head_turn.enabled) {
     return 0;
   }
 
-  const durationSec = Math.max(0.0001, motionConfig.headTurn.durationSec);
+  const durationSec = Math.max(0.0001, motionConfig.head_turn.duration_sec);
   if (playbackTimeSec <= 0 || playbackTimeSec >= durationSec) {
     return 0;
   }
@@ -398,9 +400,9 @@ function buildMascotMotionState(
   const sneezeU = forceMascotFinal ? loopBlinkU : Math.max(closingBlinkU, loopBlinkU);
   const headTurnEyeSquintU = forceMascotFinal ? 0 : computeHeadTurnEyeSquintAmount(playbackTimeSec, motionConfig);
   const eyeClosureU = Math.max(sneezeU, headTurnEyeSquintU);
-  const eyeScaleY = lerp(1, clamp(motionConfig.blink.eyeScaleYClosed, 0.02, 1), eyeClosureU);
+  const eyeScaleY = lerp(1, clamp(motionConfig.blink.eye_scale_y_closed, 0.02, 1), eyeClosureU);
   const noseBobPx = motionConfig.sneeze.enabled
-    ? motionConfig.sneeze.noseBobUpPx * eyeClosureU
+    ? motionConfig.sneeze.nose_bob_up_px * eyeClosureU
     : 0;
 
   return {
@@ -599,7 +601,7 @@ export function buildUbuntuSummitAnimationSceneDescriptor(
   const playbackTimeSec = Math.max(0, toNumber(params.playbackTimeSec, 0));
   const frameWidthPx = Math.max(0, toNumber(params.frameWidthPx, 0));
   const frameHeightPx = Math.max(0, toNumber(params.frameHeightPx, 0));
-  const motionConfig = DEFAULT_MASCOT_MOTION_CONFIG;
+  const motionConfig = resolveMotionConfig(params.haloConfig);
   const { runtimeTiming, motionTiming } = buildUbuntuSummitMotionTiming(params.haloConfig, motionConfig);
   const phase = getUbuntuSummitAnimationPhase(
     playbackTimeSec,

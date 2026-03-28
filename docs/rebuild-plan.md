@@ -151,6 +151,7 @@ Decision so far:
 - parity signoff basis for the current motion background: the preview now reproduces the main coarse visual motifs from the reference app at the adapter level: central aura, dual phase lobes, echo rings, orbit structure, and phase-biased spoke density, without widening the kernel too early
 - updated 2026-03-27: the next parity pass should port the entire Ubuntu Summit animation wholesale into one coarse scene-family operator before attempting finer decomposition. Reuse can be evaluated after parity.
 - clarified 2026-03-28: the long-term target is a Houdini-like operator app with rigorous document layout plus backend-driven exports, where halo, boids, phyllotaxis, and later scene families can be swapped under the same document and template model.
+- updated 2026-03-28: mascot fade, head turn, blink, sneeze, and finale timing now read from shared `HaloFieldConfig` state and are exposed in the Halo Field panel instead of being hardcoded inside `operator-ubuntu-summit-animation`, so the next remaining motion parity work should focus on missing scene visuals and renderer fidelity rather than more baked timing constants.
 
 ### Phase 6. Verify parity here
 

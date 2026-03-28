@@ -86,6 +86,7 @@ If you want the shortest high-level snapshot, read this file first.
 - Single-frame PNG export now captures the halo layer again after enabling `preserveDrawingBuffer: true` in `apps/overlay-preview/src/halo-renderer.ts`; the user manually revalidated the still-export path, so that regression is no longer the active blocker
 - `operator-ubuntu-summit-animation` now computes scene phase, runtime timing, loop timing, mascot-box metadata, reveal geometry, screensaver pulse counts, and transient spoke-transition state, and the preview renderer plus automation state now consume that descriptor path
 - `operator-ubuntu-summit-animation` now also emits mascot motion timing and motion-state metadata (blink, head turn, eye closure, sneeze/nose bob) through the scene descriptor and automation bridge
+- Ubuntu Summit mascot fade, head turn, blink, sneeze, and finale timing now live in shared `HaloFieldConfig` state and the Halo Field panel instead of inside hardcoded operator constants, and source-default save or reset now round-trips those timing values through the shared config path
 - The preview renderer now draws the local mascot face asset, optional reference halo asset, and reference-leaning eye or nose layering on the overlay canvas using the scene-family operator's mascot box and motion state
 - Linked title-to-logo sizing now normalizes through shared layout-engine helpers plus the shared overlay-layout path, so profile switches and loaded snapshots keep the A Head/logo lock intact while the canonical rule is no longer only preview-local
 - Style labels and ordinal field labels now also route through shared overlay-layout helpers instead of preview-local label maps
@@ -184,7 +185,7 @@ Items EQ-1 through EQ-12 are the user-directed priorities in dependency order:
 
 ### Immediate next steps
 
-**Next parity slice** — move back to the top explicit parity strategy from `docs/rebuild-plan.md`: port more of the whole Ubuntu Summit sequence into `operator-ubuntu-summit-animation`, then re-compare the current animation background look against `racoon-anim` before reopening lower-priority shell or document cleanup.
+**Next parity slice** — keep pushing the whole Ubuntu Summit sequence visually now that the timing is config-owned: audit the remaining renderer-level gaps in `operator-ubuntu-summit-animation` and `halo-renderer.ts`, then land the next missing scene pass or fidelity fix against `racoon-anim` instead of returning to shell cleanup.
 
 **After EQ-12** — decide whether the background preview adapter should call further into shared graph evaluation primitives or continue as a thin typed renderer adapter over the persisted chain.
 

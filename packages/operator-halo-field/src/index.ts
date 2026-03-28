@@ -54,6 +54,33 @@ export function computeFrontierScale(
 // ─── Types ────────────────────────────────────────────────────────────
 
 export interface HaloFieldConfig {
+  mascot_fade: {
+    enabled: boolean;
+    duration_sec: number;
+  };
+  head_turn: {
+    enabled: boolean;
+    duration_sec: number;
+    peak_angle_deg: number;
+    reverse_angle_deg: number;
+    overshoot_angle_deg: number;
+    peak_frac: number;
+    reverse_frac: number;
+    dot_overlap_sec: number;
+    overshoot_frac: number;
+  };
+  blink: {
+    enabled: boolean;
+    start_delay_sec: number;
+    duration_sec: number;
+    close_frac: number;
+    hold_closed_frac: number;
+    eye_scale_y_closed: number;
+  };
+  sneeze: {
+    enabled: boolean;
+    nose_bob_up_px: number;
+  };
   composition: {
     center_x_px: number;
     center_y_px: number;
@@ -728,8 +755,19 @@ export function getEchoMarkerVariant(
 export function buildRuntimeTiming(config: HaloFieldConfig): RuntimeTiming {
   const transition = config.transition_wrangle;
   const gen = config.generator_wrangle;
-  // No mascot fade / head turn in this repo yet — start_delay_sec = 0
-  const startDelaySec = 0;
+  const fadeDelaySec = config.mascot_fade.enabled
+    ? Math.max(0, config.mascot_fade.duration_sec)
+    : 0;
+  const headTurnDelaySec = config.head_turn.enabled
+    ? Math.max(0, config.head_turn.duration_sec)
+    : 0;
+  const headTurnOverlapSec = config.head_turn.enabled
+    ? clamp(config.head_turn.dot_overlap_sec ?? 0, 0, headTurnDelaySec)
+    : 0;
+  const startDelaySec = Math.max(
+    fadeDelaySec,
+    Math.max(0, headTurnDelaySec - headTurnOverlapSec)
+  );
 
   const durationSec = Math.max(0.001, transition.duration_sec);
   const dotEndSec = startDelaySec + durationSec;
@@ -741,7 +779,12 @@ export function buildRuntimeTiming(config: HaloFieldConfig): RuntimeTiming {
     ? finaleStartSec + Math.max(0.001, config.finale?.duration_sec ?? 1)
     : finaleStartSec;
 
-  const playbackEndSec = finaleEndSec;
+  const blinkAnchorSec = finaleEnabled ? finaleEndSec : dotEndSec;
+  const blinkStartSec = blinkAnchorSec + Math.max(0, config.blink.start_delay_sec ?? 0);
+  const blinkEndSec = config.blink.enabled
+    ? blinkStartSec + Math.max(0.0001, config.blink.duration_sec ?? 0)
+    : blinkAnchorSec;
+  const playbackEndSec = Math.max(finaleEndSec, blinkEndSec);
 
   const rotationRad = radians(config.composition.global_rotation_deg || 0);
   const spawnAngleRad =
@@ -842,6 +885,33 @@ export function buildRuntimePoints(
 
 export function createDefaultHaloFieldConfig(): HaloFieldConfig {
   return {
+    mascot_fade: {
+      enabled: false,
+      duration_sec: 3
+    },
+    head_turn: {
+      enabled: true,
+      duration_sec: 0.333,
+      peak_angle_deg: -30,
+      reverse_angle_deg: 30,
+      overshoot_angle_deg: -3,
+      peak_frac: 0.25,
+      reverse_frac: 0.56,
+      dot_overlap_sec: 1,
+      overshoot_frac: 0.75
+    },
+    blink: {
+      enabled: true,
+      start_delay_sec: 0.04,
+      duration_sec: 0.12,
+      close_frac: 0.42,
+      hold_closed_frac: 0.12,
+      eye_scale_y_closed: 0.08
+    },
+    sneeze: {
+      enabled: true,
+      nose_bob_up_px: 1.5
+    },
     composition: {
       center_x_px: 640,
       center_y_px: 334,
