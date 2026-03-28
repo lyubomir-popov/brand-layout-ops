@@ -86,6 +86,11 @@ import {
 
 import { createHaloRenderer, type HaloRenderer } from "./halo-renderer.js";
 import {
+  buildSceneFamilyPreviewState,
+  clearSceneFamilyPreviewCanvas,
+  renderSceneFamilyPreviewFrame
+} from "./scene-family-preview.js";
+import {
   cloneOverlayParams,
   createDefaultExportSettings,
   createPresetId,
@@ -1561,12 +1566,14 @@ function initHaloRenderer() {
     widthPx,
     heightPx
   });
+  syncBackgroundRendererVisibility();
 }
 
 function resizeRenderer() {
   if (!haloRendererInstance) return;
   const { widthPx, heightPx } = state.params.frame;
   haloRendererInstance.resize(widthPx, heightPx);
+  syncBackgroundRendererVisibility();
   updateStageAspectRatio();
 }
 
@@ -1582,6 +1589,58 @@ function renderHaloFrame() {
   if (!haloRendererInstance) return;
   const sceneDescriptor = getUbuntuSummitSceneDescriptor();
   haloRendererInstance.renderFrame(sceneDescriptor);
+}
+
+function syncBackgroundRendererVisibility() {
+  const stageCanvas = getCanvasEl();
+  const textCanvas = getTextOverlayCanvas();
+  if (!stageCanvas || !textCanvas) {
+    return;
+  }
+
+  const showHaloCanvas = state.documentProject.sceneFamilyKey === "halo";
+  stageCanvas.style.opacity = showHaloCanvas ? "1" : "0";
+  textCanvas.style.opacity = "1";
+}
+
+function getSceneFamilyPreviewState() {
+  return buildSceneFamilyPreviewState({
+    sceneFamilyKey: state.documentProject.sceneFamilyKey,
+    widthPx: state.params.frame.widthPx,
+    heightPx: state.params.frame.heightPx,
+    playbackTimeSec: state.playbackTimeSec,
+    haloConfig: state.haloConfig
+  });
+}
+
+function renderBackgroundFrame() {
+  syncBackgroundRendererVisibility();
+
+  if (state.documentProject.sceneFamilyKey === "halo") {
+    renderHaloFrame();
+    return;
+  }
+
+  const textCanvas = getTextOverlayCanvas();
+  if (!textCanvas) {
+    return;
+  }
+
+  const previewState = getSceneFamilyPreviewState();
+  haloRendererInstance?.clearFrame();
+  if (!previewState) {
+    clearSceneFamilyPreviewCanvas(textCanvas, state.params.frame.widthPx, state.params.frame.heightPx);
+    return;
+  }
+
+  renderSceneFamilyPreviewFrame({
+    canvas: textCanvas,
+    widthPx: state.params.frame.widthPx,
+    heightPx: state.params.frame.heightPx,
+    transparentBackground: state.exportSettings.transparentBackground,
+    haloConfig: state.haloConfig,
+    previewState
+  });
 }
 
 function getPlaybackToggleButton(): HTMLButtonElement | null {
@@ -1617,7 +1676,7 @@ function stepPlayback(nowMs: number) {
   const deltaSec = Math.max(0, Math.min(0.1, (nowMs - lastPlaybackFrameMs) / 1000));
   lastPlaybackFrameMs = nowMs;
   state.playbackTimeSec += deltaSec;
-  renderHaloFrame();
+  renderBackgroundFrame();
   playbackFrameHandle = requestAnimationFrame(stepPlayback);
 }
 
@@ -1830,7 +1889,7 @@ async function renderStage() {
   if (!scene) return;
   currentScene = scene;
 
-  renderHaloFrame();
+  renderBackgroundFrame();
   renderSvgOverlay(scene);
   renderAuthoringUI();
 }
@@ -3162,6 +3221,42 @@ function buildGridSection(): HTMLElement {
 // ── Halo field config
 
 function buildHaloConfigSection(): HTMLElement {
+  if (state.documentProject.sceneFamilyKey !== "halo") {
+    const previewState = getSceneFamilyPreviewState();
+    const { root, body } = buildSectionEl(`${getSceneFamilyLabel(state.documentProject.sceneFamilyKey)} Preview`);
+
+    const helpText = document.createElement("p");
+    helpText.className = "p-form-help-text u-no-margin--bottom";
+    helpText.textContent = "This scene family now affects the stage renderer. Dedicated controls are not surfaced yet, so the preview uses adapter defaults rather than the halo inspector.";
+    body.append(helpText);
+
+    if (previewState) {
+      const summary = document.createElement("div");
+      summary.className = "grid-row";
+      summary.append(wrapCol(2, createFormGroup("Preview", createReadonlySpan(previewState.title))));
+      summary.append(wrapCol(2, createFormGroup("State", createReadonlySpan(previewState.subtitle))));
+      body.append(summary);
+
+      const statsList = document.createElement("div");
+      statsList.className = "style-palette";
+      for (const stat of previewState.stats) {
+        const card = document.createElement("div");
+        card.className = "style-palette__button";
+
+        const meta = document.createElement("span");
+        meta.className = "style-palette__meta";
+        meta.textContent = stat;
+
+        card.append(meta);
+        statsList.append(card);
+      }
+
+      body.append(statsList);
+    }
+
+    return root;
+  }
+
   const { root, body } = buildSectionEl("Halo Field");
   const hc = state.haloConfig;
 
@@ -4412,9 +4507,9 @@ async function composeFrameToCanvas(timeSec: number): Promise<HTMLCanvasElement 
   const textCanvas = getTextOverlayCanvas();
   if (!stageCanvas || !textCanvas) return null;
 
-  // Set time and render the halo frame
+  // Set time and render the active scene-family background
   state.playbackTimeSec = timeSec;
-  renderHaloFrame();
+  renderBackgroundFrame();
   await renderStage();
 
   const { widthPx, heightPx } = state.params.frame;
@@ -4760,6 +4855,18 @@ async function applyAutomationSnapshot(payload: Record<string, unknown> = {}) {
     buildOutputProfileOptions();
   }
 
+  if (
+    typeof payload.document_scene_family_key === "string" &&
+    OVERLAY_SCENE_FAMILY_ORDER.includes(payload.document_scene_family_key as OverlaySceneFamilyKey)
+  ) {
+    state.documentProject = {
+      ...state.documentProject,
+      sceneFamilyKey: payload.document_scene_family_key as OverlaySceneFamilyKey
+    };
+    buildConfigEditor();
+    buildOutputProfileOptions();
+  }
+
   if (typeof payload.transparent_background === "boolean") {
     const transparentBackground = payload.transparent_background;
     updateExportSettings((settings) => ({ ...settings, transparentBackground }));
@@ -4776,7 +4883,7 @@ async function applyAutomationSnapshot(payload: Record<string, unknown> = {}) {
 
   setPlaybackPlaying(false);
   state.playbackTimeSec = playbackTimeSec;
-  renderHaloFrame();
+  renderBackgroundFrame();
   await renderStage();
 
   return getAutomationState();

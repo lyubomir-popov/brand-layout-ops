@@ -89,6 +89,8 @@ export interface HaloRendererLayers {
 export interface HaloRenderer {
   /** Resize stage to the given pixel dimensions. */
   resize(widthPx: number, heightPx: number): void;
+  /** Clear the WebGL and text overlay canvases without drawing a halo frame. */
+  clearFrame(): void;
   /** Render one frame with the current field config. */
   renderFrame(sceneDescriptor: UbuntuSummitAnimationSceneDescriptor): void;
   /** Dispose all GPU resources. */
@@ -1057,6 +1059,13 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     drawReleaseLabelOverlay(spokes, mascotBox, haloOuterR, fullFrameR, config, reveal);
   }
 
+  function clearFrame() {
+    renderer.clear();
+    if (textOverlayCanvas.width !== stageW) textOverlayCanvas.width = stageW;
+    if (textOverlayCanvas.height !== stageH) textOverlayCanvas.height = stageH;
+    textCtx.clearRect(0, 0, stageW, stageH);
+  }
+
   // ── resize ──────────────────────────────────────────────────────────
 
   function resize(w: number, h: number) {
@@ -1089,6 +1098,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
 
   return {
     resize,
+    clearFrame,
     renderFrame,
     dispose: disposeAll,
     canvas,
