@@ -34,7 +34,7 @@ import {
 import { OperatorRegistry, evaluateGraph } from "@brand-layout-ops/graph-runtime";
 import { getColumnSpanWidthPx, getKeylineXPx, snapBaselineToGrid } from "@brand-layout-ops/layout-grid";
 import { getLinkedLogoDimensionsPx, getLinkedTitleFontSizePx } from "@brand-layout-ops/layout-engine";
-import { createApproximateTextMeasurer, getMinimumFirstBaselineInsetBaselines } from "@brand-layout-ops/layout-text";
+import { createApproximateTextMeasurer } from "@brand-layout-ops/layout-text";
 import type { DragAxisLock } from "@brand-layout-ops/overlay-interaction";
 import { moveLogo, moveTextField } from "@brand-layout-ops/overlay-interaction";
 import {
@@ -48,7 +48,8 @@ import {
   getOverlayFieldDisplayLabel,
   getOverlayStyleDisplayLabel,
   inspectOverlayCsvDraft,
-  normalizeOverlayLinkedTitleLogoParams,
+  normalizeOverlayParamsForEditing,
+  normalizeOverlayTextFieldOffsetBaselines,
   OVERLAY_LAYOUT_OPERATOR_KEY,
   resolveOverlayTextValue,
   setOverlayTextValue,
@@ -657,46 +658,12 @@ function updateSelectedTextValue(id: string, value: string) {
   state.params = setOverlayTextValue(state.params, id, value);
 }
 
-function normalizeTextFieldOffsetBaselines(
-  params: OverlayLayoutOperatorParams,
-  field: TextFieldPlacementSpec
-): TextFieldPlacementSpec {
-  const style = params.textStyles.find((candidate) => candidate.key === field.styleKey);
-  if (!style) {
-    return field;
-  }
-
-  const minimumOffsetBaselines = getMinimumFirstBaselineInsetBaselines(
-    params.grid.baselineStepPx,
-    style,
-    previewTextMeasurer
-  );
-  const nextOffsetBaselines = Math.max(Math.round(field.offsetBaselines), minimumOffsetBaselines);
-  return nextOffsetBaselines === field.offsetBaselines
-    ? field
-    : { ...field, offsetBaselines: nextOffsetBaselines };
-}
-
 function normalizeParamsTextFieldOffsets(params: OverlayLayoutOperatorParams): OverlayLayoutOperatorParams {
-  const linkedParams = normalizeOverlayLinkedTitleLogoParams(params);
-  let didChange = false;
-  const textFields = linkedParams.textFields.map((field) => {
-    const normalizedField = normalizeTextFieldOffsetBaselines(linkedParams, field);
-    if (normalizedField !== field) {
-      didChange = true;
-    }
-    return normalizedField;
-  });
-
-  if (didChange) {
-    return { ...linkedParams, textFields };
-  }
-
-  return linkedParams;
+  return normalizeOverlayParamsForEditing(params, previewTextMeasurer);
 }
 
 function getDisplayedTextFieldOffsetBaselines(field: TextFieldPlacementSpec): number {
-  return normalizeTextFieldOffsetBaselines(state.params, field).offsetBaselines;
+  return normalizeOverlayTextFieldOffsetBaselines(state.params, field, previewTextMeasurer).offsetBaselines;
 }
 
 function createTextFieldId(): string {

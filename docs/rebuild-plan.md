@@ -293,7 +293,7 @@ It reflects the current repo after the overlay-preview rebuild, reference-doc re
 3. **Text-style parity is closer than the earlier audit suggested.**
 	The current repo now has `title`, `b_head`, and `paragraph` styles with the expected Ubuntu Sans weight pattern.
 	The preview shell now also uses style-aware labels for selected items and authoring boxes, including ordinal labels for repeated paragraph-style fields, and the selected-item panel can add or delete text blocks within the active format bucket.
-	The shared text-layout path now also applies an ascent-aware first-baseline inset so a field aligned to a grid row keeps its first line visibly inside the field bounds instead of letting the ascender protrude above the box.
+	The shared overlay-layout editing path now also applies an ascent-aware first-baseline inset so a field aligned to a grid row keeps its first line visibly inside the field bounds instead of letting the ascender protrude above the box.
 	Remaining gap: the richer selected-item editor and per-style authoring controls from the reference app are still not ported.
 
 4. **Linked title sizing exists only as a preview-side helper.**

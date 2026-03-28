@@ -14,10 +14,15 @@ import {
   type OperatorParameterSchema,
   type SafeAreaInsets,
   type TextFieldPlacementSpec,
+  type TextMeasurer,
   type TextStyleSpec
 } from "@brand-layout-ops/core-types";
 import { getLinkedLogoDimensionsPx, resolveLayerScene } from "@brand-layout-ops/layout-engine";
-import { createApproximateTextMeasurer, type ApproximateTextMeasureOptions } from "@brand-layout-ops/layout-text";
+import {
+  createApproximateTextMeasurer,
+  getMinimumFirstBaselineInsetBaselines,
+  type ApproximateTextMeasureOptions
+} from "@brand-layout-ops/layout-text";
 
 export const OVERLAY_LAYOUT_OPERATOR_KEY = "overlay.layout";
 
@@ -837,6 +842,48 @@ export function normalizeOverlayLinkedTitleLogoParams(
       heightPx: linkedDimensions.heightPx
     }
   };
+}
+
+export function normalizeOverlayTextFieldOffsetBaselines(
+  params: OverlayLayoutOperatorParams,
+  field: TextFieldPlacementSpec,
+  measurer: TextMeasurer
+): TextFieldPlacementSpec {
+  const style = params.textStyles.find((candidate) => candidate.key === field.styleKey);
+  if (!style) {
+    return field;
+  }
+
+  const minimumOffsetBaselines = getMinimumFirstBaselineInsetBaselines(
+    params.grid.baselineStepPx,
+    style,
+    measurer
+  );
+  const nextOffsetBaselines = Math.max(Math.round(field.offsetBaselines), minimumOffsetBaselines);
+  return nextOffsetBaselines === field.offsetBaselines
+    ? field
+    : { ...field, offsetBaselines: nextOffsetBaselines };
+}
+
+export function normalizeOverlayParamsForEditing(
+  params: OverlayLayoutOperatorParams,
+  measurer: TextMeasurer
+): OverlayLayoutOperatorParams {
+  const linkedParams = normalizeOverlayLinkedTitleLogoParams(params);
+  let didChange = false;
+  const textFields = linkedParams.textFields.map((field) => {
+    const normalizedField = normalizeOverlayTextFieldOffsetBaselines(linkedParams, field, measurer);
+    if (normalizedField !== field) {
+      didChange = true;
+    }
+    return normalizedField;
+  });
+
+  if (didChange) {
+    return { ...linkedParams, textFields };
+  }
+
+  return linkedParams;
 }
 
 export function resolveOverlayLayoutScene(
