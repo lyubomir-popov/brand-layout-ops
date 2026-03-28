@@ -1866,9 +1866,9 @@ function buildOutputProfileOptions() {
     const metaSpan = document.createElement("span");
     metaSpan.className = "preset-radio-status";
     const profileMeta = profile
-      ? `${profile.label} ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ${profile.widthPx}x${profile.heightPx}`
+      ? `${profile.label} \u2022 ${profile.widthPx}x${profile.heightPx}`
       : target.outputProfileKey;
-    metaSpan.textContent = radio.checked ? `${profileMeta} ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ Active` : profileMeta;
+    metaSpan.textContent = radio.checked ? `${profileMeta} \u2022 Active` : profileMeta;
 
     row.append(radio, nameSpan, metaSpan);
     list.append(row);
@@ -1899,7 +1899,7 @@ function buildOutputProfileOptions() {
       getUnusedDocumentTargetProfileKeys(activeTarget.outputProfileKey).map((profileKey) => {
         const profile = OUTPUT_PROFILES[profileKey];
         return {
-          label: profile ? `${profile.label} ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ${profile.widthPx}x${profile.heightPx}` : profileKey,
+          label: profile ? `${profile.label} \u2022 ${profile.widthPx}x${profile.heightPx}` : profileKey,
           value: profileKey
         };
       }),
@@ -1960,7 +1960,7 @@ function buildPresetTabs() {
     const statusSpan = document.createElement("span");
     statusSpan.className = "preset-radio-status";
     if (preset.id === state.activePresetId) {
-      statusSpan.textContent = isActivePresetDirty() ? "Active ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ Dirty" : "Active";
+      statusSpan.textContent = isActivePresetDirty() ? "Active \u2022 Dirty" : "Active";
     } else {
       statusSpan.textContent = "";
     }
