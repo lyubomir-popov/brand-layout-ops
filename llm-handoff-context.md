@@ -150,13 +150,24 @@ Items EQ-1 through EQ-9 are the user-directed priorities in dependency order:
 
 1. **EQ-1** — ~~Switch UI library from `portable-vertical-rhythm` to `baseline-foundry` (panel preset).~~ **DONE** (commits `50f4c4f` + `fc35f96`). Dependency swapped, all CSS class names migrated from `p-*`/`vr-*`/`vf-*` to native `bf-*`.
 2. **EQ-2** — ~~Operator selector UI (radio list of operators → shows selected operator's params).~~ **DONE** (commit `626b7ea`). Radio group between shell and operator sections, `group` field on `ParameterSectionDefinition`, accordion state preserved across rebuilds. Also fixed 7 regression bugs: dark theme attribute, button labels, panel resize compat alias, text drag offset normalization, SCSS→CSS rename, and 9 invalid CSS token names.
-3. **EQ-3** — Fuzzy boids parameter panel (numBoids, separation, alignment, cohesion, bounds, etc.). **← NEXT**
+3. **EQ-3** — Fuzzy boids parameter panel (numBoids, separation, alignment, cohesion, bounds, etc.).
 4. **EQ-4** — Phyllotaxis parameter panel (numPoints, radius, radiusFalloff, angleOffsetDeg, animation).
 5. **EQ-5** — Scatter operator (`operator-scatter`, scatter points inside SVG shape).
 6. **EQ-6** — ~~Resolve or remove presets (documents replaced presets — clarify architecture).~~ **DONE** (commit `4c97dd3`). Presets section removed from config panel.
 7. **EQ-7** — ~~Content format cleanup (speaker_highlight → document-owned, inline text is fine).~~ **DONE** (commit `4c97dd3`). Speaker highlight removed from content format order.
 8. **EQ-8** — Paragraph styles conditional visibility (only when layout grid is active).
 9. **EQ-9** — ~~Remove dead stat labels from scene-family preview canvas.~~ **DONE** (commit `fc35f96`). Removed `title`, `subtitle`, `stats` from preview state/snapshot, deleted `drawPreviewLabel`.
+
+### Immediate next steps (do before EQ-3)
+
+**Code cleanup from audit:**
+- [ ] Simplify or inline `normalizeOverlayTextFieldOffsetBaselines` in `operator-overlay-layout` — it now takes `params` and `measurer` it doesn't use, its body is just `Math.round(field.offsetBaselines)`, and `resolveTextPlacement` already does the same round. The full chain `updateTextField → normalizeParamsTextFieldOffsets → normalizeOverlayParamsForEditing → normalizeOverlayTextFieldOffsetBaselines` is a no-op round-trip.
+- [ ] Remove dead export `getMinimumFirstBaselineInsetBaselines` from `layout-text` (zero consumers).
+- [ ] Remove redundant `Math.round()` wrapping `getKeylineXPx()` in `resolveTextPlacement` — `columnKeylinePositionsPx` is already rounded in `computeLayoutGridMetrics`.
+
+**New bugs:**
+- [ ] **Halo scale should zoom everything**: the Scale slider in Halo Field composition only affects the dot field. It should also scale Ubuntu release labels, shapes, and strokes so it behaves like a zoom control.
+- [ ] **Remove radial gradient from phyllotaxis and fuzzy boids**: `renderSceneFamilyPreviewFrame` in `scene-family-preview.ts` draws a shared radial gradient (line ~729) before dispatching to either family, and each family renderer adds more `drawSoftGlow` calls. Remove all of these.
 
 ### Previous completed work (kept for reference)
 

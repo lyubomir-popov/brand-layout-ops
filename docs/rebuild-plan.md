@@ -520,20 +520,18 @@ New operator: scatter points inside an SVG shape, analogous to Houdini scatter S
 - [ ] Parameters: point count, seed, distribution mode (uniform, density-weighted), margin.
 - [ ] Build a parameter panel and register it for the operator selector.
 
-### EQ-6. Resolve or remove presets
+### EQ-6. Resolve or remove presets ✅
 
 Presets were a workaround for lack of multiple documents. Now that documents exist, clarify the architecture.
 
-- [ ] Evaluate whether presets still serve a purpose (e.g. quick document templates, variant snapshots within one document, or nothing).
-- [ ] If presets are demoted: remove the presets section from the inspector, remove localStorage preset seeding, simplify the document schema.
-- [ ] If presets become "document templates": rename and reframe them as template presets that seed new documents rather than living as a parallel persistence path.
-- [ ] Update the preset section builder and document workspace accordingly.
+- [x] Presets section removed from config panel (commit `4c97dd3`).
+- [ ] Full preset infrastructure still intact in `main.ts` (imports, `buildPresetTabs`, `buildCurrentPresetPayload`, `state.presets`, `state.activePresetId`, etc.) and in the document persistence schema. Deeper removal is deferred — the document format still carries presets.
 
-### EQ-7. Content format cleanup
+### EQ-7. Content format cleanup ✅
 
-- [ ] In the new architecture, `speaker_highlight` should be a property of the document rather than a global format toggle. Remove the global content-format selector if it no longer makes sense with document-owned formats.
-- [ ] Inline text is the current working mode and that is fine. CSV import remains a secondary path.
-- [ ] Clean up any content-format UI that is confusing or non-functional.
+- [x] `speaker_highlight` removed from `OVERLAY_CONTENT_FORMAT_ORDER`; only `generic_social` is selectable (commit `4c97dd3`).
+- [x] Inline text is the current working mode and that is fine. CSV import remains a secondary path.
+- [ ] Dead `speaker_highlight` data still exists in `OVERLAY_CONTENT_FORMATS` (core-types) and `operator-overlay-layout` CSV config. Harmless but should be pruned eventually.
 
 ### EQ-8. Paragraph styles — conditional visibility
 
@@ -545,6 +543,21 @@ Presets were a workaround for lack of multiple documents. Now that documents exi
 - [x] The scene-family preview canvas renders non-interactive text labels ("Arm sets 21 and 34", "Center 545, 54", "Radius ...px", etc.) that look like buttons but do nothing.
 - [x] Remove these stat labels from the canvas. The information should come from the parameter panel instead once EQ-3 and EQ-4 land.
 - [x] Removed `title`, `subtitle`, `stats` from `BaseSceneFamilyPreviewState` and `SceneFamilyPreviewSnapshot`, deleted `drawPreviewLabel` function (commit `fc35f96`).
+
+### Immediate cleanup and bugs (next chat)
+
+These should be addressed before starting EQ-3.
+
+#### Code cleanup from audit
+
+- [ ] **Simplify `normalizeOverlayTextFieldOffsetBaselines`**: now takes `params` and `measurer` it doesn't use; its body is just `Math.round(field.offsetBaselines)` — the same rounding `resolveTextPlacement` already does. Either inline it or strip the unused params. The full call chain `updateTextField → normalizeParamsTextFieldOffsets → normalizeOverlayParamsForEditing → normalizeOverlayTextFieldOffsetBaselines` is now a no-op round-trip for offset rounding.
+- [ ] **Remove dead export `getMinimumFirstBaselineInsetBaselines`** from `layout-text`: zero consumers after the `operator-overlay-layout` import was removed.
+- [ ] **Remove double-round on keylines**: `resolveTextPlacement` wraps `getKeylineXPx()` in `Math.round()` but the source (`columnKeylinePositionsPx`) is already rounded in `computeLayoutGridMetrics`. Pick one layer.
+
+#### New bugs
+
+- [ ] **Halo scale should zoom everything**: the Scale slider in Halo Field composition only affects the dot field. It should also scale Ubuntu release labels, shapes, and strokes so it feels like zooming in/out.
+- [ ] **Remove radial gradient from phyllotaxis and fuzzy boids**: both family renderers draw a decorative radial gradient background glow (`createRadialGradient` in `renderSceneFamilyPreviewFrame` line ~729, plus per-family `drawSoftGlow` calls in `drawPhyllotaxisPreview` and `drawFuzzyBoidsPreview`). Remove all of these.
 
 ## Discussion Items Not Yet Scheduled
 
