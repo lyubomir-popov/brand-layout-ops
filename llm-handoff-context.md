@@ -131,6 +131,10 @@ If you want the shortest high-level snapshot, read this file first.
 - Halo-field sliders in the preview now stack the range track above the numeric input, so narrow inspector columns stay usable even though baseline-foundry still only exposes the shared horizontal slider pair
 - Preview checkbox and metadata controls now use denser grid-row packing instead of leaving multiple full-height standalone form groups outside the shared panel grid
 - All CSS classes now use native `bf-*` baseline-foundry names instead of `p-*`/`vr-*`/`vf-*` aliases (commit `fc35f96`)
+- Logo SVG overlay now uses resolved bounds (with safe area offset) instead of raw spec coordinates, fixing the selection-outline mismatch (commit `47811ca`)
+- Exported SVG/PNG now strips guide overlays (baseline grid, layout grid) so only text, logo, and safe area fill make it into exports (commit `47811ca`)
+- Overlay visibility now persists in localStorage across page refresh instead of resetting to hidden (commit `47811ca`)
+- Scene family is now selected only from the operator selector radio group; the redundant dropdown was removed from the Output Format section (commit `47811ca`)
 
 ## Current sprint TODO (do in order)
 
