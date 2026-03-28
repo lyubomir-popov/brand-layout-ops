@@ -1,6 +1,8 @@
 import {
   DEFAULT_OUTPUT_PROFILE_KEY,
   getOutputProfile,
+  OUTPUT_PROFILE_ORDER,
+  OUTPUT_PROFILES,
   OVERLAY_CONTENT_FORMATS,
   OVERLAY_CONTENT_FORMAT_ORDER,
   type OverlayContentFormatSpec,
@@ -90,10 +92,32 @@ export interface OverlaySourceDefaultSnapshot<
 export const OVERLAY_DOCUMENT_FILE_KIND = "brand-layout-ops.document";
 export const OVERLAY_DOCUMENT_FILE_VERSION = 1;
 
+export const OVERLAY_SCENE_FAMILY_ORDER = [
+  "halo",
+  "phyllotaxis",
+  "fuzzy-boids"
+] as const;
+
+export type OverlaySceneFamilyKey = typeof OVERLAY_SCENE_FAMILY_ORDER[number];
+
+export const DEFAULT_OVERLAY_SCENE_FAMILY_KEY: OverlaySceneFamilyKey = OVERLAY_SCENE_FAMILY_ORDER[0];
+
 export interface OverlayDocumentMetadata {
   name: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface OverlayDocumentTarget {
+  id: string;
+  label: string;
+  outputProfileKey: string;
+}
+
+export interface OverlayDocumentProject {
+  sceneFamilyKey: OverlaySceneFamilyKey;
+  activeTargetId: string;
+  targets: OverlayDocumentTarget[];
 }
 
 export interface OverlayDocumentFile<
@@ -104,6 +128,7 @@ export interface OverlayDocumentFile<
   kind: typeof OVERLAY_DOCUMENT_FILE_KIND;
   version: typeof OVERLAY_DOCUMENT_FILE_VERSION;
   metadata: OverlayDocumentMetadata;
+  project: OverlayDocumentProject;
   state: OverlaySourceDefaultSnapshot<TExportSettings, THaloConfig, TGuideMode>;
 }
 
@@ -125,6 +150,7 @@ export interface CreateOverlayDocumentFileOptions<
   TGuideMode extends string = string
 > {
   name: string;
+  project?: OverlayDocumentProject;
   state: OverlaySourceDefaultSnapshot<TExportSettings, THaloConfig, TGuideMode>;
   createdAt?: string;
   updatedAt?: string;
@@ -192,6 +218,191 @@ function normalizeOverlayDocumentTimestamp(rawTimestamp: unknown, fallbackTimest
 
   const trimmedTimestamp = rawTimestamp.trim();
   return trimmedTimestamp.length > 0 ? trimmedTimestamp : fallbackTimestamp;
+}
+
+function normalizeOverlayDocumentString(rawValue: unknown, fallbackValue: string): string {
+  if (typeof rawValue !== "string") {
+    return fallbackValue;
+  }
+
+  const trimmedValue = rawValue.trim();
+  return trimmedValue.length > 0 ? trimmedValue : fallbackValue;
+}
+
+function normalizeOverlaySceneFamilyKey(
+  rawSceneFamilyKey: unknown,
+  fallbackKey: OverlaySceneFamilyKey = DEFAULT_OVERLAY_SCENE_FAMILY_KEY
+): OverlaySceneFamilyKey {
+  if (typeof rawSceneFamilyKey !== "string") {
+    return fallbackKey;
+  }
+
+  return OVERLAY_SCENE_FAMILY_ORDER.includes(rawSceneFamilyKey as OverlaySceneFamilyKey)
+    ? rawSceneFamilyKey as OverlaySceneFamilyKey
+    : fallbackKey;
+}
+
+function getOverlayDocumentTargetLabel(outputProfileKey: string): string {
+  return OUTPUT_PROFILES[outputProfileKey]?.label ?? outputProfileKey;
+}
+
+function getOverlayDocumentTargetId(outputProfileKey: string): string {
+  return outputProfileKey;
+}
+
+function getOrderedOverlayDocumentProfileKeys(profileKeys: Iterable<string>): string[] {
+  const uniqueProfileKeys = new Set<string>();
+  for (const profileKey of profileKeys) {
+    const normalizedProfileKey = normalizeOverlayDocumentString(profileKey, "");
+    if (normalizedProfileKey.length > 0) {
+      uniqueProfileKeys.add(normalizedProfileKey);
+    }
+  }
+
+  if (uniqueProfileKeys.size === 0) {
+    return [DEFAULT_OUTPUT_PROFILE_KEY];
+  }
+
+  const knownProfileKeys = OUTPUT_PROFILE_ORDER.filter((profileKey) => uniqueProfileKeys.has(profileKey));
+  const extraProfileKeys = [...uniqueProfileKeys]
+    .filter((profileKey) => !OUTPUT_PROFILE_ORDER.includes(profileKey))
+    .sort((left, right) => left.localeCompare(right));
+
+  return [...knownProfileKeys, ...extraProfileKeys];
+}
+
+function getOverlayDocumentProfileKeysFromSnapshot<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+>(
+  snapshot: OverlaySourceDefaultSnapshot<TExportSettings, THaloConfig, TGuideMode>
+): string[] {
+  return getOrderedOverlayDocumentProfileKeys([
+    snapshot.outputProfileKey,
+    ...Object.keys(snapshot.profileFormatBuckets),
+    ...Object.keys(snapshot.contentFormatKeyByProfile),
+    ...Object.keys(snapshot.exportSettingsByProfile),
+    ...Object.keys(snapshot.haloConfigByProfile)
+  ]);
+}
+
+function createOverlayDocumentTarget(outputProfileKey: string, rawTarget?: unknown): OverlayDocumentTarget {
+  return {
+    id: normalizeOverlayDocumentString(
+      isRecord(rawTarget) ? rawTarget.id : undefined,
+      getOverlayDocumentTargetId(outputProfileKey)
+    ),
+    label: normalizeOverlayDocumentString(
+      isRecord(rawTarget) ? rawTarget.label : undefined,
+      getOverlayDocumentTargetLabel(outputProfileKey)
+    ),
+    outputProfileKey
+  };
+}
+
+export function cloneOverlayDocumentProject(project: OverlayDocumentProject): OverlayDocumentProject {
+  return cloneOverlayJson(project);
+}
+
+export function normalizeOverlayDocumentProject<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+>(
+  rawProject: unknown,
+  snapshot: OverlaySourceDefaultSnapshot<TExportSettings, THaloConfig, TGuideMode>
+): OverlayDocumentProject {
+  const fallbackTargets = getOverlayDocumentProfileKeysFromSnapshot(snapshot).map((profileKey) => (
+    createOverlayDocumentTarget(profileKey)
+  ));
+
+  if (!isRecord(rawProject)) {
+    const activeTargetId = fallbackTargets.find((target) => target.outputProfileKey === snapshot.outputProfileKey)?.id
+      ?? fallbackTargets[0]?.id
+      ?? getOverlayDocumentTargetId(snapshot.outputProfileKey);
+
+    return {
+      sceneFamilyKey: DEFAULT_OVERLAY_SCENE_FAMILY_KEY,
+      activeTargetId,
+      targets: fallbackTargets
+    };
+  }
+
+  const targets: OverlayDocumentTarget[] = [];
+  const seenProfileKeys = new Set<string>();
+  const seenTargetIds = new Set<string>();
+
+  if (Array.isArray(rawProject.targets)) {
+    for (const rawTarget of rawProject.targets) {
+      if (!isRecord(rawTarget)) {
+        continue;
+      }
+
+      const outputProfileKey = normalizeOverlayDocumentString(rawTarget.outputProfileKey, snapshot.outputProfileKey);
+      if (seenProfileKeys.has(outputProfileKey)) {
+        continue;
+      }
+
+      let target = createOverlayDocumentTarget(outputProfileKey, rawTarget);
+      if (seenTargetIds.has(target.id)) {
+        target = {
+          ...target,
+          id: `${target.id}-${targets.length + 1}`
+        };
+      }
+
+      targets.push(target);
+      seenProfileKeys.add(outputProfileKey);
+      seenTargetIds.add(target.id);
+    }
+  }
+
+  for (const fallbackTarget of fallbackTargets) {
+    if (seenProfileKeys.has(fallbackTarget.outputProfileKey)) {
+      continue;
+    }
+
+    let nextId = fallbackTarget.id;
+    let suffix = 2;
+    while (seenTargetIds.has(nextId)) {
+      nextId = `${fallbackTarget.id}-${suffix}`;
+      suffix += 1;
+    }
+
+    targets.push({
+      ...fallbackTarget,
+      id: nextId
+    });
+    seenProfileKeys.add(fallbackTarget.outputProfileKey);
+    seenTargetIds.add(nextId);
+  }
+
+  const snapshotTargetId = targets.find((target) => target.outputProfileKey === snapshot.outputProfileKey)?.id
+    ?? targets[0]?.id
+    ?? getOverlayDocumentTargetId(snapshot.outputProfileKey);
+  const activeTargetId = typeof rawProject.activeTargetId === "string" && targets.some((target) => (
+    target.id === rawProject.activeTargetId && target.outputProfileKey === snapshot.outputProfileKey
+  ))
+    ? rawProject.activeTargetId
+    : snapshotTargetId;
+
+  return {
+    sceneFamilyKey: normalizeOverlaySceneFamilyKey(rawProject.sceneFamilyKey),
+    activeTargetId,
+    targets
+  };
+}
+
+export function createOverlayDocumentProjectFromSnapshot<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+>(
+  snapshot: OverlaySourceDefaultSnapshot<TExportSettings, THaloConfig, TGuideMode>,
+  projectOverrides?: Partial<OverlayDocumentProject>
+): OverlayDocumentProject {
+  return normalizeOverlayDocumentProject(projectOverrides, snapshot);
 }
 
 export interface ContentFormatFieldOverride {
@@ -687,6 +898,7 @@ export function createOverlayDocumentFile<
       createdAt,
       updatedAt
     },
+    project: normalizeOverlayDocumentProject(options.project, options.state),
     state: cloneOverlaySourceDefaultSnapshot(options.state)
   };
 }
@@ -786,6 +998,7 @@ export function sanitizeOverlayDocumentFile<
 
   let rawState: unknown = rawDocumentFile;
   let rawMetadata: unknown = undefined;
+  let rawProject: unknown = undefined;
 
   if ("state" in rawDocumentFile || "kind" in rawDocumentFile || "version" in rawDocumentFile) {
     if (rawDocumentFile.kind !== OVERLAY_DOCUMENT_FILE_KIND) {
@@ -798,6 +1011,7 @@ export function sanitizeOverlayDocumentFile<
 
     rawState = rawDocumentFile.state;
     rawMetadata = rawDocumentFile.metadata;
+    rawProject = rawDocumentFile.project;
   }
 
   const state = sanitizeOverlaySourceDefaultSnapshot(rawState, options);
@@ -817,6 +1031,7 @@ export function sanitizeOverlayDocumentFile<
       createdAt,
       updatedAt
     },
+    project: normalizeOverlayDocumentProject(rawProject, state),
     state
   };
 }

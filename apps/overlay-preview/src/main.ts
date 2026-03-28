@@ -43,6 +43,7 @@ import {
 } from "@brand-layout-ops/operator-ubuntu-summit-animation";
 import {
   buildOverlayVariableItemLabel,
+  createOverlayDocumentProjectFromSnapshot,
   cloneOverlaySourceDefaultSnapshot,
   cloneProfileContentFormatMap,
   cloneProfileFormatBuckets,
@@ -63,6 +64,7 @@ import {
   setOverlayTextValue,
   syncOverlayParamsFrameToProfile,
   syncOverlaySharedProfileParams,
+  type OverlayDocumentProject,
   type OverlayContentSource,
   type OverlayLayoutOperatorParams,
   type OverlaySourceDefaultSnapshot,
@@ -96,13 +98,20 @@ import {
   type Preset
 } from "./sample-document.js";
 import {
-  clonePreset,
-  createOverlayPreviewDocument,
   denormalizeOverlayPreviewDocumentFromPersistence,
-  normalizeOverlayPreviewDocumentForPersistence,
   type OverlayPreviewDocument as OverlayPreviewDocumentModel,
   type PersistedOverlayPreviewDocument
 } from "./preview-document.js";
+import {
+  applyOverlayPreviewDocumentState,
+  applySourceDefaultSnapshotToState,
+  buildOverlayPreviewDocument,
+  buildOverlayPreviewDocumentPersistence,
+  cloneExportSettingsByProfile,
+  cloneHaloConfigByProfile,
+  createCurrentSourceDefaultSnapshot as createCurrentSourceDefaultSnapshotFromState,
+  resetOverlayPreviewDocumentState
+} from "./preview-document-bridge.js";
 import {
   createDocumentWorkspaceController,
   renderDocumentWorkspaceUi
@@ -161,6 +170,7 @@ interface PreviewState {
   haloConfig: HaloFieldConfig;
   haloConfigByProfile: Record<string, HaloFieldConfig>;
   sourceDefaults: SourceDefaultSnapshot;
+  documentProject: OverlayDocumentProject;
   isPlaying: boolean;
   playbackTimeSec: number;
 }
@@ -180,18 +190,6 @@ const SOURCE_DEFAULT_ASSET_PATH = "/assets/source-default-config.json";
 const CONTROL_PANEL_WIDTH_STORAGE_KEY = "brand-layout-ops-control-panel-width-v1";
 const CONTROL_PANEL_WIDTH_STEP_PX = 16;
 const previewTextMeasurer = createApproximateTextMeasurer();
-
-function cloneExportSettingsByProfile(
-  exportSettingsByProfile: Record<string, ExportSettings>
-): Record<string, ExportSettings> {
-  return JSON.parse(JSON.stringify(exportSettingsByProfile));
-}
-
-function cloneHaloConfigByProfile(
-  haloConfigByProfile: Record<string, HaloFieldConfig>
-): Record<string, HaloFieldConfig> {
-  return JSON.parse(JSON.stringify(haloConfigByProfile));
-}
 
 function createDebugHaloFieldConfig(baseConfig: HaloFieldConfig = createDefaultHaloFieldConfig()): HaloFieldConfig {
   return { ...baseConfig };
@@ -303,8 +301,18 @@ const state: PreviewState = {
     [_startProfileKey]: getHaloConfigForProfile(_startProfileKey)
   },
   sourceDefaults: cloneOverlaySourceDefaultSnapshot(INITIAL_SOURCE_DEFAULTS),
+  documentProject: createOverlayDocumentProjectFromSnapshot(INITIAL_SOURCE_DEFAULTS),
   isPlaying: true,
   playbackTimeSec: 0
+};
+
+const previewDocumentBridge = {
+  persistActiveProfileBuckets,
+  persistActiveExportSettings,
+  persistActiveHaloConfig,
+  getOrCreateProfileFormatParams,
+  normalizeParams: normalizeParamsTextFieldOffsets,
+  syncHaloConfigToProfile
 };
 
 const documentWorkspaceController = createDocumentWorkspaceController<OverlayPreviewDocument>({
@@ -948,26 +956,25 @@ function switchContentFormat(formatKey: string) {
 }
 
 function buildCurrentDocumentPayload(overrides?: { name?: string; createdAt?: string; updatedAt?: string }): OverlayPreviewDocument {
-  persistActiveProfileBuckets();
-  persistActiveExportSettings();
-  persistActiveHaloConfig();
-  state.contentFormatKeyByProfile[state.outputProfileKey] = state.contentFormatKey;
   const createdAt = overrides?.createdAt ?? documentWorkspaceController.state.createdAt ?? overrides?.updatedAt;
   const updatedAt = overrides?.updatedAt ?? documentWorkspaceController.state.updatedAt ?? createdAt;
 
-  return createOverlayPreviewDocument({
+  return buildOverlayPreviewDocument(state, previewDocumentBridge, {
     name: overrides?.name ?? getNormalizedDocumentName(),
     createdAt,
-    updatedAt,
-    state: createCurrentSourceDefaultSnapshot(),
-    pendingCsvDraftsByBucket: state.pendingCsvDraftsByBucket,
-    presets: state.presets,
-    activePresetId: state.activePresetId
+    updatedAt
   });
 }
 
 function buildCurrentDocumentPersistence(overrides?: { name?: string; createdAt?: string; updatedAt?: string }): PersistedOverlayPreviewDocument {
-  return normalizeOverlayPreviewDocumentForPersistence(buildCurrentDocumentPayload(overrides));
+  const createdAt = overrides?.createdAt ?? documentWorkspaceController.state.createdAt ?? overrides?.updatedAt;
+  const updatedAt = overrides?.updatedAt ?? documentWorkspaceController.state.updatedAt ?? createdAt;
+
+  return buildOverlayPreviewDocumentPersistence(state, previewDocumentBridge, {
+    name: overrides?.name ?? getNormalizedDocumentName(),
+    createdAt,
+    updatedAt
+  });
 }
 
 function sanitizePreviewDocument(rawDocument: unknown): OverlayPreviewDocument | null {
@@ -1003,29 +1010,13 @@ async function refreshPreviewAfterDocumentStateChange(): Promise<void> {
 }
 
 async function applyPreviewDocumentToState(previewDocument: OverlayPreviewDocument): Promise<void> {
-  applySourceDefaultSnapshot(previewDocument.document.state);
-  state.pendingCsvDraftsByBucket = { ...previewDocument.pendingCsvDraftsByBucket };
-
-  state.presets = previewDocument.presets.map((preset) => clonePreset(preset));
-  state.activePresetId = previewDocument.activePresetId && state.presets.some((preset) => preset.id === previewDocument.activePresetId)
-    ? previewDocument.activePresetId
-    : null;
-
-  savePresets(state.presets);
-  saveActivePresetId(state.activePresetId);
-  saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
+  applyOverlayPreviewDocumentState(state, previewDocument, previewDocumentBridge);
 
   await refreshPreviewAfterDocumentStateChange();
 }
 
 async function applyNewDocumentState(): Promise<void> {
-  applySourceDefaultSnapshot(state.sourceDefaults);
-  state.pendingCsvDraftsByBucket = {};
-  state.presets = [];
-  state.activePresetId = null;
-  savePresets(state.presets);
-  saveActivePresetId(state.activePresetId);
-  saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
+  resetOverlayPreviewDocumentState(state, previewDocumentBridge);
 
   await refreshPreviewAfterDocumentStateChange();
 }
@@ -1262,57 +1253,13 @@ function sanitizeSourceDefaultSnapshot(rawSnapshot: unknown): SourceDefaultSnaps
 }
 
 function createCurrentSourceDefaultSnapshot(): SourceDefaultSnapshot {
-  persistActiveProfileBuckets();
-  persistActiveExportSettings();
-  persistActiveHaloConfig();
-  const normalizedProfileState = normalizeOverlayProfileBucketState({
-    outputProfileKey: state.outputProfileKey,
-    contentFormatKey: state.contentFormatKey,
-    profileFormatBuckets: state.profileFormatBuckets,
-    contentFormatKeyByProfile: state.contentFormatKeyByProfile
-  });
-  return {
-    outputProfileKey: normalizedProfileState.outputProfileKey,
-    contentFormatKey: normalizedProfileState.contentFormatKey,
-    profileFormatBuckets: normalizedProfileState.profileFormatBuckets,
-    contentFormatKeyByProfile: normalizedProfileState.contentFormatKeyByProfile,
-    exportSettings: JSON.parse(JSON.stringify(state.exportSettings)) as ExportSettings,
-    exportSettingsByProfile: cloneExportSettingsByProfile(state.exportSettingsByProfile),
-    haloConfig: JSON.parse(JSON.stringify(state.haloConfig)) as HaloFieldConfig,
-    haloConfigByProfile: cloneHaloConfigByProfile(state.haloConfigByProfile),
-    guideMode: state.guideMode
-  };
+  return createCurrentSourceDefaultSnapshotFromState(state, previewDocumentBridge);
 }
 
 function applySourceDefaultSnapshot(snapshot: SourceDefaultSnapshot) {
-  const normalizedProfileState = normalizeOverlayProfileBucketState({
-    outputProfileKey: snapshot.outputProfileKey,
-    contentFormatKey: snapshot.contentFormatKey,
-    profileFormatBuckets: snapshot.profileFormatBuckets,
-    contentFormatKeyByProfile: snapshot.contentFormatKeyByProfile
-  });
-  state.sourceDefaults = cloneOverlaySourceDefaultSnapshot(snapshot);
-  state.outputProfileKey = normalizedProfileState.outputProfileKey;
-  state.profileFormatBuckets = normalizedProfileState.profileFormatBuckets;
-  state.contentFormatKeyByProfile = normalizedProfileState.contentFormatKeyByProfile;
-  state.contentFormatKey = normalizedProfileState.contentFormatKey;
-  state.params = normalizeParamsTextFieldOffsets(cloneOverlayParams(
-    getOrCreateProfileFormatParams(state.outputProfileKey, state.contentFormatKey)
-  ));
-  state.exportSettingsByProfile = cloneExportSettingsByProfile(snapshot.exportSettingsByProfile);
-  state.exportSettings = JSON.parse(JSON.stringify(
-    state.exportSettingsByProfile[state.outputProfileKey] ?? snapshot.exportSettings
-  )) as ExportSettings;
-  state.haloConfigByProfile = cloneHaloConfigByProfile(snapshot.haloConfigByProfile);
-  state.haloConfig = JSON.parse(JSON.stringify(
-    state.haloConfigByProfile[state.outputProfileKey] ?? snapshot.haloConfig
-  )) as HaloFieldConfig;
-  state.guideMode = snapshot.guideMode;
-  state.overlayVisible = false;
-  state.selected = null;
-  state.pendingCsvDraftsByBucket = {};
+  applySourceDefaultSnapshotToState(state, snapshot, previewDocumentBridge);
+  state.documentProject = createOverlayDocumentProjectFromSnapshot(snapshot, state.documentProject);
   normalizeSelection();
-  syncHaloConfigToProfile(state.outputProfileKey);
 }
 
 function setOverlayVisible(nextVisible: boolean) {

@@ -10,6 +10,7 @@ import {
   createDefaultOverlayParams,
   sanitizeOverlayDocumentFile,
   type OverlayDocumentFile,
+  type OverlayDocumentProject,
   type OverlayLayoutOperatorParams,
   type OverlaySourceDefaultSnapshot,
   type ProfileContentFormatMap,
@@ -38,6 +39,7 @@ export interface PersistedOverlayPreviewDocument {
   kind: string;
   version: number;
   metadata?: unknown;
+  project?: unknown;
   state?: unknown;
   pendingCsvDraftsByBucket?: unknown;
   presets?: PersistedPreset[];
@@ -48,6 +50,7 @@ export interface CreateOverlayPreviewDocumentOptions<THaloConfig extends object,
   name: string;
   createdAt?: string;
   updatedAt?: string;
+  project?: OverlayDocumentProject;
   state: OverlaySourceDefaultSnapshot<ExportSettings, THaloConfig, TGuideMode>;
   pendingCsvDraftsByBucket: Record<string, string>;
   presets: Preset[];
@@ -144,6 +147,7 @@ export function createOverlayPreviewDocument<THaloConfig extends object, TGuideM
 ): OverlayPreviewDocument<THaloConfig, TGuideMode> {
   const documentOptions = {
     name: options.name,
+    ...(options.project ? { project: options.project } : {}),
     state: options.state,
     ...(options.createdAt ? { createdAt: options.createdAt } : {}),
     ...(options.updatedAt ? { updatedAt: options.updatedAt } : {})

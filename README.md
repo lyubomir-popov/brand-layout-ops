@@ -47,7 +47,7 @@ If the task is parity-related, inspect these comparison sources next:
 - Reference app behavior and presets: `c:\Users\lyubo\work\repos\racoon-anim\src\app\config-schema.js`, `default-config-source.js`, `editor-constants.js`, `index.js`
 - Reference motion and halo-field rendering: `c:\Users\lyubo\work\repos\racoon-anim\src\app\rendering.js`, `halo-field.js`
 - Reference content and assets: `c:\Users\lyubo\work\repos\racoon-anim\assets\content.csv`, `content-speaker-highlight.csv`, `UbuntuTagLogo.svg`, `racoon-mascot-face.svg`, `racoon-mascot-halo.svg`
-- Current preview implementation: `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/document-workspace.ts`, `apps/overlay-preview/src/preview-document.ts`, `apps/overlay-preview/src/sample-document.ts`, `apps/overlay-preview/src/sample-motion.ts`
+- Current preview implementation: `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/document-workspace.ts`, `apps/overlay-preview/src/preview-document.ts`, `apps/overlay-preview/src/preview-document-bridge.ts`, `apps/overlay-preview/src/sample-document.ts`, `apps/overlay-preview/src/sample-motion.ts`
 - Current layout and motion kernels: `packages/operator-overlay-layout/src/index.ts`, `packages/layout-engine/src/index.ts`, `packages/operator-orbits/src/index.ts`, `packages/operator-spokes/src/index.ts`
 
 ## Local Preview
@@ -68,7 +68,7 @@ That starts a Vite app at `apps/overlay-preview/` which currently:
 - supports text and logo selection, double-click text editing, drag snapping, guide toggling, and CSV or inline content switching
 - surfaces the main operator document controls from an operator parameter schema instead of only from preview-local hardcoded controls
 - includes left and right snapped resize handles for selected text fields, a first-baseline guide, and staged CSV apply or discard controls
-- persists local `.brand-layout-ops.json` documents through the shared overlay document metadata/state envelope, with preview-only preset and CSV-draft extras layered on top and legacy preview-file compatibility retained
+- persists local `.brand-layout-ops.json` documents through the shared overlay document metadata/state envelope plus shared scene-family or target `project` metadata, with preview-only preset and CSV-draft extras layered on top and legacy preview-file compatibility retained
 - treats local documents as the source of truth for working state; browser-local preset storage is no longer supposed to seed a new session's working document
 
 Other useful local checks:
@@ -88,7 +88,7 @@ npm run demo:spokes
 - `@brand-layout-ops/layout-grid`: baseline-grid and column-grid resolution
 - `@brand-layout-ops/layout-text`: wrapping and placement math using a provided measurer
 - `@brand-layout-ops/layout-engine`: scene-level layout composition for branded overlay content
-- `@brand-layout-ops/operator-overlay-layout`: graph-facing overlay composition operator built on the layout kernels
+- `@brand-layout-ops/operator-overlay-layout`: graph-facing overlay composition operator plus shared overlay defaults and document-schema primitives
 - `@brand-layout-ops/operator-copy-to-points`: Houdini-style point instancing with propagated attributes for later Three.js and SVG backends
 - `@brand-layout-ops/operator-orbits`: coarse orbit-ring point-field generator for motion-side rebuild work
 - `@brand-layout-ops/operator-phyllotaxis`: golden-angle point-field generation matching the current Houdini phyllotaxis HDA logic
