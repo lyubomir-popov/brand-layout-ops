@@ -2639,8 +2639,7 @@ function handlePointerDown(e: PointerEvent) {
       resizeEdge
     };
     if (state.selected.kind === "text") {
-      const rawField = state.params.textFields.find(f => f.id === state.selected!.id);
-      dragState.initialField = rawField ? normalizeOverlayTextFieldOffsetBaselines(state.params, rawField, previewTextMeasurer) : undefined;
+      dragState.initialField = state.params.textFields.find(f => f.id === state.selected!.id);
     } else if (state.selected.kind === "logo") {
       dragState.initialLogo = state.params.logo ? { ...state.params.logo } : undefined;
     }
@@ -2669,8 +2668,7 @@ function handlePointerDown(e: PointerEvent) {
   };
 
   if (hit.kind === "text") {
-    const rawField = state.params.textFields.find(f => f.id === hit.id);
-    dragState.initialField = rawField ? normalizeOverlayTextFieldOffsetBaselines(state.params, rawField, previewTextMeasurer) : undefined;
+    dragState.initialField = state.params.textFields.find(f => f.id === hit.id);
   } else if (hit.kind === "logo") {
     dragState.initialLogo = state.params.logo ? { ...state.params.logo } : undefined;
   }
@@ -2735,9 +2733,7 @@ function handlePointerMove(e: PointerEvent) {
           const initialRowTopPx = metrics.contentTopPx + (currentDrag.initialField.rowIndex - 1) * rowStepPx;
           const initialBaselineYPx = initialRowTopPx + currentDrag.initialField.offsetBaselines * metrics.baselineStepPx;
           const snapped = snapBaselineToGrid(metrics, initialBaselineYPx + delta.deltaYPx);
-          const tempField = { ...currentDrag.initialField, rowIndex: snapped.rowIndex, offsetBaselines: snapped.offsetBaselines };
-          const normalizedField = normalizeOverlayTextFieldOffsetBaselines(state.params, tempField, previewTextMeasurer);
-          verticalUpdate = { rowIndex: normalizedField.rowIndex, offsetBaselines: normalizedField.offsetBaselines };
+          verticalUpdate = { rowIndex: snapped.rowIndex, offsetBaselines: snapped.offsetBaselines };
         }
 
         updateTextField(currentDrag.selection.id, f => ({ ...f, ...horizontalUpdate, ...verticalUpdate }));
@@ -2777,8 +2773,7 @@ function handlePointerMove(e: PointerEvent) {
 
       if (currentDrag.selection.kind === "text" && currentDrag.initialField) {
         const result = moveTextField(currentDrag.initialField, currentDrag.metrics, { ...delta, axisLock });
-        const normalized = normalizeOverlayTextFieldOffsetBaselines(state.params, result, previewTextMeasurer);
-        updateTextField(currentDrag.selection.id, () => normalized);
+        updateTextField(currentDrag.selection.id, () => result);
         void renderStage();
       }
 
