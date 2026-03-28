@@ -105,7 +105,7 @@ If you want the shortest high-level snapshot, read this file first.
 **Preview shell extraction progress** (see `docs/rebuild-plan.md` § Preview Shell Audit):
 - Generic form helpers (createFormGroup, createSliderInput, etc.) extracted to `packages/parameter-ui/src/accordion-form-helpers.ts`; `buildSectionEl` renamed `buildAccordionSectionEl` across all call sites
 - SVG overlay adapter (createGuideMarkup, createTextMarkup, createLogoMarkup, createSafeAreaMarkup, escapeXml) extracted to `apps/overlay-preview/src/svg-overlay-adapter.ts`; `renderSvgOverlay` is now a thin orchestrator
-- main.ts is currently ~4 160 lines; the state-sharing protocol (`preview-app-context.ts` with `PreviewAppContext` interface) is now in place, and the first two operator-aligned section builders (halo config, layout grid) have been extracted to `halo-config-section.ts` and `grid-section.ts` using explicit context injection instead of closure capture — see "Extraction order" in rebuild-plan.md
+- main.ts is currently ~3 530 lines; the state-sharing protocol (`preview-app-context.ts` with `PreviewAppContext` interface) is now in place, and all 9 operator-aligned section builders have been extracted to individual modules using explicit context injection instead of closure capture — see "Extraction order" in rebuild-plan.md. The next extraction targets are the authoring interaction controller and the export + automation controller.
 - `operator-ubuntu-summit-animation` now computes scene phase, runtime timing, loop timing, mascot-box metadata, reveal geometry, screensaver pulse counts, and transient spoke-transition state, and the preview renderer plus automation state now consume that descriptor path
 - `operator-ubuntu-summit-animation` now also emits mascot motion timing and motion-state metadata (blink, head turn, eye closure, sneeze/nose bob) through the scene descriptor and automation bridge
 - The preview renderer now draws the local mascot face asset, optional reference halo asset, and reference-leaning eye or nose layering on the overlay canvas using the scene-family operator's mascot box and motion state
@@ -224,6 +224,13 @@ If you want the shortest high-level snapshot, read this file first.
 | State-sharing protocol for section builder extraction | `apps/overlay-preview/src/preview-app-context.ts` |
 | Extracted halo-config section builder | `apps/overlay-preview/src/halo-config-section.ts` |
 | Extracted layout-grid section builder | `apps/overlay-preview/src/grid-section.ts` |
+| Extracted playback & export section builder | `apps/overlay-preview/src/playback-export-section.ts` |
+| Extracted document section builder | `apps/overlay-preview/src/document-section.ts` |
+| Extracted output-format section builder | `apps/overlay-preview/src/output-format-section.ts` |
+| Extracted presets section builder | `apps/overlay-preview/src/presets-section.ts` |
+| Extracted content-format section builder | `apps/overlay-preview/src/content-format-section.ts` |
+| Extracted selected-element section builder | `apps/overlay-preview/src/overlay-section.ts` |
+| Extracted paragraph-styles section builder | `apps/overlay-preview/src/paragraph-styles-section.ts` |
 | Extracted form helpers (accordion builders, inputs) | `packages/parameter-ui/src/accordion-form-helpers.ts` |
 | Extracted SVG overlay adapter (guide, text, logo, safe-area markup) | `apps/overlay-preview/src/svg-overlay-adapter.ts` |
 | Preview-side document compatibility layer + preview extras on top of the shared document envelope | `apps/overlay-preview/src/preview-document.ts` |
