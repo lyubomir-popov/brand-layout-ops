@@ -62,10 +62,11 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
       writeBtn.disabled = true;
       ctx.setSourceDefaultStatus("Saving source default...");
       try {
-        await ctx.writeCurrentAsSourceDefault();
-        ctx.setSourceDefaultStatus("Source default saved.", "success");
-      } catch {
-        ctx.setSourceDefaultStatus("Source default save failed.", "error");
+        const result = await ctx.writeCurrentAsSourceDefault();
+        ctx.setSourceDefaultStatus(result.message, "success");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Source default save failed.";
+        ctx.setSourceDefaultStatus(`Source default save failed: ${message}`, "error");
       } finally {
         writeBtn.disabled = false;
       }

@@ -90,6 +90,7 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
 
     textarea.addEventListener("input", () => {
       ctx.setStagedCsvDraft(textarea.value);
+      ctx.markDocumentDirty();
       syncCsvActionButtons();
     });
 
@@ -107,6 +108,7 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
             ...state.params,
             csvContent: { draft: state.params.csvContent?.draft ?? "", rowIndex: Math.max(1, Math.round(v)) }
           };
+          ctx.markDocumentDirty();
           void ctx.renderStage();
         }
       )

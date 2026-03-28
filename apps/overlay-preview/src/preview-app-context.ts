@@ -44,6 +44,12 @@ export type SourceDefaultSnapshot = OverlaySourceDefaultSnapshot<ExportSettings,
 
 export type OverlayPreviewDocument = OverlayPreviewDocumentModel<HaloFieldConfig, GuideMode>;
 
+export interface SourceDefaultWriteResult {
+  sourceDefaultPath: string;
+  csvPaths: string[];
+  message: string;
+}
+
 export interface PreviewState {
   params: OverlayLayoutOperatorParams;
   selected: Selection | null;
@@ -199,7 +205,7 @@ export interface PreviewAppContext {
   /** Apply a source-default snapshot to state. */
   applySourceDefaultSnapshot(snapshot: SourceDefaultSnapshot): void;
   /** Write current state as the source default (HTTP POST to dev server). */
-  writeCurrentAsSourceDefault(): Promise<void>;
+  writeCurrentAsSourceDefault(): Promise<SourceDefaultWriteResult>;
   /** Show a status message in the source-default area. */
   setSourceDefaultStatus(message: string, severity?: string): void;
 

@@ -70,6 +70,7 @@ If you want the shortest high-level snapshot, read this file first.
 - Active content formats now persist per output profile inside preview state, source-default snapshots, and preset payloads, so profile switches restore the intended format bucket instead of reusing one global selection
 - Active content formats now also resolve through shared overlay-layout helpers when profiles, presets, and source-default snapshots choose the valid format bucket
 - CSV authoring UI now shows row status, alias-based field mapping, and per-field staged-versus-applied values for the active format, `speaker_highlight` is selectable again alongside `generic_social`, and Apply/Discard now enable immediately while staged CSV edits are being typed
+- Source-default writeback now flushes staged CSV drafts through `/__authoring/overlay-csv` before saving the shared overlay-document payload, reports how many CSV files were updated first, and blocks conflicting staged drafts that target the same asset path instead of silently overwriting one profile bucket with another
 - The preview now has a first-pass local document workflow: open, save, save as, and duplicate `.brand-layout-ops.json` files persist the working snapshot plus the preset library instead of relying only on browser-local presets
 - Recent documents now reopen through `apps/overlay-preview/src/document-storage.ts`, so the document workflow covers open, save, save as, duplicate, and handle-backed reopen instead of only one-shot file access
 - Preview document files now persist shared `operator-overlay-layout` document metadata/state envelopes plus shared `project` metadata for `sceneFamilyKey`, `activeTargetId`, document target profiles, non-halo `sceneFamilyConfigs`, and the saved active `backgroundGraph`, while `apps/overlay-preview/src/preview-document.ts` keeps the preview-only preset and pending-CSV extras plus legacy-file compatibility for the older preview-local envelope
@@ -183,7 +184,7 @@ Items EQ-1 through EQ-12 are the user-directed priorities in dependency order:
 
 ### Immediate next steps
 
-**Next parity slice** — close the remaining CSV draft editing and source-writeback staging gap: re-audit staged draft UX, pending-writeback status, and any remaining source-default/document writeback affordances against the `racoon-anim` reference app, then move the next polish slice into the extracted content-format/document modules instead of burying it in `main.ts`.
+**Next parity slice** — move back to the top explicit parity strategy from `docs/rebuild-plan.md`: port more of the whole Ubuntu Summit sequence into `operator-ubuntu-summit-animation`, then re-compare the current animation background look against `racoon-anim` before reopening lower-priority shell or document cleanup.
 
 **After EQ-12** — decide whether the background preview adapter should call further into shared graph evaluation primitives or continue as a thin typed renderer adapter over the persisted chain.
 
@@ -231,7 +232,7 @@ Items EQ-1 through EQ-12 are the user-directed priorities in dependency order:
   - Uses the sibling repo package as a local dependency and keeps the existing alias-based markup for now
 - [ ] Continue anti-drift refactors that reduce preview-shell ownership of canonical product behavior
   - **Next extraction prerequisite**: design a state-sharing protocol (context object, extracted state module, or dependency-injected callbacks) so section builders, authoring controller, and export controller can leave main.ts without simply moving closure coupling to a different file
-  - Move remaining source-default writeback orchestration, export-state, and scene-family document rules toward shared layout or operator paths where parity permits
+  - Move remaining export-state and scene-family document rules toward shared layout or operator paths where parity permits
   - Replace preview-owned section definitions with package-registered or manifest-driven panels on top of the shared `parameter-ui` registry instead of expanding bespoke shell code indefinitely
   - Continue trimming preview-local control-surface CSS so `baseline-foundry` remains the styling owner and only genuinely preview-specific rules stay in `apps/overlay-preview/src/styles.scss`
   - Keep the docked shell on baseline-foundry's app-shell primitives; avoid reintroducing preview-local reserved-width or fixed-position aside hacks now that the 30rem docked panel cap lives in the shared layout path
