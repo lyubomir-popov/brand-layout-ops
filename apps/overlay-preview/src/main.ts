@@ -2048,7 +2048,6 @@ const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
   { key: "playback-export", order: 100, factory: () => buildPlaybackExportSection(ctx), afterRender: updatePlaybackToggleUi },
   { key: "output-format", order: 200, factory: () => buildOutputFormatSection(), afterRender: buildOutputProfileOptions },
   { key: "document", order: 250, factory: () => buildDocumentSection(ctx), afterRender: updateDocumentUi },
-  { key: "presets", order: 300, factory: () => buildPresetsSection(ctx), afterRender: buildPresetTabs },
   { key: "content-format", order: 400, factory: () => buildContentFormatSection(ctx) },
   { key: "selected-overlay", order: 500, factory: () => buildOverlaySection(ctx) },
   { key: "paragraph-styles", order: 600, factory: () => buildParagraphStylesSection(ctx) },
@@ -2954,7 +2953,27 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-function serializeExportSvgMarkup(transparentBackground: boolean): string | null {
+async function inlineExternalImages(svgEl: SVGSVGElement): Promise<void> {
+  const images = svgEl.querySelectorAll("image");
+  for (const img of images) {
+    const href = img.getAttribute("href") || img.getAttributeNS("http://www.w3.org/1999/xlink", "href");
+    if (!href || href.startsWith("data:")) continue;
+    try {
+      const resp = await fetch(href);
+      const blob = await resp.blob();
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+      img.setAttribute("href", dataUrl);
+    } catch {
+      // If fetching fails, leave the original href
+    }
+  }
+}
+
+async function serializeExportSvgMarkup(transparentBackground: boolean): Promise<string | null> {
   const svg = getSvgOverlay();
   if (!svg) {
     return null;
@@ -2972,6 +2991,9 @@ function serializeExportSvgMarkup(transparentBackground: boolean): string | null
 
   // Strip guide overlays (baseline grid, layout grid) — these are authoring aids, not export content
   clone.querySelectorAll(".guides").forEach((node) => node.remove());
+
+  // Inline external images as data URLs so they survive blob-URL serialization
+  await inlineExternalImages(clone);
 
   return new XMLSerializer().serializeToString(clone);
 }
@@ -2999,7 +3021,7 @@ async function exportComposedFramePng() {
   ctx.drawImage(stageCanvas, 0, 0, widthPx, heightPx);
   ctx.drawImage(textCanvas, 0, 0, widthPx, heightPx);
 
-  const svgMarkup = serializeExportSvgMarkup(state.exportSettings.transparentBackground);
+  const svgMarkup = await serializeExportSvgMarkup(state.exportSettings.transparentBackground);
   if (svgMarkup) {
     const svgBlob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
     const svgUrl = URL.createObjectURL(svgBlob);
@@ -3168,7 +3190,7 @@ async function composeFrameToCanvas(timeSec: number): Promise<HTMLCanvasElement 
   ctx.drawImage(stageCanvas, 0, 0, widthPx, heightPx);
   ctx.drawImage(textCanvas, 0, 0, widthPx, heightPx);
 
-  const svgMarkup = serializeExportSvgMarkup(state.exportSettings.transparentBackground);
+  const svgMarkup = await serializeExportSvgMarkup(state.exportSettings.transparentBackground);
   if (svgMarkup) {
     const svgBlob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
     const svgUrl = URL.createObjectURL(svgBlob);

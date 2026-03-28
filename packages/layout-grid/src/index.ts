@@ -32,7 +32,7 @@ export function computeLayoutGridMetrics(frame: FrameSize, safeArea: SafeAreaIns
   const contentWidthPx = Math.max(0, layoutWidthPx - leftMarginPx - rightMarginPx - columnGutterPx * Math.max(0, columnCount - 1));
   const columnWidthPx = columnCount <= 0 ? 0 : contentWidthPx / columnCount;
   const columnKeylinePositionsPx = Array.from({ length: columnCount }, (_, index) => (
-    layoutLeftPx + leftMarginPx + index * (columnWidthPx + columnGutterPx)
+    Math.round(layoutLeftPx + leftMarginPx + index * (columnWidthPx + columnGutterPx))
   ));
 
   return {

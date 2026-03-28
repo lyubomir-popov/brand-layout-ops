@@ -69,8 +69,10 @@ function resolveLogoPlacement(frame: FrameSize, safeArea: SafeAreaInsets, fitWit
 
   const originLeftPx = fitWithinSafeArea ? safeArea.left : 0;
   const originTopPx = fitWithinSafeArea ? safeArea.top : 0;
-  const left = originLeftPx + logo.xPx;
-  const top = originTopPx + logo.yPx;
+  const left = Math.round(originLeftPx + logo.xPx);
+  const top = Math.round(originTopPx + logo.yPx);
+  const width = Math.round(logo.widthPx);
+  const height = Math.round(logo.heightPx);
 
   return {
     id: logo.id || "logo",
@@ -82,10 +84,10 @@ function resolveLogoPlacement(frame: FrameSize, safeArea: SafeAreaInsets, fitWit
     bounds: {
       left,
       top,
-      right: left + logo.widthPx,
-      bottom: top + logo.heightPx,
-      width: logo.widthPx,
-      height: logo.heightPx
+      right: left + width,
+      bottom: top + height,
+      width,
+      height
     }
   };
 }

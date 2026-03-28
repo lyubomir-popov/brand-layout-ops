@@ -151,7 +151,7 @@ export function resolveTextPlacement(metrics: LayoutGridMetrics, field: TextFiel
   const safeColumnSpan = clamp(Math.round(field.columnSpan), 1, maxAvailableSpan);
   const safeRowIndex = clamp(Math.round(field.rowIndex), 1, Math.max(1, metrics.rowCount));
   const safeOffsetBaselines = Math.round(field.offsetBaselines);
-  const maxWidthPx = getColumnSpanWidthPx(metrics, safeKeylineIndex, safeColumnSpan);
+  const maxWidthPx = Math.round(getColumnSpanWidthPx(metrics, safeKeylineIndex, safeColumnSpan));
   const wrappedLines = wrapTextLines(safeText, maxWidthPx, style, measurer);
   if (!wrappedLines.length) {
     return null;
@@ -159,8 +159,8 @@ export function resolveTextPlacement(metrics: LayoutGridMetrics, field: TextFiel
 
   const measured = measureTextBlock(wrappedLines, style, measurer);
   const rowTopPx = metrics.contentTopPx + (safeRowIndex - 1) * (metrics.rowHeightPx + metrics.rowGutterPx);
-  const anchorXPx = getKeylineXPx(metrics, safeKeylineIndex);
-  const anchorBaselineYPx = rowTopPx + safeOffsetBaselines * metrics.baselineStepPx;
+  const anchorXPx = Math.round(getKeylineXPx(metrics, safeKeylineIndex));
+  const anchorBaselineYPx = Math.round(rowTopPx + safeOffsetBaselines * metrics.baselineStepPx);
   const textHeightPx = measured.ascentPx + measured.descentPx + Math.max(0, wrappedLines.length - 1) * style.lineHeightPx;
   const bounds: LayoutBounds = {
     left: anchorXPx,

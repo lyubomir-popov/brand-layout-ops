@@ -22,7 +22,6 @@ import {
 import { getLinkedLogoDimensionsPx, resolveLayerScene } from "@brand-layout-ops/layout-engine";
 import {
   createApproximateTextMeasurer,
-  getMinimumFirstBaselineInsetBaselines,
   type ApproximateTextMeasureOptions
 } from "@brand-layout-ops/layout-text";
 
@@ -1536,17 +1535,7 @@ export function normalizeOverlayTextFieldOffsetBaselines(
   field: TextFieldPlacementSpec,
   measurer: TextMeasurer
 ): TextFieldPlacementSpec {
-  const style = params.textStyles.find((candidate) => candidate.key === field.styleKey);
-  if (!style) {
-    return field;
-  }
-
-  const minimumOffsetBaselines = getMinimumFirstBaselineInsetBaselines(
-    params.grid.baselineStepPx,
-    style,
-    measurer
-  );
-  const nextOffsetBaselines = Math.max(Math.round(field.offsetBaselines), minimumOffsetBaselines);
+  const nextOffsetBaselines = Math.round(field.offsetBaselines);
   return nextOffsetBaselines === field.offsetBaselines
     ? field
     : { ...field, offsetBaselines: nextOffsetBaselines };
