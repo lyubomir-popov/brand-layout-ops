@@ -57,12 +57,71 @@ const DEFAULT_SCENE_FAMILY_COLOR: ColorRgba = {
   a: 1
 };
 
+export interface FuzzyBoidsPreviewConfig {
+  numBoids: number;
+  seed: number;
+  spawnRadiusPx: number;
+  staggerStartSeconds: number;
+  initialSpeedPxPerSecond: number;
+  initialSpeedJitter: number;
+  minSpeedPxPerSecond: number;
+  maxSpeedPxPerSecond: number;
+  maxAccelerationPxPerSecond2: number;
+  massMin: number;
+  massMax: number;
+  pscaleMin: number;
+  pscaleMax: number;
+  separationRadiusPx: number;
+  separationStrength: number;
+  alignmentRadiusPx: number;
+  alignmentStrength: number;
+  cohesionRadiusPx: number;
+  cohesionStrength: number;
+  centerPullStrength: number;
+  maxNeighbors: number;
+  boundsKind: "none" | "radial" | "box";
+  boundsRadiusPx: number;
+  boundsMarginPx: number;
+  boundsForcePxPerSecond2: number;
+}
+
+export function createDefaultFuzzyBoidsPreviewConfig(): FuzzyBoidsPreviewConfig {
+  return {
+    numBoids: 220,
+    seed: 1,
+    spawnRadiusPx: 173,
+    staggerStartSeconds: 0,
+    initialSpeedPxPerSecond: 70,
+    initialSpeedJitter: 0.35,
+    minSpeedPxPerSecond: 19,
+    maxSpeedPxPerSecond: 97,
+    maxAccelerationPxPerSecond2: 97,
+    massMin: 0.85,
+    massMax: 1.15,
+    pscaleMin: 0.4,
+    pscaleMax: 1.1,
+    separationRadiusPx: 38,
+    separationStrength: 0.55,
+    alignmentRadiusPx: 130,
+    alignmentStrength: 0.28,
+    cohesionRadiusPx: 173,
+    cohesionStrength: 0.22,
+    centerPullStrength: 0.12,
+    maxNeighbors: 14,
+    boundsKind: "radial",
+    boundsRadiusPx: 302,
+    boundsMarginPx: 86,
+    boundsForcePxPerSecond2: 346
+  };
+}
+
 export interface BuildSceneFamilyPreviewStateOptions {
   sceneFamilyKey: OverlaySceneFamilyKey;
   widthPx: number;
   heightPx: number;
   playbackTimeSec: number;
   haloConfig: HaloFieldConfig;
+  fuzzyBoidsConfig: FuzzyBoidsPreviewConfig;
 }
 
 export interface RenderSceneFamilyPreviewFrameOptions {
@@ -629,8 +688,9 @@ export function buildSceneFamilyPreviewState(
     };
   }
 
+  const bc = options.fuzzyBoidsConfig;
   const seedField = resolvePhyllotaxisField({
-    numPoints: 220,
+    numPoints: bc.numBoids,
     radius: minDimensionPx * 0.18,
     radiusFalloff: 0.5,
     angleOffsetDeg: options.playbackTimeSec * 8,
@@ -639,38 +699,42 @@ export function buildSceneFamilyPreviewState(
   const fuzzyBoids = fuzzyBoidsSimulation.resolve({
     timeSeconds: options.playbackTimeSec,
     deltaTimeSeconds: 1 / 30,
-    numBoids: 220,
+    numBoids: bc.numBoids,
+    seed: bc.seed,
     center,
-    spawnRadiusPx: minDimensionPx * 0.16,
-    initialSpeedPxPerSecond: minDimensionPx * 0.065,
-    initialSpeedJitter: 0.35,
-    minSpeedPxPerSecond: minDimensionPx * 0.018,
-    maxSpeedPxPerSecond: minDimensionPx * 0.09,
-    maxAccelerationPxPerSecond2: minDimensionPx * 0.09,
-    pscaleMin: 0.4,
-    pscaleMax: 1.1,
-    separationRadiusPx: minDimensionPx * 0.035,
-    separationStrength: 0.55,
-    alignmentRadiusPx: minDimensionPx * 0.12,
-    alignmentStrength: 0.28,
-    cohesionRadiusPx: minDimensionPx * 0.16,
-    cohesionStrength: 0.22,
-    centerPullStrength: 0.12,
-    maxNeighbors: 14,
+    spawnRadiusPx: bc.spawnRadiusPx,
+    staggerStartSeconds: bc.staggerStartSeconds,
+    initialSpeedPxPerSecond: bc.initialSpeedPxPerSecond,
+    initialSpeedJitter: bc.initialSpeedJitter,
+    minSpeedPxPerSecond: bc.minSpeedPxPerSecond,
+    maxSpeedPxPerSecond: bc.maxSpeedPxPerSecond,
+    maxAccelerationPxPerSecond2: bc.maxAccelerationPxPerSecond2,
+    massMin: bc.massMin,
+    massMax: bc.massMax,
+    pscaleMin: bc.pscaleMin,
+    pscaleMax: bc.pscaleMax,
+    separationRadiusPx: bc.separationRadiusPx,
+    separationStrength: bc.separationStrength,
+    alignmentRadiusPx: bc.alignmentRadiusPx,
+    alignmentStrength: bc.alignmentStrength,
+    cohesionRadiusPx: bc.cohesionRadiusPx,
+    cohesionStrength: bc.cohesionStrength,
+    centerPullStrength: bc.centerPullStrength,
+    maxNeighbors: bc.maxNeighbors,
     bounds: {
-      kind: "radial",
-      radiusPx: minDimensionPx * 0.28,
-      marginPx: minDimensionPx * 0.08,
-      forcePxPerSecond2: minDimensionPx * 0.32
+      kind: bc.boundsKind,
+      radiusPx: bc.boundsRadiusPx,
+      marginPx: bc.boundsMarginPx,
+      forcePxPerSecond2: bc.boundsForcePxPerSecond2
     },
     palette: Object.values(buildPreviewPalette(options.haloConfig))
   }, center, seedField);
 
   const bounds: FuzzyBoidsBoundsParams = {
-    kind: "radial",
-    radiusPx: minDimensionPx * 0.28,
-    marginPx: minDimensionPx * 0.08,
-    forcePxPerSecond2: minDimensionPx * 0.32
+    kind: bc.boundsKind,
+    radiusPx: bc.boundsRadiusPx,
+    marginPx: bc.boundsMarginPx,
+    forcePxPerSecond2: bc.boundsForcePxPerSecond2
   };
 
   return {
