@@ -200,6 +200,7 @@ const SOURCE_DEFAULT_AUTHORING_ENDPOINT = "/__authoring/source-default-config";
 const SOURCE_DEFAULT_ASSET_PATH = "/assets/source-default-config.json";
 const CONTROL_PANEL_WIDTH_STORAGE_KEY = "brand-layout-ops-control-panel-width-v1";
 const OVERLAY_VISIBLE_STORAGE_KEY = "brand-layout-ops-overlay-visible-v1";
+const GUIDE_MODE_STORAGE_KEY = "brand-layout-ops-guide-mode-v1";
 const CONTROL_PANEL_WIDTH_STEP_PX = 16;
 const previewTextMeasurer = createApproximateTextMeasurer();
 
@@ -289,7 +290,7 @@ const INITIAL_SOURCE_DEFAULTS = createBuiltInOverlaySourceDefaultSnapshot<Export
 const state: PreviewState = {
   params: cloneOverlayParams(INITIAL_PARAMS),
   selected: null,
-  guideMode: "composition",
+  guideMode: normalizeGuideMode(localStorage.getItem(GUIDE_MODE_STORAGE_KEY) ?? "composition"),
   overlayVisible: localStorage.getItem(OVERLAY_VISIBLE_STORAGE_KEY) === "1",
   pendingCsvDraftsByBucket: {},
   outputProfileKey: _startProfileKey,
@@ -2829,6 +2830,7 @@ function handleDblClick(e: MouseEvent) {
 function cycleGuideMode() {
   const idx = GUIDE_MODES.indexOf(state.guideMode);
   state.guideMode = GUIDE_MODES[(idx + 1) % GUIDE_MODES.length];
+  try { localStorage.setItem(GUIDE_MODE_STORAGE_KEY, state.guideMode); } catch { /* quota */ }
 }
 
 function setDrawerOpen(isOpen: boolean) {
