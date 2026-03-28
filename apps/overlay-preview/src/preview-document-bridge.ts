@@ -146,7 +146,7 @@ export function applySourceDefaultSnapshotToState<
   state.haloConfig = cloneJson(
     state.haloConfigByProfile[state.outputProfileKey] ?? snapshot.haloConfig
   );
-  state.guideMode = snapshot.guideMode;
+  // Preserve guideMode across document loads — it's a UI display preference, not document state
   // Preserve overlayVisible across document loads — it's a UI display preference, not document state
   state.selected = null;
   state.pendingCsvDraftsByBucket = {};
