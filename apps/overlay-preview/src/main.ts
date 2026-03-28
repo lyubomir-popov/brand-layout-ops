@@ -441,8 +441,8 @@ function getControlPanelWidthBounds(): { minPx: number; maxPx: number } {
   }
 
   const computedStyle = getComputedStyle(appShell);
-  const minPx = resolveCssLengthPx(appShell, computedStyle.getPropertyValue("--vr-application-aside-width-min"), 288);
-  const maxPx = resolveCssLengthPx(appShell, computedStyle.getPropertyValue("--vr-application-aside-width-max"), 480);
+  const minPx = resolveCssLengthPx(appShell, computedStyle.getPropertyValue("--bf-app-aside-width-narrow"), 288);
+  const maxPx = resolveCssLengthPx(appShell, computedStyle.getPropertyValue("--bf-app-aside-width-max"), 480);
   return {
     minPx,
     maxPx: Math.max(minPx, maxPx)
@@ -465,7 +465,7 @@ function getCurrentControlPanelWidthPx(): number {
 
   return resolveCssLengthPx(
     appShell,
-    getComputedStyle(appShell).getPropertyValue("--vr-application-aside-width"),
+    getComputedStyle(appShell).getPropertyValue("--bf-app-aside-width"),
     480
   );
 }
@@ -490,7 +490,7 @@ function applyDockedControlPanelWidth(widthPx: number, persist: boolean = true):
 
   const { minPx, maxPx } = getControlPanelWidthBounds();
   const nextWidthPx = clamp(widthPx, minPx, maxPx);
-  appShell.style.setProperty("--vr-application-aside-width", `${nextWidthPx}px`);
+  appShell.style.setProperty("--bf-app-aside-width", `${nextWidthPx}px`);
   updateControlPanelResizeHandleA11y(nextWidthPx);
 
   if (persist) {
@@ -797,7 +797,7 @@ function createOverlayItemActionRow(): HTMLElement {
   actions.style.cssText = "display:flex;gap:0.5rem;flex-wrap:wrap;";
 
   const addButton = document.createElement("button");
-  addButton.className = "p-button is-dense";
+  addButton.className = "bf-button is-dense";
   addButton.type = "button";
   addButton.textContent = "Add Text";
   addButton.addEventListener("click", () => {
@@ -807,7 +807,7 @@ function createOverlayItemActionRow(): HTMLElement {
   });
 
   const deleteButton = document.createElement("button");
-  deleteButton.className = "p-button--base is-dense";
+  deleteButton.className = "bf-button--base is-dense";
   deleteButton.type = "button";
   deleteButton.textContent = "Delete Text";
   deleteButton.disabled = !canDeleteSelectedText();
@@ -1799,8 +1799,7 @@ function buildOutputProfileOptions() {
   container.append(sceneFields);
 
   const help = document.createElement("p");
-  help.className = "p-form-help-text control-help";
-  help.textContent = "Scene family now saves with the document. The size list below controls which output profiles stay in this document.";
+  help.className = "bf-form-help control-help";
   container.append(help);
 
   const toolbar = document.createElement("div");
@@ -1808,7 +1807,7 @@ function buildOutputProfileOptions() {
 
   const addButton = document.createElement("button");
   addButton.type = "button";
-  addButton.className = "p-button is-dense";
+  addButton.className = "bf-button is-dense";
   addButton.textContent = "Add Size";
   addButton.disabled = getUnusedDocumentTargetProfileKeys().length === 0;
   addButton.addEventListener("click", () => {
@@ -1823,8 +1822,7 @@ function buildOutputProfileOptions() {
 
   const removeButton = document.createElement("button");
   removeButton.type = "button";
-  removeButton.className = "p-button--base is-dense";
-  removeButton.textContent = "Delete Active Size";
+  removeButton.className = "bf-button--base is-dense";
   removeButton.disabled = state.documentProject.targets.length <= 1;
   removeButton.addEventListener("click", () => {
     if (!removeActiveDocumentTarget()) {
@@ -1881,7 +1879,7 @@ function buildOutputProfileOptions() {
 
   const labelInput = document.createElement("input");
   labelInput.type = "text";
-  labelInput.className = "p-form-validation__input is-dense";
+  labelInput.className = "bf-input is-dense";
   labelInput.value = activeTarget.label;
   labelInput.placeholder = getDefaultDocumentTargetLabel(activeTarget.outputProfileKey);
   labelInput.addEventListener("change", () => {
@@ -1924,7 +1922,7 @@ function buildPresetTabs() {
 
   if (state.presets.length === 0) {
     const empty = document.createElement("p");
-    empty.className = "p-form-help-text preset-empty";
+    empty.className = "bf-form-help preset-empty";
     empty.textContent = "No presets saved yet.";
     container.append(empty);
     updatePresetToolbarState();
@@ -2091,10 +2089,10 @@ function buildConfigEditor() {
   container.innerHTML = "";
 
   const accordion = document.createElement("aside");
-  accordion.className = "p-accordion";
+  accordion.className = "bf-accordion";
 
   const list = document.createElement("ul");
-  list.className = "p-accordion__list";
+  list.className = "bf-accordion__list";
 
   const sections = getConfigSections();
   for (const section of sections) {
@@ -3004,32 +3002,32 @@ function updateExportSummary(
 function buildExportModal(): HTMLDialogElement {
   const dialog = document.createElement("dialog");
   dialog.id = "export-options-modal";
-  dialog.className = "p-modal";
+  dialog.className = "bf-modal";
 
   dialog.innerHTML = `
-    <div class="p-modal__dialog" role="dialog" aria-labelledby="export-modal-title">
-      <header class="p-modal__header">
-        <h2 class="p-modal__title" id="export-modal-title">Export PNG Sequence</h2>
-        <button class="p-modal__close" data-export-cancel type="button">Close</button>
+    <div class="bf-modal__dialog" role="dialog" aria-labelledby="export-modal-title">
+      <header class="bf-modal__header">
+        <h2 class="bf-modal__title" id="export-modal-title">Export PNG Sequence</h2>
+        <button class="bf-modal__close" data-export-cancel type="button">Close</button>
       </header>
-      <div class="p-modal__body">
-        <div class="p-form__group">
-          <label class="p-form__label">Start Frame</label>
-          <div class="p-form__control">
-            <input type="number" class="p-form-validation__input" data-export-start-frame min="1" step="1" value="1">
+      <div class="bf-modal__body">
+        <div class="bf-field">
+          <label class="bf-form__label">Start Frame</label>
+          <div class="bf-control">
+            <input type="number" class="bf-input" data-export-start-frame min="1" step="1" value="1">
           </div>
         </div>
-        <div class="p-form__group">
-          <label class="p-form__label">End Frame</label>
-          <div class="p-form__control">
-            <input type="number" class="p-form-validation__input" data-export-end-frame min="1" step="1" value="240">
+        <div class="bf-field">
+          <label class="bf-form__label">End Frame</label>
+          <div class="bf-control">
+            <input type="number" class="bf-input" data-export-end-frame min="1" step="1" value="240">
           </div>
         </div>
-        <p class="p-form-help-text" data-export-summary></p>
+        <p class="bf-form-help" data-export-summary></p>
       </div>
-      <footer class="p-modal__footer">
-        <button class="p-button--base" type="button" data-export-cancel>Cancel</button>
-        <button class="p-button" type="button" data-export-submit>Export</button>
+      <footer class="bf-modal__footer">
+        <button class="bf-button--base" type="button" data-export-cancel>Cancel</button>
+        <button class="bf-button" type="button" data-export-submit>Export</button>
       </footer>
     </div>
   `;
@@ -3230,7 +3228,7 @@ function setupControlPanelResize() {
 
   handle.addEventListener("dblclick", () => {
     localStorage.removeItem(CONTROL_PANEL_WIDTH_STORAGE_KEY);
-    appShell.style.removeProperty("--vr-application-aside-width");
+    appShell.style.removeProperty("--bf-app-aside-width");
     updateControlPanelResizeHandleA11y();
   });
 

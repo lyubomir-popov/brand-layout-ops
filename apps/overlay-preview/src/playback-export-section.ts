@@ -16,7 +16,7 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
   row.className = "row";
 
   const playBtn = document.createElement("button");
-  playBtn.className = "p-button is-dense";
+  playBtn.className = "bf-button is-dense";
   playBtn.type = "button";
   playBtn.setAttribute("data-playback-toggle", "");
   playBtn.textContent = state.isPlaying ? "Pause Motion" : "Play Motion";
@@ -24,23 +24,17 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
   row.append(wrapCol(2, playBtn));
 
   const exportBtn = document.createElement("button");
-  exportBtn.className = "p-button--base is-dense";
-  exportBtn.type = "button";
-  exportBtn.textContent = "Export Frame";
+  exportBtn.className = "bf-button--base is-dense";
   exportBtn.addEventListener("click", () => { void ctx.exportComposedFramePng(); });
   row.append(wrapCol(2, exportBtn));
 
   const seqBtn = document.createElement("button");
-  seqBtn.className = "p-button--base is-dense";
-  seqBtn.type = "button";
-  seqBtn.textContent = "Export Sequence";
+  seqBtn.className = "bf-button--base is-dense";
   seqBtn.addEventListener("click", () => { void ctx.exportPngSequence(); });
   row.append(wrapCol(2, seqBtn));
 
   const resetBtn = document.createElement("button");
-  resetBtn.className = "p-button--base is-dense";
-  resetBtn.type = "button";
-  resetBtn.textContent = "Reset Defaults";
+  resetBtn.className = "bf-button--base is-dense";
   resetBtn.addEventListener("click", () => {
     ctx.applySourceDefaultSnapshot(state.sourceDefaults);
     ctx.markDocumentDirty();
@@ -55,10 +49,7 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
   row.append(wrapCol(2, resetBtn));
 
   const writeBtn = document.createElement("button");
-  writeBtn.className = "p-button--base is-dense";
-  writeBtn.type = "button";
-  writeBtn.setAttribute("data-write-source-default", "");
-  writeBtn.textContent = "Write Source Default";
+  writeBtn.className = "bf-button--base is-dense";
   writeBtn.addEventListener("click", () => {
     void (async () => {
       writeBtn.disabled = true;
@@ -78,7 +69,7 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
   body.append(row);
 
   const status = document.createElement("p");
-  status.className = "p-form-help-text u-no-margin--bottom";
+  status.className = "bf-form-help bf-u-no-margin--bottom";
   status.setAttribute("data-source-default-status", "");
   status.textContent = "Source defaults are using the built-in preview snapshot.";
   body.append(status);

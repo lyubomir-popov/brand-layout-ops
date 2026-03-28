@@ -183,7 +183,7 @@ export function renderDocumentWorkspaceUi(args: {
 
   if (workspace.recentDocuments.length === 0) {
     const emptyState = document.createElement("p");
-    emptyState.className = "p-form-help-text u-no-margin--bottom";
+    emptyState.className = "bf-form-help bf-u-no-margin--bottom";
     emptyState.textContent = supportsLocalDocumentFiles()
       ? "Recent local documents appear here after you save or reopen a file-backed project."
       : "Recent documents require the browser File System Access APIs.";
@@ -193,10 +193,10 @@ export function renderDocumentWorkspaceUi(args: {
 
   for (const summary of workspace.recentDocuments) {
     const item = document.createElement("div");
-    item.className = "p-form__group";
+    item.className = "bf-field";
 
     const meta = document.createElement("p");
-    meta.className = "p-form-help-text u-no-margin--bottom";
+    meta.className = "bf-form-help bf-u-no-margin--bottom";
     meta.textContent = `${summary.fileName} • Last opened ${formatDocumentTimestamp(summary.lastOpenedAt)}`;
 
     const actionsEl = document.createElement("div");
@@ -205,8 +205,8 @@ export function renderDocumentWorkspaceUi(args: {
     const reopenButton = document.createElement("button");
     reopenButton.type = "button";
     reopenButton.className = summary.id === workspace.recentDocumentId
-      ? "p-button is-dense"
-      : "p-button--base is-dense";
+      ? "bf-button is-dense"
+      : "bf-button--base is-dense";
     reopenButton.textContent = summary.name;
     reopenButton.addEventListener("click", () => {
       void actions.reopenRecentDocument(summary.id);
@@ -214,7 +214,7 @@ export function renderDocumentWorkspaceUi(args: {
 
     const forgetButton = document.createElement("button");
     forgetButton.type = "button";
-    forgetButton.className = "p-button--base is-dense";
+    forgetButton.className = "bf-button--base is-dense";
     forgetButton.textContent = "Forget";
     forgetButton.addEventListener("click", () => {
       void actions.forgetRecentDocument(summary.id);

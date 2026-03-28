@@ -3,7 +3,7 @@
  * used by preview-panel section builders.
  *
  * These use Baseline Foundry / Vanilla Framework CSS classes
- * (p-form, p-accordion, p-checkbox) and are the working UI primitives
+ * (bf-field, bf-accordion, bf-checkbox) and are the working UI primitives
  * for the current accordion-based config editor.
  */
 
@@ -16,14 +16,14 @@ let checkboxFieldIdCounter = 0;
 
 export function createFormGroup(label: string, control: HTMLElement): HTMLElement {
   const group = document.createElement("div");
-  group.className = "p-form__group";
+  group.className = "bf-field";
 
   const lbl = document.createElement("label");
-  lbl.className = "p-form__label u-no-margin--bottom";
+  lbl.className = "bf-form__label bf-u-no-margin--bottom";
   lbl.textContent = label;
 
   const ctrl = document.createElement("div");
-  ctrl.className = "p-form__control";
+  ctrl.className = "bf-control";
   ctrl.append(control);
 
   group.append(lbl, ctrl);
@@ -37,22 +37,22 @@ export function createCheckboxFormGroup(
   configureInput?: (input: HTMLInputElement) => void
 ): HTMLElement {
   const group = document.createElement("div");
-  group.className = "p-form__group p-form__group--checkbox";
+  group.className = "bf-field bf-field--checkbox";
 
   const ctrl = document.createElement("div");
-  ctrl.className = "p-form__control";
+  ctrl.className = "bf-control";
 
   const checkbox = document.createElement("div");
-  checkbox.className = "p-checkbox";
+  checkbox.className = "bf-checkbox";
 
   const inputId = `preview-checkbox-${++checkboxFieldIdCounter}`;
   const input = createCheckboxInput(checked, onChange);
   input.id = inputId;
-  input.className = "p-checkbox__input";
+  input.className = "bf-checkbox__input";
   configureInput?.(input);
 
   const inputLabel = document.createElement("label");
-  inputLabel.className = "p-checkbox__label";
+  inputLabel.className = "bf-checkbox__label";
   inputLabel.htmlFor = inputId;
   inputLabel.textContent = label;
 
@@ -71,7 +71,7 @@ export function createNumberInput(
 ): HTMLInputElement {
   const input = document.createElement("input");
   input.type = "number";
-  input.className = "p-form-validation__input vr-input--number is-dense";
+  input.className = "bf-input is-dense";
   input.value = String(value);
   if (opts.min !== undefined) input.min = String(opts.min);
   if (opts.max !== undefined) input.max = String(opts.max);
@@ -89,7 +89,7 @@ export function createSliderInput(
   onChange: (v: number) => void
 ): HTMLElement {
   const wrap = document.createElement("div");
-  wrap.className = "slider-pair slider-pair--stacked p-slider__wrapper";
+  wrap.className = "slider-pair slider-pair--stacked bf-slider";
 
   const range = document.createElement("input");
   range.type = "range";
@@ -100,7 +100,7 @@ export function createSliderInput(
 
   const num = document.createElement("input");
   num.type = "number";
-  num.className = "p-form-validation__input p-slider__input is-dense";
+  num.className = "bf-input bf-slider__input is-dense";
   num.min = String(opts.min);
   num.max = String(opts.max);
   num.step = String(opts.step);
@@ -125,7 +125,7 @@ export function createSelectInput(
   onChange: (v: string) => void
 ): HTMLSelectElement {
   const sel = document.createElement("select");
-  sel.className = "p-form-validation__input is-dense";
+  sel.className = "bf-input is-dense";
   for (const opt of options) {
     const o = document.createElement("option");
     o.value = opt.value;
@@ -152,16 +152,16 @@ export function buildAccordionSectionEl(title: string): { root: HTMLElement; bod
   const sectionId = `${id}-section`;
 
   const root = document.createElement("li");
-  root.className = "p-accordion__group";
+  root.className = "bf-accordion__group";
 
   const heading = document.createElement("div");
   heading.setAttribute("role", "heading");
   heading.setAttribute("aria-level", "3");
-  heading.className = "p-accordion__heading";
+  heading.className = "bf-accordion__heading";
 
   const tab = document.createElement("button");
   tab.type = "button";
-  tab.className = "p-accordion__tab";
+  tab.className = "bf-accordion__tab";
   tab.id = id;
   tab.setAttribute("aria-controls", sectionId);
   tab.setAttribute("aria-expanded", "false");
@@ -169,7 +169,7 @@ export function buildAccordionSectionEl(title: string): { root: HTMLElement; bod
   heading.append(tab);
 
   const body = document.createElement("section");
-  body.className = "p-accordion__panel config-group";
+  body.className = "bf-accordion__panel config-group";
   body.id = sectionId;
   body.setAttribute("aria-hidden", "true");
   body.setAttribute("aria-labelledby", id);
@@ -180,7 +180,7 @@ export function buildAccordionSectionEl(title: string): { root: HTMLElement; bod
 
 export function setupAccordion(accordionContainer: HTMLElement): void {
   accordionContainer.addEventListener("click", (event) => {
-    const target = (event.target as HTMLElement).closest<HTMLElement>(".p-accordion__tab");
+    const target = (event.target as HTMLElement).closest<HTMLElement>(".bf-accordion__tab");
     if (!target) return;
 
     const panelId = target.getAttribute("aria-controls");
@@ -191,7 +191,7 @@ export function setupAccordion(accordionContainer: HTMLElement): void {
 
     // Mutual exclusion: close all other sections when opening one
     if (!isOpen) {
-      accordionContainer.querySelectorAll<HTMLElement>(".p-accordion__tab").forEach((tab) => {
+      accordionContainer.querySelectorAll<HTMLElement>(".bf-accordion__tab").forEach((tab) => {
         if (tab !== target) {
           const otherPanelId = tab.getAttribute("aria-controls");
           const otherPanel = otherPanelId ? document.getElementById(otherPanelId) : null;
@@ -217,7 +217,7 @@ export function wrapCol(span: number, el: HTMLElement): HTMLElement {
 
 export function createReadonlySpan(value: string): HTMLElement {
   const span = document.createElement("span");
-  span.className = "p-form-help-text";
+  span.className = "bf-form-help";
   span.textContent = value;
   return span;
 }

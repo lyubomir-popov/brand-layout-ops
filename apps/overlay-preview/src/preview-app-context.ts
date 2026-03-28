@@ -69,9 +69,8 @@ export interface PreviewState {
  * Scene-family preview state snapshot, returned by getSceneFamilyPreviewState().
  */
 export interface SceneFamilyPreviewSnapshot {
-  title: string;
-  subtitle: string;
-  stats: string[];
+  sceneFamilyKey: string;
+  pointField: { points: unknown[] };
 }
 
 // ——— Context interface ———

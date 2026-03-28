@@ -15,7 +15,7 @@ export function buildParagraphStylesSection(ctx: PreviewAppContext): HTMLElement
 
   if (!selectedField) {
     const help = document.createElement("p");
-    help.className = "p-form-help-text";
+    help.className = "bf-form-help";
     help.textContent = state.selected?.kind === "logo"
       ? "Select a text block to assign a paragraph style."
       : "Select a text block on the stage to apply a paragraph style.";
@@ -24,7 +24,7 @@ export function buildParagraphStylesSection(ctx: PreviewAppContext): HTMLElement
   }
 
   const helper = document.createElement("p");
-  helper.className = "p-form-help-text control-help";
+  helper.className = "bf-form-help control-help";
   helper.textContent = `Apply a paragraph style to ${getOverlayFieldDisplayLabel(state.params, selectedField.id)}.`;
   body.append(helper);
 

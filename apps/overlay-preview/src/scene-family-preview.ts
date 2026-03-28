@@ -9,9 +9,6 @@ import type { OverlaySceneFamilyKey } from "@brand-layout-ops/operator-overlay-l
 type PreviewableSceneFamilyKey = Exclude<OverlaySceneFamilyKey, "halo">;
 
 interface BaseSceneFamilyPreviewState {
-  title: string;
-  subtitle: string;
-  stats: string[];
   pointField: PointField;
   center: Vector3;
 }
@@ -231,27 +228,7 @@ function getPointAlpha(point: PointRecord, pointIndex: number, pointCount: numbe
   return 0.22 + normalizedIndex * 0.65;
 }
 
-function drawPreviewLabel(ctx: CanvasRenderingContext2D, previewState: SceneFamilyPreviewState, widthPx: number, heightPx: number): void {
-  const insetX = Math.round(widthPx * 0.03);
-  const insetY = Math.round(heightPx * 0.06);
 
-  ctx.save();
-  ctx.fillStyle = "rgba(255,255,255,0.92)";
-  ctx.font = '600 16px "Ubuntu Sans", "Ubuntu", sans-serif';
-  ctx.fillText(previewState.title, insetX, insetY);
-  ctx.fillStyle = "rgba(255,255,255,0.68)";
-  ctx.font = '400 12px "Ubuntu Sans", "Ubuntu", sans-serif';
-  ctx.fillText(previewState.subtitle, insetX, insetY + 18);
-
-  let statY = insetY + 42;
-  for (const stat of previewState.stats) {
-    ctx.fillStyle = "rgba(255,255,255,0.54)";
-    ctx.font = '400 11px "Ubuntu Sans", "Ubuntu", sans-serif';
-    ctx.fillText(stat, insetX, statY);
-    statY += 14;
-  }
-  ctx.restore();
-}
 
 function drawSoftGlow(
   ctx: CanvasRenderingContext2D,
@@ -395,7 +372,6 @@ function drawPhyllotaxisPreview(
   });
 
   drawGuideRing(ctx, previewState.center, Math.max(3, previewState.maxRadiusPx * 0.025), toCanvasColor(palette.point, 0.7), 1.25);
-  drawPreviewLabel(ctx, previewState, widthPx, heightPx);
 }
 
 function drawFuzzyBoidVelocity(
@@ -636,8 +612,6 @@ function drawFuzzyBoidsPreview(
       radiusPx: Math.max(0.95, pointRadiusPx * 0.45)
     });
   });
-
-  drawPreviewLabel(ctx, previewState, widthPx, heightPx);
 }
 
 export function clearSceneFamilyPreviewCanvas(canvas: HTMLCanvasElement, widthPx: number, heightPx: number): void {
@@ -671,13 +645,6 @@ export function buildSceneFamilyPreviewState(
 
     return {
       sceneFamilyKey: "phyllotaxis",
-      title: "Phyllotaxis",
-      subtitle: `${pointField.points.length} points with spiral arm guides`,
-      stats: [
-        `Center ${Math.round(center.x)}, ${Math.round(center.y)}`,
-        `Radius ${Math.round(minDimensionPx * 0.34)}px`,
-        "Arm sets 21 and 34"
-      ],
       pointField,
       center,
       maxRadiusPx: Number(pointField.detail.max_radius ?? minDimensionPx * 0.34),
@@ -731,13 +698,6 @@ export function buildSceneFamilyPreviewState(
 
   return {
     sceneFamilyKey: "fuzzy-boids",
-    title: "Fuzzy Boids",
-    subtitle: `${fuzzyBoids.boidField.simulation.activeBoidCount}/${fuzzyBoids.boidField.boids.length} active boids with flock links`,
-    stats: [
-      `Center ${Math.round(center.x)}, ${Math.round(center.y)}`,
-      `Playback ${options.playbackTimeSec.toFixed(2)}s`,
-      `Bounds ${Math.round(minDimensionPx * 0.28)}px`
-    ],
     pointField: fuzzyBoids.pointField,
     center,
     boidField: fuzzyBoids.boidField,

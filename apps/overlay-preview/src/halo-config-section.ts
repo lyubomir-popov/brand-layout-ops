@@ -22,37 +22,12 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   const { state } = ctx;
 
   if (state.documentProject.sceneFamilyKey !== "halo") {
-    const previewState = ctx.getSceneFamilyPreviewState();
     const { root, body } = buildAccordionSectionEl(`${ctx.getSceneFamilyLabel(state.documentProject.sceneFamilyKey)} Preview`);
 
     const helpText = document.createElement("p");
-    helpText.className = "p-form-help-text u-no-margin--bottom";
-    helpText.textContent = "This scene family now affects the stage renderer and composed-frame export path. Dedicated controls are still not surfaced yet, but the preview now uses a richer adapter-side render pass instead of the halo inspector.";
+    helpText.className = "bf-form-help bf-u-no-margin--bottom";
+    helpText.textContent = "Dedicated parameter controls for this scene family are not surfaced yet. They will appear here once the operator selector UI lands.";
     body.append(helpText);
-
-    if (previewState) {
-      const summary = document.createElement("div");
-      summary.className = "grid-row";
-      summary.append(wrapCol(2, createFormGroup("Preview", createReadonlySpan(previewState.title))));
-      summary.append(wrapCol(2, createFormGroup("State", createReadonlySpan(previewState.subtitle))));
-      body.append(summary);
-
-      const statsList = document.createElement("div");
-      statsList.className = "style-palette";
-      for (const stat of previewState.stats) {
-        const card = document.createElement("div");
-        card.className = "style-palette__button";
-
-        const meta = document.createElement("span");
-        meta.className = "style-palette__meta";
-        meta.textContent = stat;
-
-        card.append(meta);
-        statsList.append(card);
-      }
-
-      body.append(statsList);
-    }
 
     return root;
   }

@@ -9,13 +9,13 @@ export function buildPresetsSection(ctx: PreviewAppContext): HTMLElement {
   const { state } = ctx;
 
   const helpText = document.createElement("p");
-  helpText.className = "p-form-help-text u-no-margin--bottom";
+  helpText.className = "bf-form-help bf-u-no-margin--bottom";
   helpText.textContent = "Presets travel with the current document when you save it. Browser storage still mirrors the working set locally.";
   body.append(helpText);
 
   const nameInput = document.createElement("input");
   nameInput.type = "text";
-  nameInput.className = "p-form-validation__input is-dense";
+  nameInput.className = "bf-input is-dense";
   nameInput.placeholder = "Preset name";
   nameInput.setAttribute("data-preset-name-input", "");
   body.append(createFormGroup("Name", nameInput));
@@ -24,11 +24,11 @@ export function buildPresetsSection(ctx: PreviewAppContext): HTMLElement {
   toolbar.className = "preset-toolbar";
 
   const btnSpec: Array<{ label: string; attr: string; className: string }> = [
-    { label: "Save", attr: "data-preset-save", className: "p-button is-dense" },
-    { label: "Update", attr: "data-preset-update", className: "p-button--base is-dense" },
-    { label: "Import", attr: "data-preset-import", className: "p-button--base is-dense" },
-    { label: "Export", attr: "data-preset-export", className: "p-button--base is-dense" },
-    { label: "Delete", attr: "data-preset-delete", className: "p-button--base is-dense" }
+    { label: "Save", attr: "data-preset-save", className: "bf-button is-dense" },
+    { label: "Update", attr: "data-preset-update", className: "bf-button--base is-dense" },
+    { label: "Import", attr: "data-preset-import", className: "bf-button--base is-dense" },
+    { label: "Export", attr: "data-preset-export", className: "bf-button--base is-dense" },
+    { label: "Delete", attr: "data-preset-delete", className: "bf-button--base is-dense" }
   ];
   for (const spec of btnSpec) {
     const btn = document.createElement("button");

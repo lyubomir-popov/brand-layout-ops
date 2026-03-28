@@ -62,7 +62,7 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
     const formatSpec = OVERLAY_CONTENT_FORMATS[state.contentFormatKey];
 
     const textarea = document.createElement("textarea");
-    textarea.className = "p-form-validation__input is-dense control-inline-text";
+    textarea.className = "bf-input is-dense control-inline-text";
     textarea.rows = 5;
     textarea.value = ctx.getStagedCsvDraft() ?? state.params.csvContent?.draft ?? "";
     textarea.addEventListener("input", () => { ctx.setStagedCsvDraft(textarea.value); });
@@ -72,13 +72,13 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
     actions.style.cssText = "display:flex;gap:0.5rem;margin-top:0.25rem;";
 
     const applyBtn = document.createElement("button");
-    applyBtn.className = "p-button is-dense";
+    applyBtn.className = "bf-button is-dense";
     applyBtn.textContent = "Apply CSV";
     applyBtn.disabled = !ctx.hasStagedCsvDraft();
     applyBtn.addEventListener("click", () => { ctx.applyStagedCsvDraft(); ctx.buildConfigEditor(); void ctx.renderStage(); });
 
     const discardBtn = document.createElement("button");
-    discardBtn.className = "p-button--base is-dense";
+    discardBtn.className = "bf-button--base is-dense";
     discardBtn.textContent = "Discard";
     discardBtn.disabled = !ctx.hasStagedCsvDraft();
     discardBtn.addEventListener("click", () => { ctx.discardStagedCsvDraft(); ctx.buildConfigEditor(); void ctx.renderStage(); });
@@ -101,7 +101,7 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
     ));
 
     const csvStatus = document.createElement("p");
-    csvStatus.className = "p-form-help-text control-help";
+    csvStatus.className = "bf-form-help control-help";
     csvStatus.textContent = csvSummary.selectedRowExists
       ? `${csvSummary.rowCount} row(s) loaded. Editing row ${csvSummary.selectedRowIndex}.`
       : `No CSV row ${csvSummary.selectedRowIndex} exists yet. ${csvSummary.rowCount} row(s) loaded.`;
@@ -109,14 +109,14 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
 
     if (csvSummary.hasUnterminatedQuote) {
       const warning = document.createElement("p");
-      warning.className = "p-form-help-text control-help";
+      warning.className = "bf-form-help control-help";
       warning.textContent = "CSV draft has an unterminated quoted field.";
       body.append(warning);
     }
 
     if (ctx.hasStagedCsvDraft()) {
       const pending = document.createElement("p");
-      pending.className = "p-form-help-text control-help";
+      pending.className = "bf-form-help control-help";
       pending.textContent = "Staged CSV changes are pending for this profile and format until you apply them.";
       body.append(pending);
     }

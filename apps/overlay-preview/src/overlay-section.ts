@@ -25,7 +25,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
 
   if (!state.selected) {
     const p = document.createElement("p");
-    p.className = "p-form-help-text";
+    p.className = "bf-form-help";
     p.textContent = "Click a text block or logo in the stage to select it.";
     body.append(p);
     return root;
@@ -92,7 +92,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
 
     if (ctx.getContentSource() === "inline") {
       const textarea = document.createElement("textarea");
-      textarea.className = "p-form-validation__input is-dense control-inline-text";
+      textarea.className = "bf-input is-dense control-inline-text";
       textarea.rows = 3;
       textarea.value = ctx.getResolvedTextFieldText(field);
       textarea.addEventListener("input", () => {
@@ -137,7 +137,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
     if (!logo) return root;
 
     const assetInput = document.createElement("input");
-    assetInput.className = "p-form-validation__input is-dense";
+    assetInput.className = "bf-input is-dense";
     assetInput.type = "text";
     assetInput.value = logo.assetPath ?? "";
     assetInput.placeholder = "/assets/UbuntuTagLogo.svg";
