@@ -189,10 +189,10 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 3. **Text style parity (DONE).**
 	Reference has 3 distinct styles: `title` (A Head, 42px/48px, weight 200), `b_head` (B Head, 24px/32px, weight 400), `paragraph` (P, 24px/32px, weight 400). Current repo now has all 3 styles with per-profile font size overrides and display labels (`TEXT_STYLE_DISPLAY_LABELS`).
 
-4. **Linked title-to-logo sizing (MISSING).**
+4. **Linked title-to-logo sizing (PARTIAL).**
 	`link_title_size_to_logo_height = true` scales title font size proportionally to `overlay_logo.height_px` using `LINKED_TITLE_BASE_FONT_SIZE_PX = 63` as the reference base. Current repo has no linked sizing logic.
 	Reference files: `rendering.js` (linked title font size calculation in text rendering).
-	Update 2026-03-27 late pass: a preview-side helper now exists, but this still remains a critical parity item because the rule must become canonical document/layout behavior rather than an editor-only convenience.
+	Update 2026-03-27 late pass: a preview-side helper now exists. Update 2026-03-28: the preview now also normalizes loaded/switching params so title size remains the canonical driver for logo size in state, but this still remains open until the rule lives in the shared layout/operator path rather than only the preview shell.
 
 5. **Logo asset sizing and aspect ratio (DONE).**
 	Logo image is loaded via `Image`, `naturalWidth`/`naturalHeight` read for dynamic aspect ratio. Width derived from configured height via `getCurrentLogoAspectRatio()`. Logo drag and resize with aspect-ratio lock on corner handles.

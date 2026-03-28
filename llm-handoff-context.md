@@ -57,6 +57,7 @@ All scoped under `@brand-layout-ops/`.
 - Halo config now persists per output profile inside preview state, source-default snapshots, and preset payloads instead of regenerating from defaults on every profile switch
 - CSV authoring UI now shows row status, alias-based field mapping, and per-field staged-versus-applied values for the active format
 - `operator-ubuntu-summit-animation` now computes scene phase, runtime timing, loop timing, and mascot-box metadata, and the preview plus automation state now consume that descriptor path
+- Linked title-to-logo sizing now normalizes through shared preview-state params, so profile switches and loaded snapshots keep the A Head/logo lock intact
 
 ## Current sprint TODO (do in order)
 
