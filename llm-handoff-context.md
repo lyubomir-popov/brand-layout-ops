@@ -73,6 +73,7 @@ All scoped under `@brand-layout-ops/`.
 - The shared keyed section-registry primitive now lives in `packages/parameter-ui/src/index.ts` instead of `main.ts`, so future operator panels can register through shared parameter-surface infrastructure rather than preview-local maps
 - Overlay selection now starts empty and clears when the selected element disappears, so resize handles only arm after an explicit user selection instead of always falling back to another field
 - The logo panel now lets the user swap the logo asset path and toggle the A Head-to-logo size lock instead of forcing linked sizing at all times
+- Selected-element, grid, and halo control rows now rely on `portable-vertical-rhythm`'s shared `grid-row` and compact number-input styling instead of preview-local `overlay-control-grid` CSS overrides
 
 ## Current sprint TODO (do in order)
 
@@ -126,6 +127,7 @@ All scoped under `@brand-layout-ops/`.
 - [ ] Continue anti-drift refactors that reduce preview-shell ownership of canonical product behavior
   - Move remaining source-default, export-state, and scene-family document rules toward shared layout or operator paths where parity permits
   - Replace preview-owned section definitions with package-registered or manifest-driven panels on top of the shared `parameter-ui` registry instead of expanding bespoke shell code indefinitely
+  - Continue trimming preview-local control-surface CSS so `portable-vertical-rhythm` remains the styling owner and only genuinely preview-specific rules stay in `apps/overlay-preview/src/styles.scss`
 
 ### D. UI parity quick wins (done)
 
@@ -173,6 +175,7 @@ Continue parity work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\U
 - Should the new repo eventually bring back an explicit content-format abstraction like the old app had, or should it stay with document-authored `contentFieldId` mappings plus operator schemas unless reuse pressure becomes concrete?
 - Should logo intrinsic aspect-ratio loading and title-linked logo scaling stay outside the kernel as document or adapter preprocessing, or do we eventually want a coarse operator-side logo source model for that too?
 - Presets in browser localStorage is not a great feature — need to save them locally. Presets are essentially alternative designs for same document sizes like instagram stories.
+- The browser-local preset model is likely the wrong long-term abstraction; after parity we should discuss a filesystem-backed document/project model closer to Canva projects, not just better localStorage preset CRUD.
 - Add/delete document sizes in the output panel — new feature.
 - Add/delete paragraph styles — new feature.
 - Draggable text doesn't need input fields any more (user does this manually); some things that are tuned work better with sliders; simple things like grid rows and columns don't.

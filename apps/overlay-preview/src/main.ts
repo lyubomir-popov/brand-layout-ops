@@ -1915,7 +1915,7 @@ function createNumberInput(
 ): HTMLInputElement {
   const input = document.createElement("input");
   input.type = "number";
-  input.className = "p-form-validation__input is-dense";
+  input.className = "p-form-validation__input vr-input--number is-dense";
   input.value = String(value);
   if (opts.min !== undefined) input.min = String(opts.min);
   if (opts.max !== undefined) input.max = String(opts.max);
@@ -2272,7 +2272,7 @@ function buildOverlaySection(): HTMLElement {
 
     if (selectedStyle) {
       const styleGrid = document.createElement("div");
-      styleGrid.className = "overlay-control-grid grid-row";
+      styleGrid.className = "grid-row";
 
       styleGrid.append(wrapCol(1, createFormGroup("Font Size",
         createNumberInput(selectedStyle.fontSizePx, { min: 1, max: 512, step: 1 }, (value) => {
@@ -2317,7 +2317,7 @@ function buildOverlaySection(): HTMLElement {
     }
 
     const grid = document.createElement("div");
-    grid.className = "overlay-control-grid grid-row";
+    grid.className = "grid-row";
 
     grid.append(wrapCol(1, createFormGroup("Keyline",
       createNumberInput(field.keylineIndex, { min: 1, max: 24, step: 1 }, v => {
@@ -2390,7 +2390,7 @@ function buildOverlaySection(): HTMLElement {
     ));
 
     const grid = document.createElement("div");
-    grid.className = "overlay-control-grid grid-row";
+    grid.className = "grid-row";
 
     grid.append(wrapCol(1, createFormGroup("X",
       createNumberInput(logo.xPx, { step: 1 }, v => { updateLogo(l => ({ ...l, xPx: v })); void renderStage(); })
@@ -2503,7 +2503,7 @@ function buildGridSection(): HTMLElement {
   })()));
 
   const fields = document.createElement("div");
-  fields.className = "overlay-control-grid grid-row";
+  fields.className = "grid-row";
 
   fields.append(wrapCol(1, createFormGroup("Baseline (px)",
     createNumberInput(grid.baselineStepPx, { min: 1, max: 48, step: 1 }, v => {
@@ -2543,7 +2543,7 @@ function buildGridSection(): HTMLElement {
   body.append(fields);
 
   const margins = document.createElement("div");
-  margins.className = "overlay-control-grid grid-row";
+  margins.className = "grid-row";
 
   margins.append(wrapCol(1, createFormGroup("Top Margin",
     createNumberInput(grid.marginTopBaselines, { min: 0, max: 48, step: 1 }, v => {
@@ -2582,7 +2582,7 @@ function buildGridSection(): HTMLElement {
   if (grid.fitWithinSafeArea !== false) {
     const safeArea = state.params.safeArea;
     const safeFields = document.createElement("div");
-    safeFields.className = "overlay-control-grid grid-row";
+    safeFields.className = "grid-row";
 
     safeFields.append(wrapCol(1, createFormGroup("Safe Top",
       createNumberInput(safeArea.top, { min: 0, step: 1 }, v => {
@@ -2628,7 +2628,7 @@ function buildHaloConfigSection(): HTMLElement {
   const hc = state.haloConfig;
 
   const compositionFields = document.createElement("div");
-  compositionFields.className = "overlay-control-grid grid-row";
+  compositionFields.className = "grid-row";
 
   compositionFields.append(wrapCol(1, createFormGroup("Scale",
     createSliderInput(hc.composition.scale, { min: 0.1, max: 2, step: 0.01 }, v => {
@@ -2657,7 +2657,7 @@ function buildHaloConfigSection(): HTMLElement {
   body.append(compositionFields);
 
   const generatorFields = document.createElement("div");
-  generatorFields.className = "overlay-control-grid grid-row";
+  generatorFields.className = "grid-row";
 
   generatorFields.append(wrapCol(1, createFormGroup("Spokes",
     createNumberInput(hc.generator_wrangle.spoke_count, { min: 4, max: 120, step: 1 }, v => {
@@ -2686,7 +2686,7 @@ function buildHaloConfigSection(): HTMLElement {
   body.append(generatorFields);
 
   const angleFields = document.createElement("div");
-  angleFields.className = "overlay-control-grid grid-row";
+  angleFields.className = "grid-row";
 
   angleFields.append(wrapCol(1, createFormGroup("Base Angle",
     createSliderInput(hc.generator_wrangle.base_angle_deg, { min: -180, max: 180, step: 0.1 }, v => {
@@ -2716,7 +2716,7 @@ function buildHaloConfigSection(): HTMLElement {
 
   /* colors row */
   const colorFields = document.createElement("div");
-  colorFields.className = "overlay-control-grid grid-row";
+  colorFields.className = "grid-row";
 
   for (const [label, getValue, setValue] of [
     ["Background", () => hc.composition.background_color,
@@ -2747,7 +2747,7 @@ function buildHaloConfigSection(): HTMLElement {
 
   /* spoke details row */
   const spokeDetails = document.createElement("div");
-  spokeDetails.className = "overlay-control-grid grid-row";
+  spokeDetails.className = "grid-row";
 
   spokeDetails.append(wrapCol(1, createFormGroup("Spoke Width",
     createSliderInput(hc.spoke_lines.width_px, { min: 0, max: 16, step: 0.5 }, v => {
@@ -2787,7 +2787,7 @@ function buildHaloConfigSection(): HTMLElement {
 
   /* echo shape details row */
   const echoDetails = document.createElement("div");
-  echoDetails.className = "overlay-control-grid grid-row";
+  echoDetails.className = "grid-row";
 
   echoDetails.append(wrapCol(1, createFormGroup("Phase End Width",
     createSliderInput(hc.spoke_lines.phase_end_width_px, { min: 0, max: 32, step: 1 }, v => {
@@ -2817,7 +2817,7 @@ function buildHaloConfigSection(): HTMLElement {
 
   /* echo pattern details row */
   const echoPatternDetails = document.createElement("div");
-  echoPatternDetails.className = "overlay-control-grid grid-row";
+  echoPatternDetails.className = "grid-row";
 
   echoPatternDetails.append(wrapCol(1, createFormGroup("Shape Seed",
     createNumberInput(hc.spoke_lines.echo_shape_seed, { min: 0, max: 9999, step: 1 }, v => {
@@ -2846,7 +2846,7 @@ function buildHaloConfigSection(): HTMLElement {
   body.append(echoPatternDetails);
 
   const screensaverDetails = document.createElement("div");
-  screensaverDetails.className = "overlay-control-grid grid-row";
+  screensaverDetails.className = "grid-row";
 
   screensaverDetails.append(wrapCol(1, createFormGroup("Breath Cycle",
     createSliderInput(hc.screensaver?.cycle_sec ?? 60, { min: 0, max: 60, step: 0.1 }, v => {
@@ -2896,7 +2896,7 @@ function buildHaloConfigSection(): HTMLElement {
 
   if (hc.spoke_text?.enabled) {
     const labelFields = document.createElement("div");
-    labelFields.className = "overlay-control-grid grid-row";
+    labelFields.className = "grid-row";
 
     labelFields.append(wrapCol(1, createFormGroup("Label Size",
       createSliderInput(hc.spoke_text.font_size_px, { min: 3, max: 24, step: 0.5 }, v => {

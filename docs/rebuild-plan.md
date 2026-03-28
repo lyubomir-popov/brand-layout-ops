@@ -227,6 +227,7 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 
 8. **Preset workflow (PARTIAL).**
 	Save, update, delete presets in localStorage. Import/export as JSON files with auto-versioned naming. Active preset dirty-state now exists and payloads are normalized against generated defaults instead of always writing full snapshots. Presets now also carry the preview's per-profile export settings map and per-profile halo config map.
+	User direction on 2026-03-28: browser-local presets are probably the wrong long-term product shape; treat any filesystem-backed document/project model as a later architecture discussion after parity rather than continuing to deepen localStorage-first UX blindly.
 	Reference files: `index.js` (save_preset, delete_active_preset, export_current_preset, import_presets_from_file, apply_preset_by_id).
 
 9. **Source-default writeback (PARTIAL).**
@@ -389,6 +390,8 @@ These matter, but they are not approved active work until we discuss placement, 
 	Working assumption: each operator package self-registers an accordion tab+panel instead of the preview app hard-coding per-section builders. This keeps the UI organized as the control surface grows. Fits naturally into Stage 3 (operator surfaces) and the non-negotiable rule that parameter UI reads operator manifests. Update 2026-03-28: the preview now uses a keyed, ordered section registry with section-level post-render hooks, and that registry primitive now lives in `packages/parameter-ui/src/index.ts` instead of `main.ts`, but operator packages still do not self-register their own panels yet.
 - [x] Incremental control-surface swap from Vanilla to the sibling `portable-vertical-rhythm` package for the overlay-preview shell.
 	Working assumption: landed through the package's compatibility aliases first, keeps the sibling repo as the source of truth, and leaves any later `vr-*` class renames optional rather than blocking parity work.
+- [ ] Filesystem-backed document/project model instead of browser-local presets.
+	Working assumption: this is a product-architecture question closer to Canva-style projects than to preset polish, so it should be discussed and scheduled after parity rather than folded into current preview UX work.
 
 ### Splits to not get bogged down with
 

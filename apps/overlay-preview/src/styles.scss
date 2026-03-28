@@ -426,29 +426,7 @@ body.editor-docked .drawer-panel {
 }
 
 .control-inline-text {
-  width: 100%;
   resize: vertical;
-}
-
-.overlay-control-grid.grid-row {
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.overlay-control-grid.grid-row > .col-1 {
-  grid-column: span 1;
-  min-width: 0;
-}
-
-.overlay-control-grid.grid-row > .col-2 {
-  grid-column: span 2;
-  min-width: 0;
-}
-
-.overlay-control-grid .p-form__group {
-  display: grid;
-  gap: 0.25rem;
 }
 
 .style-palette {
@@ -518,17 +496,6 @@ body.editor-docked .drawer-panel {
   flex-wrap: wrap;
   gap: 0.5rem;
   justify-content: center;
-}
-
-@media (max-width: 48rem) {
-  .overlay-control-grid.grid-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .overlay-control-grid.grid-row > .col-2,
-  .overlay-control-grid.grid-row > .col-1 {
-    grid-column: span 1;
-  }
 }
 
 @media (max-width: 720px) {
