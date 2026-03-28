@@ -7,6 +7,7 @@
  */
 
 import type { PreviewAppContext } from "./preview-app-context.js";
+import { getOutputProfileMetrics } from "@brand-layout-ops/core-types";
 import {
   buildAccordionSectionEl,
   createCheckboxFormGroup,
@@ -47,6 +48,14 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   compositionFields.append(wrapCol(1, createFormGroup("Radial Scale",
     createSliderInput(hc.composition.radial_scale, { min: 0.1, max: 2, step: 0.01 }, v => {
       state.haloConfig = { ...hc, composition: { ...hc.composition, radial_scale: v } }; void ctx.renderStage();
+    })
+  )));
+
+  compositionFields.append(wrapCol(1, createFormGroup("Center Y Offset",
+    createSliderInput(hc.composition.center_offset_y_px ?? 0, { min: -500, max: 500, step: 1 }, v => {
+      const metrics = getOutputProfileMetrics(state.outputProfileKey);
+      state.haloConfig = { ...hc, composition: { ...hc.composition, center_offset_y_px: v, center_y_px: metrics.centerYPx + v } };
+      void ctx.renderStage();
     })
   )));
 
