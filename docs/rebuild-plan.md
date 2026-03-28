@@ -112,7 +112,7 @@ Port the current interaction model into `overlay-interaction` and `parameter-ui`
 - [x] Style-based labels in the selected-element editor.
 - [x] Resize handles for text fields with snapping to grid field widths and baselines.
 - [ ] CSV draft editing and source writeback staging at parity quality.
-	Current repo now preserves pending CSV drafts per profile and format bucket while switching, and the editor surfaces alias-based field mapping plus staged-versus-applied field values for the active format, but this is now explicitly deprioritized behind persistent document editing and local filesystem-backed document save/open flows.
+	Current repo now preserves pending CSV drafts per profile and format bucket while switching, the editor surfaces alias-based field mapping plus staged-versus-applied field values for the active format, and the Apply/Discard buttons now enable immediately while you type staged CSV edits, but full source-writeback polish is still explicitly deprioritized behind persistent document editing and local filesystem-backed document save/open flows.
 - [x] Persistent local document workflow for authored layout state.
 	The preview can now open, save, save as, duplicate, and reopen recent local `.brand-layout-ops.json` files that persist the current working snapshot plus the preset library instead of relying only on browser-local presets.
 	Follow-up anti-drift work remains: preview documents now persist the shared `operator-overlay-layout` document metadata/state envelope plus shared `project` metadata for scene-family selection, document targets, and non-halo `sceneFamilyConfigs` while `apps/overlay-preview/src/preview-document.ts` keeps preview-only extras and backward compatibility for earlier preview-local files; startup no longer seeds the working state from browser-local preset storage; preview-local file orchestration, dirty-state UI, recent-document reopen, and fallback download handling now live in `apps/overlay-preview/src/document-workspace.ts`; preview-side source-default snapshot plus document build/apply/reset plumbing now live in `apps/overlay-preview/src/preview-document-bridge.ts`; the Output Format panel now edits scene family plus add or delete document sizes against that shared schema; non-halo scene families now render through `apps/overlay-preview/src/scene-family-preview.ts` with richer family-specific canvas passes; source-default authoring now still reads older raw snapshots but writes the shared overlay-document payload so authored defaults restore the shared project metadata too; decide later whether those preview-only extras belong in a broader shared document package.
@@ -122,7 +122,8 @@ Port the current interaction model into `overlay-interaction` and `parameter-ui`
 - [x] Text-box inset parity: text fields now clamp their first baseline to an ascent-aware minimum offset so the first line stays visibly inside the field bounds while remaining baseline-grid aligned.
 - [x] Output-profile parity: named screen sizes, seeded safe areas, and reference frame-rate defaults.
 	Shared `OUTPUT_PROFILES` now match the reference app's named size list, seeded safe areas, and default frame rates, and the authored source-default document now carries those same safe-area values for the live startup path. The portrait-vs-landscape startup default remains a separate product choice rather than part of this parity checkbox.
-- [ ] Overlay content-format parity: `generic_social` and `speaker_highlight` field buckets with alias-based CSV matching.
+- [x] Overlay content-format parity: `generic_social` and `speaker_highlight` field buckets with alias-based CSV matching.
+	Both formats are now exposed again through the shared `OVERLAY_CONTENT_FORMAT_ORDER`, the preview keeps per-profile buckets for each format, and alias-based CSV matching already routes through shared `operator-overlay-layout` helpers instead of preview-local field maps.
 - [ ] Selected-element authoring parity: add text blocks, style assignment, and richer selected-item controls.
 - [x] Preset workflow parity: save, update, delete, import, and export presets.
 - [x] Shortcut parity: `W` guide toggle, `Ctrl`/`Cmd+S` document save, `Ctrl`/`Cmd+Shift+S` save as, `Ctrl`/`Cmd+Alt+S` source-default writeback, `Space` or `P` playback toggle, `Tab` control-panel show or hide, and inline-editor commit semantics.
@@ -328,7 +329,8 @@ It reflects the current repo after the overlay-preview rebuild, reference-doc re
 	`core-types` now defines `generic_social` and `speaker_highlight` field specs, aliases, and legacy-slot mapping.
 	The preview shell now preserves format-specific field layouts, inline text, and CSV draft state per profile rather than rebuilding formats from scratch on each switch.
 	Shared `operator-overlay-layout` helpers now also own the bucket-state types, clone helpers, and active-format normalization used by profile switches, presets, and source-default snapshots.
-	Remaining gap: reference-style bucket parity and fully canonical renderer/layout ownership are still missing, even though source-default persistence now round-trips the shared overlay document and project envelope.
+	Landed follow-up: `speaker_highlight` is selectable again through the shared format order, so the preview UI now exposes both reference formats while continuing to use alias-based CSV matching and shared per-profile bucket seeding.
+	Remaining gap: fully canonical renderer/layout ownership is still missing, even though the shared format specs, bucket seeding, and CSV alias resolution now match the reference app's two-format surface.
 
 3. **Text-style parity is closer than the earlier audit suggested.**
 	The current repo now has `title`, `b_head`, and `paragraph` styles with the expected Ubuntu Sans weight pattern.
@@ -542,9 +544,9 @@ Presets were a workaround for lack of multiple documents. Now that documents exi
 
 ### EQ-7. Content format cleanup ✅
 
-- [x] `speaker_highlight` removed from `OVERLAY_CONTENT_FORMAT_ORDER`; only `generic_social` is selectable (commit `4c97dd3`).
+- [x] `speaker_highlight` content now lives in the shared document bucket model instead of needing preview-local special handling (commit `4c97dd3`).
 - [x] Inline text is the current working mode and that is fine. CSV import remains a secondary path.
-- [ ] Dead `speaker_highlight` data still exists in `OVERLAY_CONTENT_FORMATS` (core-types) and `operator-overlay-layout` CSV config. Harmless but should be pruned eventually.
+- [x] `speaker_highlight` is exposed again through `OVERLAY_CONTENT_FORMAT_ORDER`, so the shared format spec and seeded bucket data are now live parity surface rather than dead code.
 
 ### EQ-8. Paragraph styles — conditional visibility
 

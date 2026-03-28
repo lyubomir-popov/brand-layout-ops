@@ -69,7 +69,7 @@ If you want the shortest high-level snapshot, read this file first.
 - Halo config now persists per output profile inside preview state, source-default snapshots, and preset payloads instead of regenerating from defaults on every profile switch
 - Active content formats now persist per output profile inside preview state, source-default snapshots, and preset payloads, so profile switches restore the intended format bucket instead of reusing one global selection
 - Active content formats now also resolve through shared overlay-layout helpers when profiles, presets, and source-default snapshots choose the valid format bucket
-- CSV authoring UI now shows row status, alias-based field mapping, and per-field staged-versus-applied values for the active format
+- CSV authoring UI now shows row status, alias-based field mapping, and per-field staged-versus-applied values for the active format, `speaker_highlight` is selectable again alongside `generic_social`, and Apply/Discard now enable immediately while staged CSV edits are being typed
 - The preview now has a first-pass local document workflow: open, save, save as, and duplicate `.brand-layout-ops.json` files persist the working snapshot plus the preset library instead of relying only on browser-local presets
 - Recent documents now reopen through `apps/overlay-preview/src/document-storage.ts`, so the document workflow covers open, save, save as, duplicate, and handle-backed reopen instead of only one-shot file access
 - Preview document files now persist shared `operator-overlay-layout` document metadata/state envelopes plus shared `project` metadata for `sceneFamilyKey`, `activeTargetId`, document target profiles, non-halo `sceneFamilyConfigs`, and the saved active `backgroundGraph`, while `apps/overlay-preview/src/preview-document.ts` keeps the preview-only preset and pending-CSV extras plus legacy-file compatibility for the older preview-local envelope
@@ -149,7 +149,7 @@ If you want the shortest high-level snapshot, read this file first.
 - Logo hit-test now uses resolved bounds (with safe-area offset) so selecting and dragging the logo works correctly after the SVG rendering fix (commit `ba00a20`)
 - Logo now appears in PNG export; `serializeExportSvgMarkup` inlines external `<image>` hrefs as data URLs before serialization (commit `4c97dd3`)
 - All overlay pixel coordinates (text anchors, logo bounds, grid keylines, column span widths) are now rounded to integer pixels at resolution time (commit `4c97dd3`)
-- Speaker highlight removed from content format order; only `generic_social` is selectable (commit `4c97dd3`)
+- Speaker highlight is selectable again through the shared content-format order, so both reference format buckets are live in the preview instead of one remaining hidden behind dead config
 - Presets section removed from config panel — documents are the authoring unit (commit `4c97dd3`)
 - Release label fold-seam fade: labels near the seam now fade behind the most recent spoke instead of rendering on top (commit `5b927dd`)
 - `getGeometryScale` now falls back to `composition.scale` when no mascot box, so halo scale slider affects background spokes and echo shapes (commit `5b927dd`)
@@ -174,7 +174,7 @@ Items EQ-1 through EQ-12 are the user-directed priorities in dependency order:
 4. **EQ-4** — ~~Phyllotaxis parameter panel (numPoints, radius, radiusFalloff, angleOffsetDeg, animation).~~ **DONE**. Added operator-owned `phyllotaxis` panel with live geometry and animation controls backed by preview state.
 5. **EQ-5** — ~~Scatter operator (`operator-scatter`, scatter points inside SVG shape).~~ **DONE**. Added `@brand-layout-ops/operator-scatter`, promoted `scatter` to a document scene family so it fits the current selector model, and shipped an operator-owned panel plus preview renderer path.
 6. **EQ-6** — ~~Resolve or remove presets (documents replaced presets — clarify architecture).~~ **DONE** (commit `4c97dd3`). Presets section removed from config panel.
-7. **EQ-7** — ~~Content format cleanup (speaker_highlight → document-owned, inline text is fine).~~ **DONE** (commit `4c97dd3`). Speaker highlight removed from content format order.
+7. **EQ-7** — ~~Content format cleanup (speaker_highlight → document-owned, inline text is fine).~~ **DONE** (commit `4c97dd3`). Speaker highlight content stayed in the shared document bucket model, and the format is now exposed again through the shared order so parity work can use that seeded data instead of preview-local special cases.
 8. **EQ-8** — ~~Paragraph styles conditional visibility (only when layout grid is active).~~ **DONE**. Paragraph styles now hide when guides are off and stay linked to grid-section guide-mode changes.
 9. **EQ-9** — ~~Remove dead stat labels from scene-family preview canvas.~~ **DONE** (commit `fc35f96`). Removed `title`, `subtitle`, `stats` from preview state/snapshot, deleted `drawPreviewLabel`.
 10. **EQ-10** — ~~Move background-operator settings into document-owned persistence so save/save-as/reopen and source-default writeback restore the active operator plus its typed params.~~ **DONE**. Non-halo operator params now live in shared `document.project.sceneFamilyConfigs`, and source-default authoring now restores that shared project envelope instead of only a raw snapshot.
@@ -183,7 +183,7 @@ Items EQ-1 through EQ-12 are the user-directed priorities in dependency order:
 
 ### Immediate next steps
 
-**Next parity slice** — close the remaining overlay content-format parity gap: re-audit `generic_social` plus `speaker_highlight` against the `racoon-anim` reference app, then decide whether the missing parity is only format exposure or whether more of the seeded bucket data still needs to move back into the shared overlay defaults.
+**Next parity slice** — close the remaining selected-element authoring gap: re-audit add-text affordances, style assignment, and the richer selected-item controls against the `racoon-anim` reference app, then pull the next missing control slice into the extracted panel modules instead of rebuilding more logic inside `main.ts`.
 
 **After EQ-12** — decide whether the background preview adapter should call further into shared graph evaluation primitives or continue as a thin typed renderer adapter over the persisted chain.
 

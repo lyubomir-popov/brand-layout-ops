@@ -65,7 +65,6 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
     textarea.className = "bf-input is-dense control-inline-text";
     textarea.rows = 5;
     textarea.value = ctx.getStagedCsvDraft() ?? state.params.csvContent?.draft ?? "";
-    textarea.addEventListener("input", () => { ctx.setStagedCsvDraft(textarea.value); });
     body.append(createFormGroup("CSV Data", textarea));
 
     const actions = document.createElement("div");
@@ -82,6 +81,19 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
     discardBtn.textContent = "Discard";
     discardBtn.disabled = !ctx.hasStagedCsvDraft();
     discardBtn.addEventListener("click", () => { ctx.discardStagedCsvDraft(); ctx.buildConfigEditor(); void ctx.renderStage(); });
+
+    function syncCsvActionButtons() {
+      const hasStagedDraft = ctx.hasStagedCsvDraft();
+      applyBtn.disabled = !hasStagedDraft;
+      discardBtn.disabled = !hasStagedDraft;
+    }
+
+    textarea.addEventListener("input", () => {
+      ctx.setStagedCsvDraft(textarea.value);
+      syncCsvActionButtons();
+    });
+
+    syncCsvActionButtons();
 
     actions.append(applyBtn, discardBtn);
     body.append(actions);

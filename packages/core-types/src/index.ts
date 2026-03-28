@@ -141,7 +141,8 @@ export interface OverlayContentFormatSpec {
 }
 
 export const OVERLAY_CONTENT_FORMAT_ORDER: readonly string[] = [
-  "generic_social"
+  "generic_social",
+  "speaker_highlight"
 ] as const;
 
 export const OVERLAY_CONTENT_FORMATS: Readonly<Record<string, OverlayContentFormatSpec>> = {
