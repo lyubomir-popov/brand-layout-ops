@@ -428,10 +428,14 @@ It reflects the current repo after the overlay-preview rebuild, reference-doc re
 
 1. ~~Form helpers → `parameter-ui` (zero risk, ~200 lines, no closure deps).~~ **Done** — `packages/parameter-ui/src/accordion-form-helpers.ts`, `buildSectionEl` renamed to `buildAccordionSectionEl` across 10 call sites.
 2. ~~SVG overlay → `svg-overlay-adapter.ts` (pure functions, ~160 lines).~~ **Done** — `apps/overlay-preview/src/svg-overlay-adapter.ts`, `renderSvgOverlay` rewritten as thin orchestrator.
-3. Section builders → individual panel modules; operators self-register through the existing `parameter-ui` registry. **Blocked**: all section builders read/write module-level `state` via closure. Next session should design a state-sharing protocol (context object or extracted state module) before moving code.
-4. Authoring interaction → `authoring-controller.ts`. Same state-sharing prerequisite.
-5. Export + automation → `export-controller.ts`. Same state-sharing prerequisite.
-6. Leave `main.ts` as a thin composition root that wires state, controllers, and renderers.
+3. ~~State-sharing protocol.~~ **Done** — `apps/overlay-preview/src/preview-app-context.ts` defines `PreviewAppContext` interface with typed action callbacks; `main.ts` creates the concrete `ctx` object. Section builders now receive `ctx` instead of capturing module-level closures.
+4. Section builders → individual panel modules. **In progress.** Two builders extracted so far:
+   - ~~`buildHaloConfigSection` → `halo-config-section.ts` (~365 lines).~~
+   - ~~`buildGridSection` → `grid-section.ts` (~142 lines).~~
+   - Remaining: `buildPlaybackExportSection`, `buildDocumentSection`, `buildOutputFormatSection`, `buildPresetsSection`, `buildContentFormatSection`, `buildOverlaySection`, `buildParagraphStylesSection`. Each uses the same `ctx` pattern — no new protocol work needed, just extraction.
+5. Authoring interaction → `authoring-controller.ts`. Same `ctx` pattern applies.
+6. Export + automation → `export-controller.ts`. Same `ctx` pattern applies.
+7. Leave `main.ts` as a thin composition root that wires state, controllers, and renderers.
 
 ## Houdini-Like Parameter Pane — Architectural North Star
 

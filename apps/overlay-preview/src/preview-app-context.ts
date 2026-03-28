@@ -17,6 +17,7 @@ import type {
 } from "@brand-layout-ops/core-types";
 import type {
   OverlayDocumentProject,
+  OverlayContentSource,
   OverlayLayoutOperatorParams,
   OverlaySceneFamilyKey,
   OverlaySourceDefaultSnapshot
@@ -25,6 +26,10 @@ import type { HaloFieldConfig } from "@brand-layout-ops/operator-halo-field";
 import type { ExportSettings, Preset } from "./sample-document.js";
 import type { OverlayPreviewDocument as OverlayPreviewDocumentModel } from "./preview-document.js";
 import type { DocumentWorkspaceController } from "./document-workspace.js";
+
+// ——— Constants shared between main.ts and extracted panel modules ———
+
+export const UNTITLED_DOCUMENT_NAME = "Untitled document";
 
 // ——— Types shared between main.ts and extracted panel modules ———
 
@@ -130,17 +135,43 @@ export interface PreviewAppContext {
   loadLogoIntrinsicDimensions(path: string): Promise<void>;
   /** Apply a text style to the selected text field by style key. */
   applySelectedTextStyle(styleKey: string): void;
+  /** Update a text style by key via an updater. */
+  updateTextStyle(key: string, updater: (s: TextStyleSpec) => TextStyleSpec): void;
+  /** Sync logo dimensions to a title font size (linked sizing). */
+  syncLogoToTitleFontSize(titleFontSizePx: number): void;
+  /** Sync title font size to a logo height (linked sizing). */
+  syncTitleToLogoHeight(logoHeightPx: number): void;
+  /** Get the displayed offset baselines for a text field. */
+  getDisplayedTextFieldOffsetBaselines(field: TextFieldPlacementSpec): number;
+  /** Get the resolved text value for a text field. */
+  getResolvedTextFieldText(field: TextFieldPlacementSpec): string;
+  /** Update the inline text value for a text field by ID. */
+  updateSelectedTextValue(id: string, value: string): void;
+  /** Get the selected text field, or null if no text is selected. */
+  getSelectedTextField(): TextFieldPlacementSpec | null;
+  /** Get the title string for the Selected Element accordion section. */
+  getSelectedOverlaySectionTitle(): string;
+  /** Create the Add Text / Delete Text action row for the overlay section. */
+  createOverlayItemActionRow(): HTMLElement;
 
   // — Content format —
 
   /** Switch to a different content format key. */
   switchContentFormat(key: string): void;
-  /** Stage a CSV draft for a field key. */
-  setStagedCsvDraft(key: string, value: string): void;
+  /** Stage a CSV draft for the current profile/format bucket. */
+  setStagedCsvDraft(draft: string | null): void;
   /** Get the staged CSV draft for the current format, or null. */
   getStagedCsvDraft(): string | null;
+  /** Whether the staged CSV draft differs from the applied draft. */
+  hasStagedCsvDraft(): boolean;
   /** Apply the staged CSV draft to params. */
   applyStagedCsvDraft(): void;
+  /** Discard the staged CSV draft. */
+  discardStagedCsvDraft(): void;
+  /** Get the content source for the current params ("inline" or "csv"). */
+  getContentSource(): OverlayContentSource;
+  /** Get effective params with any staged CSV draft applied. */
+  getEffectiveParams(): OverlayLayoutOperatorParams;
 
   // — Preset / profile / document actions —
 
