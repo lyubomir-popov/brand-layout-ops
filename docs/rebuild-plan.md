@@ -29,6 +29,8 @@ Use this before and after substantial work so parity implementation keeps servin
 - The layout engine stays rigorous and document-owned. Do not let renderer adapters or preview-only helpers become the canonical home for layout semantics.
 - Preview code is an adapter, not the product core. If a rule must survive renderer changes, it belongs in shared types, layout kernels, operator outputs, or backend contracts.
 - UI work should reduce hardcoded preview ownership over time. Prefer section registration, manifests, and typed operator surfaces over adding more bespoke accordion builders indefinitely.
+- Do not let Ubuntu-specific render quirks calcify into permanent one-off features. If a need is really "multiple ordered visual planes" or "a compositor above and below text," move toward a layer-stack model rather than adding another special-case toggle.
+- Shell-level project actions belong in authoring chrome, not buried in operator panels.
 - Export targets stay backend-driven. PNG, MP4, SVG, PDF, and EPS should share scene or document authority rather than each inventing their own semantics.
 - Product direction is a Houdini-like operator app for branded documents, not a freeform-design-first clone. Template CRUD, document sizes, and stakeholder flows matter, but only in ways that preserve deterministic layout and operator composability.
 - Parity is still the gate. If a task does not close parity, reduce future drift, or unblock backend separation, it needs a stronger reason.
@@ -484,128 +486,31 @@ The product direction is a Houdini-like operator application for branded documen
 
 This does not need to land all at once. The extraction work above is the prerequisite: once section builders are out of `main.ts` and operators own their panels, the switch from "show all sections" to "show selected operator" is a composition-root change, not a rewrite.
 
-## Approved Execution Queue — 2026-03-28
+## Approved Execution Queue — Active Only
 
-User-directed work items consolidated into execution order. These are now approved active work, sequenced by dependency.
+Keep this section lean. Completed queue items should stay in git history and brief handoff notes rather than accumulating here.
 
-### EQ-1. Switch UI library from `portable-vertical-rhythm` to `baseline-foundry` ✅
+### Active priorities
 
-Foundational — all subsequent panel work should build on the new library.
+- [ ] **Ubuntu Summit parity passes**
+	Close the remaining renderer-level gaps in `operator-ubuntu-summit-animation` and `halo-renderer.ts`, with the current lead candidate being safe-area fill or whatever layer-stack-friendly replacement best captures the reference behavior without hard-coding another one-off feature.
+- [ ] **Non-halo scene-family fidelity**
+	Make `phyllotaxis`, `fuzzy-boids`, and `scatter` behave like full-stage scene layers where appropriate, remove preview-only connective geometry from point generators, and re-audit boids or scatter behavior against the Houdini intent before treating the current preview semantics as canonical.
+- [ ] **Authoring-shell direction**
+	Move the product toward a clearer project-oriented authoring environment: shell navigation for project or file actions, cleaner separation of playback versus export versus default-authoring controls, and less reliance on a long mixed inspector stack for app-level commands.
+- [ ] **Project model clarification**
+	Keep treating the saved `.brand-layout-ops.json` file as the real working unit, and decide later whether the UI should explicitly rename that unit from "document" to "project" once the file UX is less ambiguous.
 
-- [x] Replace the PVR dependency in `apps/overlay-preview` with `baseline-foundry`.
-- [x] Use the dense panel preset (`config/presets/panel.json`) as the active styling source.
-- [x] Port any missing panel-relevant components from PVR into `baseline-foundry` if needed.
-- [x] Verify panel/inspector density and rhythm against the `baseline-foundry` component gate.
-- [x] Reference: `baseline-foundry/docs/brand-layout-ops-agent-prompt.md` contains the detailed swap instructions.
-- [x] Migrate all CSS class names from `p-*`/`vr-*`/`vf-*` to native `bf-*` baseline-foundry equivalents across 15 source files (commit `fc35f96`).
+### Completed queue snapshot
 
-### EQ-2. Operator selector UI (Houdini-style parameter pane, stage 1) ✅
+- EQ-1 through EQ-12 are complete.
+- Key completed milestones: baseline-foundry shell swap, operator selector, operator-owned fuzzy-boids/phyllotaxis/scatter panels, document-owned scene-family configs, persisted background graph, and the list-first network view.
+- Use git history for audit detail instead of expanding the live plan.
 
-Replace the "show all accordion sections" model with a selectable operator list.
+### Reference re-checks
 
-- [x] Add a radio list (or expandable accordion) at the top of the inspector showing all registered operators: `operator-overlay-layout`, `operator-halo-field`, `operator-fuzzy-boids`, `operator-phyllotaxis`, and future operators.
-- [x] Selecting an operator shows only that operator's parameter panel in the inspector.
-- [x] Shell-level concerns (playback, export, document, output format) remain above the operator selector as non-operator sections.
-- [x] The existing section-registry primitive in `parameter-ui` should grow to support this selection model.
-- [x] Added `group` field to `ParameterSectionDefinition` — operator-owned sections tagged with their scene family key.
-- [x] Accordion state preserved across `buildConfigEditor` rebuilds via `data-section-key` attribute tracking.
-- [x] Also fixed 7 regression bugs from the EQ-1 class migration: dark theme `data-bf-tone` attribute, 5 buttons missing `textContent`, panel resize dual-property compat, text drag offset normalization (stored/rendered divergence), SCSS→CSS rename, and 9 invalid `--bf-color-*` token names.
-
-### EQ-3. Fuzzy boids parameter panel
-
-The boids scene family has no UI for controlling its parameters.
-
-- [x] Build a parameter panel for `operator-fuzzy-boids` exposing: `numBoids`, `separationRadiusPx`, `separationStrength`, `alignmentRadiusPx`, `alignmentStrength`, `cohesionRadiusPx`, `cohesionStrength`, `centerPullStrength`, `maxNeighbors`, `spawnRadiusPx`, `initialSpeedPxPerSecond`, `minSpeedPxPerSecond`, `maxSpeedPxPerSecond`, `maxAccelerationPxPerSecond2`, `bounds` (kind, radius, margin, force), `pscaleMin`, `pscaleMax`, `massMin`, `massMax`, `staggerStartSeconds`, `seed`.
-- [x] Wire the panel to live-update the simulation through the `FuzzyBoidsSimulation` cache.
-- [x] The panel should be registered as operator-owned so the operator selector (EQ-2) can show it.
-
-### EQ-4. Phyllotaxis parameter panel
-
-The phyllotaxis scene family has no UI for controlling its parameters.
-
-- [x] Build a parameter panel for `operator-phyllotaxis` exposing: `numPoints`, `radius`, `radiusFalloff`, `angleOffsetDeg`, and animation speed control (or disable animation).
-- [x] Wire the panel to live-update the phyllotaxis field.
-- [x] Register as operator-owned for the operator selector.
-
-### EQ-5. Scatter operator
-
-New operator: scatter points inside an SVG shape, analogous to Houdini scatter SOP.
-
-Resolved architecture choice: scatter landed as a first-class document scene family so it fits the current operator selector and preview-renderer seam without inventing a second selection model yet.
-
-- [x] Create `@brand-layout-ops/operator-scatter`.
-- [x] Input: an SVG path or shape definition, recreated in the operator (not in Three.js).
-- [x] Output: a `PointField` of scattered points inside the shape boundary.
-- [x] Parameters: point count, seed, distribution mode (uniform, density-weighted), margin.
-- [x] Build a parameter panel and register it for the operator selector.
-
-### EQ-6. Resolve or remove presets ✅
-
-Presets were a workaround for lack of multiple documents. Now that documents exist, clarify the architecture.
-
-- [x] Presets section removed from config panel (commit `4c97dd3`).
-- [ ] Full preset infrastructure still intact in `main.ts` (imports, `buildPresetTabs`, `buildCurrentPresetPayload`, `state.presets`, `state.activePresetId`, etc.) and in the document persistence schema. Deeper removal is deferred — the document format still carries presets.
-
-### EQ-7. Content format cleanup ✅
-
-- [x] `speaker_highlight` content now lives in the shared document bucket model instead of needing preview-local special handling (commit `4c97dd3`).
-- [x] Inline text is the current working mode and that is fine. CSV import remains a secondary path.
-- [x] `speaker_highlight` is exposed again through `OVERLAY_CONTENT_FORMAT_ORDER`, so the shared format spec and seeded bucket data are now live parity surface rather than dead code.
-
-### EQ-8. Paragraph styles — conditional visibility
-
-- [x] Superseded: paragraph style controls now live inline inside the Selected Element section instead of in their own accordion panel.
-- [x] The remaining layout-grid visibility behavior still lives on the grid controls themselves; no separate paragraph-style visibility gate remains.
-
-### EQ-9. Remove dead stat labels from scene-family preview canvas ✅
-
-- [x] The scene-family preview canvas renders non-interactive text labels ("Arm sets 21 and 34", "Center 545, 54", "Radius ...px", etc.) that look like buttons but do nothing.
-- [x] Remove these stat labels from the canvas. The information should come from the parameter panel instead once EQ-3 and EQ-4 land.
-- [x] Removed `title`, `subtitle`, `stats` from `BaseSceneFamilyPreviewState` and `SceneFamilyPreviewSnapshot`, deleted `drawPreviewLabel` function (commit `fc35f96`).
-
-### EQ-10. Document-owned background operator persistence
-
-Treat the active background operator as saved document state, not preview-local runtime state.
-
-- [x] Move `phyllotaxis`, `fuzzy-boids`, and `scatter` settings out of preview-local state and into the shared document/source-default path.
-- [x] Ensure save, save as, duplicate, reopen, and `Ctrl/Cmd+Alt+S` source-default writeback all restore the active background operator and its typed parameters.
-- [x] Keep browser localStorage as a mirror or temporary shell behavior only, never as canonical authority for operator state.
-- [x] Landed implementation: shared `document.project.sceneFamilyConfigs` now owns the non-halo operator configs, operator panels mutate that shared project state directly, and source-default authoring now writes the shared overlay-document payload while still reading older raw snapshot files.
-
-### EQ-11. Persist typed operator handoff in the document model
-
-Treat operator chaining as a document-and-graph concern, not preview-local glue.
-
-- [x] Extend the saved document model to persist operator nodes and connections, starting with the active background chain rather than a full arbitrary graph.
-- [x] Reuse existing typed graph-runtime ports such as `PointField` and seed-field inputs rather than inventing preview-local handoff logic.
-- [x] First supported handoff should cover one point generator feeding one point-consuming operator, for example phyllotaxis or halo-derived point layouts feeding fuzzy-boids, with future solvers added on the same typed path.
-- [x] Landed implementation: shared `document.project.backgroundGraph` now persists a constrained active background chain, including the default fuzzy-boids seed handoff, and `apps/overlay-preview/src/scene-family-preview.ts` now renders non-halo families from that saved chain instead of preview-local branching.
-
-### EQ-12. Network view stage 2 — list first, graph later
-
-Only build more graph UI after the document model can already persist the chain.
-
-- [x] Expose the saved background chain as a list-first network view in the inspector once EQ-10 and EQ-11 exist.
-- [x] Selecting an operator in that list shows only its typed parameter pane.
-- [x] Defer a full draggable node editor until the persisted graph model and typed chaining are stable.
-- [x] Landed implementation: the inspector now shows rendered-output radios plus a saved-node list for `document.project.backgroundGraph`, selecting a node filters the accordion to that operator's pane, upstream-node edits now stay on the saved graph node instead of rebuilding the full chain from `sceneFamilyConfigs`, and the active output node still mirrors its params back into the matching scene-family defaults.
-
-### Recent cleanup and bugs (reference)
-
-These are kept here as resolved context from the earlier EQ-3/EQ-4 pass.
-
-#### Code cleanup from audit
-
-- [x] **Simplify `normalizeOverlayTextFieldOffsetBaselines`**: stripped unused `params` and `measurer` arguments; `normalizeOverlayParamsForEditing` signature simplified accordingly (commit `5b927dd`).
-- [x] **Remove dead export `getMinimumFirstBaselineInsetBaselines`** from `layout-text` (commit `5b927dd`).
-- [x] **Remove double-round on keylines**: removed redundant `Math.round()` wrapping `getKeylineXPx()` — already rounded at source (commit `5b927dd`).
-
-#### Recently fixed bugs
-
-- [x] **Halo scale zoom coverage**: `getGeometryScale` now falls back to `composition.scale` when no mascot box, matching the reference app (commit `5b927dd`). Verify visually.
-- [x] **Radial gradient removed from scene families**: shared and per-family glow calls removed; `drawSoftGlow` deleted (commit `5b927dd`).
-- [x] **Release label fold-seam z-order**: `drawReleaseLabelOverlay` now applies `getFoldSeamAlpha` so labels near the seam fade behind the most recent spoke (commit `5b927dd`).
-- [x] **Long inspector no longer stretches the stage shell**: the preview now hard-clamps the app shell to the viewport and scrolls long inspector content inside the panel, so expanding a tall accordion no longer pushes the stage below the fold without a scroll path. Follow-up: keep an eye on the related `baseline-foundry` stage-shell audit note in case this should become a tiny upstream helper instead of staying local composition.
+- [ ] Halo scale zoom coverage
+- [ ] Release label fold-seam overlap
 
 ## Discussion Items Not Yet Scheduled
 
@@ -619,8 +524,12 @@ These matter, but they are not approved active work until we discuss placement, 
 	Working assumption: keep layout, SVG, document semantics, and moderate-size procedural operators in TypeScript; allow GPU-backed execution paths or adapters for high-count 3D or simulation-heavy operators where profiling proves TypeScript is not enough.
 - [ ] Future spokes decomposition.
 	Working assumption: keep the current `operator-spokes` coarse for parity, then later split toward a wave operator that can run in cartesian and polar coordinates, separate mask operators, and a polar field or radial layout operator for instanced shapes and text.
-- [ ] Move beyond a strict background or overlay abstraction toward a proper layer stack with blend modes.
-	Working assumption: do not widen the abstraction until parity is proven, but keep the future compositor layer in mind.
+- [ ] Move beyond a strict background or overlay abstraction toward a proper layer stack and compositor model.
+	Working assumption: safe-area fill, halo layers, images, large type, and future media should eventually become ordered layers rather than hard-coded special-case passes, but the short-term work should still enter through parity-friendly seams instead of a premature full compositor rewrite.
+- [ ] Authoring-shell navigation separate from operator panels.
+	Working assumption: app-level actions such as new/open/save/duplicate/export should migrate toward dedicated shell navigation or pinned authoring chrome instead of staying mixed into the same inspector surface as operator parameters.
+- [ ] Lean active-plan discipline.
+	Working assumption: the canonical plan should stay focused on current work only; completed milestones belong in terse summaries plus git history rather than growing into a second audit log inside the live queue.
 - [x] Operator-registered accordion panels for the config editor UI.
 	Working assumption: promoted to EQ-2/EQ-3/EQ-4 above.
 - [x] Incremental control-surface swap from Vanilla to the sibling `portable-vertical-rhythm` package for the overlay-preview shell.

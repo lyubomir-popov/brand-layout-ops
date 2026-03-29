@@ -18,6 +18,8 @@ The key product shape is not "Figma for brand design." It is a structured operat
 - layout stays rigorous and document-driven rather than freeform first
 - scene families can be swapped behind the same layout and export stack
 - halo, boids, phyllotaxis, and future generators should be peers at the scene layer rather than bespoke app branches
+- composition should grow toward a true layer stack where multiple background, image, text, and future media layers can be ordered intentionally instead of freezing the current Three.js-under-text arrangement into a permanent special case
+- shell-level project actions such as new, open, save, duplicate, reset default, and export should live in dedicated authoring chrome rather than being treated as just another parameter section
 - stills, video, SVG, PDF, and EPS remain backend concerns instead of mutating the kernel semantics
 
 The preferred document analogy is closer to draw.io or local Canva-style projects than browser-local preset CRUD:
@@ -74,7 +76,7 @@ Deliverables:
 
 - point or field generator operator
 - SVG instancing operator
-- compositing operator family
+- compositing or layer-stack operator family
 - background and layout composition in one graph
 - swappable scene-family operators that can drive the same document through different motion systems
 
@@ -113,6 +115,7 @@ Deliverables:
 - operator mode for graph and parameter tuning
 - contextual parameter panels driven by the selected operator or graph node instead of one monolithic document accordion
 - a network-view or operator-selection workflow that lets the layout operator, scene operator, and future generators expose their own scoped controls
+- dedicated shell navigation for project and export actions so file operations do not stay mixed into the operator parameter stack
 - stakeholder mode for template, row, and format selection
 - document-size and template management without exposing low-level operator tuning
 - content validation and safer writeback

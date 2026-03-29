@@ -38,10 +38,11 @@ If you want the shortest high-level snapshot, read this file first.
 - A first-pass local document workflow now exists, so authored text, placement, logo state, scene configuration, and preset variants can be saved and reopened as real local project files instead of living only in browser storage.
 - Recent-document reopen is now wired through stored file handles, preview documents now persist the shared overlay document metadata/state envelope plus shared project metadata for scene-family selection, document targets, and non-halo scene-family configs, preview-local document workspace orchestration now lives in `apps/overlay-preview/src/document-workspace.ts`, preview-side snapshot or apply plumbing now lives in `apps/overlay-preview/src/preview-document-bridge.ts`, the Output Format panel now edits scene family plus add or delete document sizes against that shared schema, non-halo scene families now render through `apps/overlay-preview/src/scene-family-preview.ts`, and source-default authoring now round-trips that shared overlay-document envelope while still reading older raw snapshot files.
 - Product direction is now explicit: documents, not browser presets, are the real unit of work, and a document should eventually own the swappable scene-family or background operator stack, output target sizes, and exportable state while CSV remains a secondary import path.
+- The next architectural shift is toward a clearer authoring environment: ordered visual layers instead of one-off safe-area or overlay passes, plus shell-level project actions that live in dedicated navigation rather than inside an ever-growing inspector.
 - After that document seam is stable, the next highest parity target is still the full Ubuntu Summit scene-family pass and remaining mascot or halo composition fidelity.
 - For architecture detail, read `docs/rebuild-plan.md`. For long-term direction, read `docs/product-roadmap.md`.
 
-## Current state (updated 2026-03-28)
+## Current state (updated 2026-03-29)
 
 **Stage 1 — Parity Rebuild** is in progress. The overlay-preview app has:
 
@@ -166,24 +167,11 @@ If you want the shortest high-level snapshot, read this file first.
 - The standalone Paragraph Styles section is gone; paragraph-style assignment now lives inline in the Selected Element section next to text editing and layout controls
 - Scatter scene family landed: `packages/operator-scatter/src/index.ts` now generates point fields inside ellipse, rectangle, rounded-rect, or polygon-style SVG path boundaries, and `apps/overlay-preview/src/scatter-section.ts` exposes point count, seed, distribution mode, margin, and shape controls through the operator selector
 
-## Current sprint TODO (do in order)
+## Current sprint TODO (active only)
 
-**Active execution queue is in `docs/rebuild-plan.md` § "Approved Execution Queue".**
+**Active execution queue is in `docs/rebuild-plan.md` § "Approved Execution Queue — Active Only".**
 
-Items EQ-1 through EQ-12 are the user-directed priorities in dependency order:
-
-1. **EQ-1** — ~~Switch UI library from `portable-vertical-rhythm` to `baseline-foundry` (panel preset).~~ **DONE** (commits `50f4c4f` + `fc35f96`). Dependency swapped, all CSS class names migrated from `p-*`/`vr-*`/`vf-*` to native `bf-*`.
-2. **EQ-2** — ~~Operator selector UI (radio list of operators → shows selected operator's params).~~ **DONE** (commit `626b7ea`). Radio group between shell and operator sections, `group` field on `ParameterSectionDefinition`, accordion state preserved across rebuilds. Also fixed 7 regression bugs: dark theme attribute, button labels, panel resize compat alias, text drag offset normalization, SCSS→CSS rename, and 9 invalid CSS token names.
-3. **EQ-3** — ~~Fuzzy boids parameter panel (numBoids, separation, alignment, cohesion, bounds, etc.).~~ **DONE** (commit `25fed2c`). Added operator-owned `fuzzy-boids` panel with live simulation controls backed by preview state.
-4. **EQ-4** — ~~Phyllotaxis parameter panel (numPoints, radius, radiusFalloff, angleOffsetDeg, animation).~~ **DONE**. Added operator-owned `phyllotaxis` panel with live geometry and animation controls backed by preview state.
-5. **EQ-5** — ~~Scatter operator (`operator-scatter`, scatter points inside SVG shape).~~ **DONE**. Added `@brand-layout-ops/operator-scatter`, promoted `scatter` to a document scene family so it fits the current selector model, and shipped an operator-owned panel plus preview renderer path.
-6. **EQ-6** — ~~Resolve or remove presets (documents replaced presets — clarify architecture).~~ **DONE** (commit `4c97dd3`). Presets section removed from config panel.
-7. **EQ-7** — ~~Content format cleanup (speaker_highlight → document-owned, inline text is fine).~~ **DONE** (commit `4c97dd3`). Speaker highlight content stayed in the shared document bucket model, and the format is now exposed again through the shared order so parity work can use that seeded data instead of preview-local special cases.
-8. **EQ-8** — ~~Paragraph styles conditional visibility (only when layout grid is active).~~ **DONE**. Paragraph-style controls ultimately moved inline into the Selected Element section, so there is no longer a separate paragraph-style accordion to gate.
-9. **EQ-9** — ~~Remove dead stat labels from scene-family preview canvas.~~ **DONE** (commit `fc35f96`). Removed `title`, `subtitle`, `stats` from preview state/snapshot, deleted `drawPreviewLabel`.
-10. **EQ-10** — ~~Move background-operator settings into document-owned persistence so save/save-as/reopen and source-default writeback restore the active operator plus its typed params.~~ **DONE**. Non-halo operator params now live in shared `document.project.sceneFamilyConfigs`, and source-default authoring now restores that shared project envelope instead of only a raw snapshot.
-11. **EQ-11** — ~~Persist typed operator handoff in the document model, starting with the active background chain and existing `PointField`/seed-field style ports.~~ **DONE**. Shared `document.project.backgroundGraph` now persists the active background chain, including the first fuzzy-boids seed-field handoff, and the preview plus automation bridge consume that saved chain directly.
-12. **EQ-12** — ~~Add the next-stage list-first network view now that EQ-10 and EQ-11 are stable; graph UI still comes after persisted operator chaining, not before.~~ **DONE**. The inspector now exposes rendered-output radios plus the saved background-node list, selected-node panes follow the saved graph node rather than only `sceneFamilyKey`, and upstream-node edits no longer overwrite the whole chain.
+All earlier EQ-1 through EQ-12 items are complete. Keep this handoff section focused on current work rather than repeating the finished queue.
 
 ### Immediate next steps
 
@@ -191,7 +179,9 @@ Items EQ-1 through EQ-12 are the user-directed priorities in dependency order:
 
 **User feedback backlog from 2026-03-29** — keep this unscheduled for now and track it in `docs/rebuild-plan.md` rather than promoting it into the execution queue: non-halo scene families should cover the whole stage, phyllotaxis should render points only, fuzzy-boids needs a Houdini/VEX parity audit, scatter needs better relax plus full-frame behavior, file-backed open/save/duplicate UX needs to feel like real project files, and playback/export/default actions need a cleaner control split.
 
-**After EQ-12** — decide whether the background preview adapter should call further into shared graph evaluation primitives or continue as a thin typed renderer adapter over the persisted chain.
+**Authoring direction from 2026-03-29** — keep steering toward a proper project-oriented authoring environment rather than a fixed Ubuntu-specific renderer shell: multiple ordered visual layers, less hard-coded "text over Three.js" thinking, and shell-level project actions moved into dedicated navigation chrome instead of growing the inspector.
+
+**Graph follow-up after the current parity slice** — decide whether the background preview adapter should call further into shared graph evaluation primitives or continue as a thin typed renderer adapter over the persisted chain.
 
 **Do not start a preview-local overlay drawer port right now** — wait for the upstream `baseline-foundry` overlay drawer work to finish there with full resize support, then swap the preview shell onto that implementation instead of duplicating it locally.
 
@@ -200,75 +190,6 @@ Items EQ-1 through EQ-12 are the user-directed priorities in dependency order:
 **Bug: Halo scale zoom coverage** — `getGeometryScale` now falls back to `composition.scale` when no mascot box (commit `5b927dd`), so background spokes and echo shapes scale with the slider. Release labels already scaled. Verify visually that all elements (dots, spokes, shapes, labels, strokes) zoom uniformly; if any element still ignores scale, trace its geometry path.
 
 **Bug: Release label fold-seam overlap** — `drawReleaseLabelOverlay` now applies `getFoldSeamAlpha` so labels near the fold seam fade behind the most recent spoke (commit `5b927dd`). Verify visually that the oldest release labels at the 9-o'clock seam appear behind the newest one.
-
-### Previous completed work (kept for reference)
-
-### C. Remaining parity (see `docs/rebuild-plan.md` gap audit)
-
-- [x] Guide toggle 3-state cycle (already implemented: off → composition → baseline, `W`/`G` keys)
-- [x] Export pipeline — single PNG ✅, PNG sequence with modal ✅, headless export ✅, MP4 encode ✅, fade encode flags ✅ (local FFmpeg install verified on Windows)
-- [x] Logo intrinsic aspect ratio (loads via `Image`, uses `naturalWidth`/`naturalHeight`)
-- [ ] Full Ubuntu Summit animation as one coarse scene-family operator
-- [ ] Mascot composition (face SVG, halo SVG, blink, head turn, eye or nose fidelity) — **partial, still deprioritized for full parity polish**
-
-### E. Export pipeline & headless Playwright (priority)
-
-- [x] `window.__layoutOpsAutomation` API for headless frame export (matches reference `__mascotAutomation` pattern)
-- [x] `scripts/export-headless.ts` — Playwright headless PNG sequence export (rewrites old DOM-manipulation approach)
-- [x] `scripts/encode-mp4.ts` — FFmpeg PNG→MP4 encoder (libx264, CRF 10/14, yuv444p/yuv420p, slow preset, -tune animation, bt709)
-- [x] PNG sequence export via File System Access API (`showDirectoryPicker`, fallback to download links)
-- [x] Verify end-to-end: `npm run export:headless` → `npm run export:encode-mp4` → MP4 (48-frame, 2-second headless export verified at 1080x1350; straight encode and fade encode flags both verified; local FFmpeg install required on Windows)
-
-### F. Bug fixes from user notes
-
-- [x] Canvas not true to size / not scrollable — scale to fit via `--stage-aspect-ratio` CSS variable
-- [x] Accordion shouldn't change when clicking inside — mutual exclusion on open, no close-on-content-click
-- [x] Show overlay checkbox in wrong place — moved to grid accordion section
-- [x] Text resize bug — north-corner text resize now preserves vertical snapping instead of collapsing the top edge toward the safe area
-- [x] Overlay selection no longer starts with a forced selected text field or auto-falls back to another item after deletes or source-default resets
-- [x] Logo sizing lock is now toggleable in the selected-logo section, and the logo asset path is editable there as well
-- [x] Tap jitter no longer immediately drags or resizes overlay items; pointer movement now has to cross a small activation threshold first
-- [x] Control-panel toggle cleanup: removed the external `Controls` button, kept the panel on a single visibility model across breakpoints, and wired `Tab` to hide or show it everywhere
-
-### G. After current parity priorities
-
-- [x] Incrementally switch the preview control surface from Vanilla to the local `portable-vertical-rhythm` micro-framework
-  - Landed early by explicit user request so the broken Halo Field slider rendering could be fixed in the live preview
-  - Uses the sibling repo package as a local dependency and keeps the existing alias-based markup for now
-- [ ] Continue anti-drift refactors that reduce preview-shell ownership of canonical product behavior
-  - **Next extraction prerequisite**: design a state-sharing protocol (context object, extracted state module, or dependency-injected callbacks) so section builders, authoring controller, and export controller can leave main.ts without simply moving closure coupling to a different file
-  - Move remaining export-state and scene-family document rules toward shared layout or operator paths where parity permits
-  - Replace preview-owned section definitions with package-registered or manifest-driven panels on top of the shared `parameter-ui` registry instead of expanding bespoke shell code indefinitely
-  - Continue trimming preview-local control-surface CSS so `baseline-foundry` remains the styling owner and only genuinely preview-specific rules stay in `apps/overlay-preview/src/styles.scss`
-  - Keep the docked shell on baseline-foundry's app-shell primitives; avoid reintroducing preview-local reserved-width or fixed-position aside hacks now that the 30rem docked panel cap lives in the shared layout path
-  - If another consumer needs docked panel resizing, upstream the current preview-local resize-handle behavior into `baseline-foundry` instead of forking more app-shell logic in the preview
-  - Upstream the preview's stacked narrow-panel slider treatment into `baseline-foundry` once the shared package has an explicit range-above-number inspector variant
-- [ ] Persistent local document model and file-backed projects
-  - Landed: the preview can now open, save, save as, duplicate, and reopen recent local `.brand-layout-ops.json` files that carry the current working snapshot plus the preset library
-  - Landed follow-up: preview-document persistence helpers now live in `apps/overlay-preview/src/preview-document.ts` instead of `apps/overlay-preview/src/sample-document.ts`
-  - Landed follow-up: preview documents now persist the shared overlay document metadata/state envelope while still reading the earlier preview-local file shape
-  - Landed follow-up: startup no longer seeds the working document from browser-local preset storage, so documents are the intended source of truth even though localStorage mirroring still exists inside the preview shell
-  - Landed follow-up: document workspace state, recent-document reopen, file open or save orchestration, and fallback download handling now live in `apps/overlay-preview/src/document-workspace.ts` instead of `apps/overlay-preview/src/main.ts`
-  - Landed follow-up: preview-side source-default snapshot creation plus document build/apply/reset logic now live in `apps/overlay-preview/src/preview-document-bridge.ts` instead of `apps/overlay-preview/src/main.ts`
-  - Landed follow-up: the shared `operator-overlay-layout` document schema now carries `project` metadata for `sceneFamilyKey`, `activeTargetId`, and the document's target output profiles
-  - Landed follow-up: the Output Format panel now uses that shared `project` metadata for scene-family selection plus add or delete document sizes, and deleted sizes now drop their saved per-profile state from future document saves
-  - Landed follow-up: the selected document scene family now changes the stage renderer and composed-frame export path, and `apps/overlay-preview/src/scene-family-preview.ts` now gives phyllotaxis, fuzzy-boids, and scatter richer family-specific rendering instead of only flat adapter dots
-  - Landed follow-up: dedicated operator-owned parameter surfaces now exist for phyllotaxis, fuzzy-boids, and scatter instead of only a non-halo preview summary
-  - Landed follow-up: shared `document.project.sceneFamilyConfigs` now persists those non-halo scene-family settings through save/save-as/duplicate/reopen plus source-default reset or writeback, while source-default authoring writes the shared overlay-document payload and still reads older raw snapshots
-  - Next: decide whether preview-only document extras such as the preset library and pending CSV drafts should remain preview-side extensions or move into a broader shared document package later, with CSV explicitly kept secondary for now
-- [x] Export parity follow-up
-  - The single-frame PNG export path was manually revalidated by the user after the `preserveDrawingBuffer: true` fix in `apps/overlay-preview/src/halo-renderer.ts`, and the halo layer is present again
-
-### D. UI parity quick wins (done)
-
-- [x] Column gutter control in grid section
-- [x] Safe area override inputs (conditional on Fit Within Safe Area)
-- [x] Preset name input field
-- [x] Halo echo detail controls (stroke, scale, sparse boost, seed, mix %, ripple, fade)
-- [x] Phase end width control
-- [x] Screensaver pulse orbit/spoke checkboxes
-- [x] Release label controls (enable, font size, radial position)
-- [x] Debug overlay checkboxes (reference halo, debug masks)
 
 ## Key file map
 
@@ -314,7 +235,7 @@ If the gap is visual, run both apps and compare screenshots before changing code
 
 Use this to resume work in a new chat:
 
-Continue work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\lyubo\work\repos\racoon-anim` as the reference app. Read `AGENTS.md`, `llm-handoff-context.md`, `docs/rebuild-plan.md`, `docs/product-roadmap.md`, and `README.md` first. The current product direction is explicit: documents, not browser presets, are the real unit of work. A document should eventually own the swappable scene-family or background operator stack such as halo, boids, phyllotaxis, or scatter, plus one or more target output sizes, layout state, export settings, and the saved operator connections that feed one operator's typed outputs into another. The preview already opens, saves, save-as, duplicates, and reopens recent `.brand-layout-ops.json` files through `apps/overlay-preview/src/preview-document.ts`, which stores the shared overlay document metadata/state envelope plus shared `project` metadata for scene family, document targets, `sceneFamilyConfigs`, and the active `backgroundGraph` while still carrying preview-only extras and backward compatibility for earlier preview-local files. Preview-local file orchestration, recent-document handling, dirty-state UI, and fallback download behavior now live in `apps/overlay-preview/src/document-workspace.ts`, while preview-side snapshot plus document build/apply/reset logic now live in `apps/overlay-preview/src/preview-document-bridge.ts` instead of `apps/overlay-preview/src/main.ts`. The Output Format panel now edits that shared project metadata for scene family and saved document sizes, deleted sizes prune their saved per-profile state from future document saves, non-halo scene families now render through `apps/overlay-preview/src/scene-family-preview.ts` in both the live stage and composed-frame export path with richer family-specific canvas rendering rather than only flat point dots, and the operator-owned phyllotaxis/fuzzy-boids/scatter panels now write directly into shared `document.project.sceneFamilyConfigs` while the saved active chain lives in `document.project.backgroundGraph`. Source-default authoring now reads either the older raw snapshot shape or the shared overlay-document payload and writes the shared overlay-document payload, so authored defaults also restore the active background operator, its typed params, and the saved first operator handoff. The graph/runtime already supports typed payloads such as `PointField` and seed-field inputs, so the missing next step is EQ-12: expose that saved background chain in a list-first network view before attempting a fuller graph editor. Startup no longer seeds the working state from browser-local preset storage, but localStorage mirroring still exists inside the preview shell and should not become the canonical model again. CSV authoring is now a secondary import and staging path, not the main editing seam. The single-frame PNG halo export regression is manually revalidated and no longer the active blocker. Keep parity-first and anti-drift discipline, keep the preview as an adapter, keep `baseline-foundry` as the styling owner, and if you touch stacked sliders or shell primitives, coordinate with `c:\Users\lyubo\work\repos\baseline-foundry`, where the shared narrow-panel stacked-slider follow-up is already documented.
+Continue work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\lyubo\work\repos\racoon-anim` as the reference app. Read `AGENTS.md`, `llm-handoff-context.md`, `docs/rebuild-plan.md`, `docs/product-roadmap.md`, and `README.md` first. The current product direction is explicit: documents, not browser presets, are the real unit of work. A document should eventually own the swappable scene-family or background operator stack such as halo, boids, phyllotaxis, or scatter, plus one or more target output sizes, layout state, export settings, and the saved operator connections that feed one operator's typed outputs into another. The preview already opens, saves, save-as, duplicates, and reopens recent `.brand-layout-ops.json` files through `apps/overlay-preview/src/preview-document.ts`, which stores the shared overlay document metadata/state envelope plus shared `project` metadata for scene family, document targets, `sceneFamilyConfigs`, and the active `backgroundGraph` while still carrying preview-only extras and backward compatibility for earlier preview-local files. Preview-local file orchestration, recent-document handling, dirty-state UI, and fallback download behavior now live in `apps/overlay-preview/src/document-workspace.ts`, while preview-side snapshot plus document build/apply/reset logic now live in `apps/overlay-preview/src/preview-document-bridge.ts` instead of `apps/overlay-preview/src/main.ts`. The Output Format panel now edits that shared project metadata for scene family and saved document sizes, deleted sizes prune their saved per-profile state from future document saves, non-halo scene families now render through `apps/overlay-preview/src/scene-family-preview.ts` in both the live stage and composed-frame export path with richer family-specific canvas rendering rather than only flat point dots, and the operator-owned phyllotaxis/fuzzy-boids/scatter panels now write directly into shared `document.project.sceneFamilyConfigs` while the saved active chain lives in `document.project.backgroundGraph`. Source-default authoring now reads either the older raw snapshot shape or the shared overlay-document payload and writes the shared overlay-document payload, so authored defaults also restore the active background operator, its typed params, and the saved first operator handoff. The near-term priorities are the remaining Ubuntu Summit parity passes, non-halo scene-family fidelity cleanup, and the shift toward a clearer authoring shell with ordered visual layers plus dedicated project or export navigation rather than more special-case inspector controls. Startup no longer seeds the working state from browser-local preset storage, but localStorage mirroring still exists inside the preview shell and should not become the canonical model again. CSV authoring is now a secondary import and staging path, not the main editing seam. The single-frame PNG halo export regression is manually revalidated and no longer the active blocker. Keep parity-first and anti-drift discipline, keep the preview as an adapter, keep `baseline-foundry` as the styling owner, and if you touch stacked sliders or shell primitives, coordinate with `c:\Users\lyubo\work\repos\baseline-foundry`, where the shared narrow-panel stacked-slider follow-up is already documented.
 
 ## Open Questions To Discuss Later
 
