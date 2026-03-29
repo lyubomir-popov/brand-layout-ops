@@ -765,11 +765,6 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     return w;
   }
 
-  function getColorWithAlpha(color: string, alpha: number): string {
-    const parsedColor = new THREE.Color(color || "#202020");
-    return `rgba(${Math.round(parsedColor.r * 255)}, ${Math.round(parsedColor.g * 255)}, ${Math.round(parsedColor.b * 255)}, ${clamp(alpha, 0, 1)})`;
-  }
-
   function getTextLabelRadiusMetrics(
     spoke: Spoke | null,
     haloOuterR: number,
@@ -998,39 +993,6 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     textCtx.restore();
   }
 
-  function drawVignetteOverlay(sceneDescriptor: UbuntuSummitAnimationSceneDescriptor) {
-    const vignette = sceneDescriptor.haloConfig.vignette;
-    const strength = clamp(vignette?.shape_fade ?? 0, 0, 1);
-    if (!(vignette?.enabled ?? true) || strength <= 0) {
-      return;
-    }
-
-    const fullFrameR = sceneDescriptor.frameState.fullFrameOuterRadiusPx;
-    if (fullFrameR <= 0) {
-      return;
-    }
-
-    const startU = clamp(vignette?.shape_fade_start ?? 0.3, 0, 1);
-    const endU = clamp(vignette?.shape_fade_end ?? 1, startU + 0.01, 1);
-    const innerRadiusPx = fullFrameR * startU;
-    const outerRadiusPx = Math.max(innerRadiusPx + 1, fullFrameR * endU);
-    const innerStop = clamp(innerRadiusPx / outerRadiusPx, 0, 0.999);
-    const centerX = sceneDescriptor.haloConfig.composition.center_x_px;
-    const centerY = stageH - sceneDescriptor.haloConfig.composition.center_y_px;
-    const bgColor = sceneDescriptor.haloConfig.composition.background_color || "#202020";
-    const gradient = textCtx.createRadialGradient(centerX, centerY, 0, centerX, centerY, outerRadiusPx);
-    gradient.addColorStop(0, getColorWithAlpha(bgColor, 0));
-    if (innerStop > 0.001) {
-      gradient.addColorStop(innerStop, getColorWithAlpha(bgColor, 0));
-    }
-    gradient.addColorStop(1, getColorWithAlpha(bgColor, strength));
-
-    textCtx.save();
-    textCtx.fillStyle = gradient;
-    textCtx.fillRect(0, 0, stageW, stageH);
-    textCtx.restore();
-  }
-
   function getSceneBaseAlpha(sceneDescriptor: UbuntuSummitAnimationSceneDescriptor): number {
     return clamp(sceneDescriptor.frameState.mascotMotion.mascotFadeU, 0, 1);
   }
@@ -1105,7 +1067,6 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     textCtx.clearRect(0, 0, stageW, stageH);
     drawMascotOverlay(sceneDescriptor);
     drawReleaseLabelOverlay(spokes, mascotBox, haloOuterR, fullFrameR, config, sceneBaseAlpha, reveal);
-    drawVignetteOverlay(sceneDescriptor);
   }
 
   function clearFrame() {

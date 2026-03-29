@@ -66,7 +66,7 @@ If the gap is visual, run both apps and compare screenshots before editing.
 
 ### Phase 5. Port the animation background as coarse operators (done)
 
-Completed: `operator-orbits`, `operator-spokes`, coarse motion preview integration. Mascot-specific motion stays in adapter/scene-family layer until reuse is concrete. Mascot fade now multiplies through whole scene. First-pass vignette overlay landed.
+Completed: `operator-orbits`, `operator-spokes`, coarse motion preview integration. Mascot-specific motion stays in adapter/scene-family layer until reuse is concrete. Mascot fade now multiplies through whole scene. The temporary vignette overlay pass was later removed because it caused visible gradient banding in exported video.
 
 ### Phase 6. Verify parity (in progress)
 
@@ -74,7 +74,7 @@ Completed: `operator-orbits`, `operator-spokes`, coarse motion preview integrati
 - [x] Baseline and composition guides.
 - [ ] Overlay logo placement semantics.
 - [ ] Selected-element editor behavior.
-- [ ] Current animation background look.
+- [x] Current animation background look.
 - [ ] Export-relevant geometry consistency.
 - [ ] Export workflow parity.
 - [ ] Preset and source-default workflow parity.
@@ -85,41 +85,26 @@ Deferred: further operatorization, Houdini digital asset ports, SVG/print backen
 
 ## Deviation Log (summary)
 
-All deviations are resolved and justified. Key patterns: motion preview was pulled forward to improve parity visibility (2026-03-26), Phase 6 was reopened after a full cross-repo audit (2026-03-27), the `portable-vertical-rhythm` and then `baseline-foundry` shell swaps landed during parity work at user request (2026-03-28), file-backed documents were prioritized over CSV polish and browser-local presets (2026-03-28), and shared document project metadata plus scatter as a full scene family both landed before all UI was exposed (2026-03-28). Detailed reasoning preserved in git history.
+All deviations are resolved and justified. Key patterns: motion preview was pulled forward to improve parity visibility (2026-03-26), Phase 6 was reopened after a full cross-repo audit (2026-03-27), the `portable-vertical-rhythm` and then `baseline-foundry` shell swaps landed during parity work at user request (2026-03-28), file-backed documents were prioritized over CSV polish and browser-local presets (2026-03-28), shared document project metadata plus scatter as a full scene family both landed before all UI was exposed (2026-03-28), and on 2026-03-29 halo work was explicitly frozen as parity-complete for this rebuild while the separate vignette overlay pass was removed because it caused export banding. An experimental GPU fuzzy-boids spike also landed the same day behind an opt-in flag, using WebGL2 simulation plus CPU `PointField` readback as the export seam. Detailed reasoning preserved in git history.
 
 ## Remaining Parity Gaps
 
 Consolidated from the 2026-03-27 cross-repo audit and subsequent delta passes. DONE items removed. Only open gaps remain.
 
-### Halo scene family — renderer and motion
+### Scene-family status
 
-| # | Gap | Status | Remaining work |
-|---|-----|--------|----------------|
-| 1 | Ubuntu Summit animation sequence | PARTIAL | `operator-ubuntu-summit-animation` owns phase classification, timing, mascot-box, reveal geometry, screensaver pulse, and spoke transitions. Missing: intro dot/orbit splash nuance, finale halo shrink + mascot choreography, blink/sneeze cadence, head-turn timing, radio-line detail pass. |
-| 2 | Halo-field renderer | PARTIAL | Three.js rendering, phase masks, spoke width interpolation, echo rings, release labels, and screensaver pulse are implemented. Missing: reference-grade mascot-linked reveal, finale-detail passes, visual-timing polish. |
-| 3 | Mascot composition | PARTIAL | Face SVG, halo SVG, white eyes, nose-bob, blink, head-turn are drawn. Missing: full reference texture-loading path, original Three.js mesh stack fidelity. Decision: keep adapter-side until reuse is concrete. |
-| 4 | Vignette | PARTIAL | First-pass overlay using shared shape_fade settings. Missing: inner/outer radius, feather, choke, dither, safe-area-aware compositing. |
-| 5 | Safe area fill layering | PARTIAL | `safe_area_fill_color` exists. Missing: `safe_area_fill_above_animation` toggle for render-order switching. |
-| 6 | Screensaver state machine | MISSING | Continuous post-finale loop with cycle timing, ramp-in, pulse breathing, min spoke count floor, phase boundary transitions. |
-| 7 | Release label finesse | PARTIAL | Rotated and upright-flipped. Missing: spacing, anchor placement, collision tuning. |
+Halo parity is treated as complete for the current rebuild scope per user direction. The separate vignette overlay pass was removed because it introduced gradient banding in video exports, and no further halo fidelity work remains scheduled. Fuzzy-boids parity is done, and scatter now includes an operator-side deterministic relax/repulsion pass so the field distributes across the frame instead of clumping around the initial random samples.
 
 ### Overlay, layout, and document
 
 | # | Gap | Status | Remaining work |
 |---|-----|--------|----------------|
-| 8 | Output profiles scene ownership | PARTIAL | Per-profile overlay buckets, export settings, halo config, content-format selection all persist. Missing: profile-owned motion and mascot defaults at reference completeness. |
-| 9 | Linked title-to-logo sizing | PARTIAL | Helper in `layout-engine`, normalization in `operator-overlay-layout`, UI toggle in logo panel. Missing: fully canonical document-owned normalization (still preview-driven in places). |
-| 10 | Preset workflow | PARTIAL | Save/update/delete/import/export, file-backed documents, dirty-state tracking. Missing: reference-grade tabbed workflow and directory-picker export path. |
-| 11 | Source-default writeback | PARTIAL | Load, reset, write, CSV flush, shared normalization. Missing: remaining orchestration still in `main.ts`. |
-| 12 | Export pipeline | PARTIAL | Single PNG, PNG sequence, headless Playwright, FFmpeg MP4 encode, transparent BG — all working. Missing: final `output/{dimensions}/` workflow polish. |
-| 13 | Keyboard shortcuts | PARTIAL | All major shortcuts landed. Missing: block shortcuts during future export modal. |
-
-### Non-halo scene families
-
-| # | Gap | Status | Remaining work |
-|---|-----|--------|----------------|
-| 14 | Fuzzy-boids | DONE | VEX-faithful rewrite landed: separation uses distance-normalized min/max range with quadratic falloff (matches `chramp` approximation), alignment uses per-neighbor fuzzy heading correction (cross-product left/right steer) plus per-neighbor speed matching, cohesion attracts toward flock centroid with distance-based accel (supports `attractToOrigin` toggle), integration matches VEX order (`accel * mass * dt`, speed clamp, flatten z). Old Reynolds-style steering removed. UI panel restructured to expose VEX parameter groups (separation min/max dist, align near/far threshold, cohesion min/max dist + max accel, integration min/max accel limits). |
-| 15 | Scatter | PARTIAL | Renders as a clean white point-field scene family with full-frame default coverage. Missing: relax/repulsion pass for even distribution so the field stops clumping like simple random scatter. |
+| 1 | Output profiles scene ownership | PARTIAL | Per-profile overlay buckets, export settings, halo config, content-format selection all persist. Missing: profile-owned motion and mascot defaults at reference completeness. |
+| 2 | Linked title-to-logo sizing | PARTIAL | Helper in `layout-engine`, normalization in `operator-overlay-layout`, UI toggle in logo panel. Missing: fully canonical document-owned normalization (still preview-driven in places). |
+| 3 | Preset workflow | PARTIAL | Save/update/delete/import/export, file-backed documents, dirty-state tracking. Missing: reference-grade tabbed workflow and directory-picker export path. |
+| 4 | Source-default writeback | PARTIAL | Load, reset, write, CSV flush, shared normalization. Missing: remaining orchestration still in `main.ts`. |
+| 5 | Export pipeline | PARTIAL | Single PNG, PNG sequence, headless Playwright, FFmpeg MP4 encode, transparent BG — all working. Missing: final `output/{dimensions}/` workflow polish. |
+| 6 | Keyboard shortcuts | PARTIAL | All major shortcuts landed. Missing: block shortcuts during future export modal. |
 
 ### Architectural note
 
@@ -127,10 +112,10 @@ Item 18 from the original audit (Three.js vs SVG renderer difference) is an inte
 
 ### Principled parity rules
 
-1. Port the full Ubuntu Summit sequence into `operator-ubuntu-summit-animation` as one coarse operator before attempting finer decomposition.
+1. Keep halo stable and closed unless a concrete regression appears.
 2. Keep label orientation in adapters, not kernels — the operator emits spoke angle and label-slot data.
 3. Keep mascot composition adapter-side until reuse is concrete.
-4. Finish profile/content/preset authority before chasing fine visual polish.
+4. Finish profile/content/preset authority and export seams before reopening renderer-specific polish.
 
 ## Package split status
 
@@ -207,44 +192,36 @@ This does not need to land all at once. The extraction work above is the prerequ
 
 Concrete, dependency-ordered steps. Work top-down within each lane. Lanes are independent unless noted.
 
-### Lane A — Halo parity (highest priority)
+### Lane A — GPU/export seam validation
 
 | Step | Task | Depends on | Exit criteria |
 |------|------|------------|---------------|
-| A1 | Finish `operator-ubuntu-summit-animation` scene descriptor: intro splash nuance, finale halo shrink, blink/sneeze cadence, head-turn timing | — | Operator emits the full reference sequence timing without preview-local patches |
-| A2 | Halo renderer fidelity: mascot-linked reveal choreography, radio-line detail, finale pass | A1 | Reference re-check passes for halo scale zoom and release-label fold-seam |
-| A3 | Screensaver state machine: post-finale continuous loop, cycle timing, pulse breathing, spoke count floor | A2 | Screensaver loop matches reference visual behavior |
-| A4 | Vignette control parity: inner/outer radius, feather, choke, safe-area-aware compositing | A2 | Vignette controls match reference `draw_vignette_overlay` |
-| A5 | Safe-area fill layering: `safe_area_fill_above_animation` render-order toggle | A2 | Fill order matches reference behavior; enters through a layer-stack-friendly seam |
+| A1 | Validate the experimental GPU fuzzy-boids seam (`?gpuBoids=1`) against CPU preview and export readback behavior | — | Visual behavior, fallback conditions, and readback cost are understood well enough to decide whether to productize or keep as research |
 
-### Lane B — Non-halo scene-family fidelity
+### Lane B — Preview shell concentration reduction
 
 | Step | Task | Depends on | Exit criteria |
 |------|------|------------|---------------|
-| B1 | ~~Fuzzy-boids Houdini/VEX parity audit~~ | — | **DONE.** VEX-faithful rewrite: distance-normalized separation with quadratic falloff, fuzzy heading+speed alignment, centroid cohesion, VEX-order semi-implicit Euler integration. `chramp` approximated as `(1-t)^2`. `subSteps` mirrors Houdini Solver SOP SubSteps. World-space coordinate conversion inside `stepBoids` preserves Houdini's intentional dimensional mixing — raw Houdini parameter values work directly via `worldScale` (px-per-world-unit) bridge. Follow-up interactivity polish also landed: topology-only preview resets, structural-only sim cache keys, one-frame post-reset cap, zero-allocation top-k neighbor selection, dot-size slider, interactive preview defaults (`numBoids: 50`, `subSteps: 2`), and seed fields no longer hard-cap total boid count. |
-| B2 | Scatter relax/repulsion pass | — | Points distribute evenly across the full frame without centered clumping |
+| B1 | Extract authoring interaction controller from `main.ts` (selection, drag, resize, hit-test, inline editing) | — | ~350 lines out of `main.ts`, same `ctx` pattern as section builders |
+| B2 | Extract export + automation controller from `main.ts` (export modal, PNG sequence, automation API) | — | ~530 lines out of `main.ts` |
+| B3 | Extract source-default orchestration (apply, read, write) from `main.ts` into bridge/controller seam | B1 | Source-default I/O no longer mixed with composition root |
+| B4 | Remove dead panel modules (`presets-section.ts`, `paragraph-styles-section.ts`) after confirming no references | B1 | Clean module inventory |
+| B5 | `operator-overlay-layout/src/index.ts` internal decomposition — split into document normalization, bucket management, field defaults, CSV resolution sub-modules | — | Package index under 500 lines, internals well-bounded |
 
-### Lane C — Preview shell concentration reduction
-
-| Step | Task | Depends on | Exit criteria |
-|------|------|------------|---------------|
-| C1 | Extract authoring interaction controller from `main.ts` (selection, drag, resize, hit-test, inline editing) | — | ~350 lines out of `main.ts`, same `ctx` pattern as section builders |
-| C2 | Extract export + automation controller from `main.ts` (export modal, PNG sequence, automation API) | — | ~530 lines out of `main.ts` |
-| C3 | Extract source-default orchestration (apply, read, write) from `main.ts` into bridge/controller seam | C1 | Source-default I/O no longer mixed with composition root |
-| C4 | Remove dead panel modules (`presets-section.ts`, `paragraph-styles-section.ts`) after confirming no references | C1 | Clean module inventory |
-| C5 | `operator-overlay-layout/src/index.ts` internal decomposition — split into document normalization, bucket management, field defaults, CSV resolution sub-modules | — | Package index under 500 lines, internals well-bounded |
-
-### Lane D — Authoring shell direction (lower priority, after A+C progress)
+### Lane C — Authoring shell direction (lower priority, after A+B progress)
 
 | Step | Task | Depends on | Exit criteria |
 |------|------|------------|---------------|
-| D1 | Separate playback, export, and authored-default controls into distinct action groups | C2 | No mixed control cluster for play/export/set-default |
-| D2 | Move app-level file actions (new/open/save/duplicate) toward dedicated shell chrome | C3 | File operations are distinct from operator parameter panels |
-| D3 | Decide document vs project naming for `.brand-layout-ops.json` UX | D2 | Clear user-facing working-unit label |
+| C1 | Separate playback, export, and authored-default controls into distinct action groups | B2 | No mixed control cluster for play/export/set-default |
+| C2 | Move app-level file actions (new/open/save/duplicate) toward dedicated shell chrome | B3 | File operations are distinct from operator parameter panels |
+| C3 | Decide document vs project naming for `.brand-layout-ops.json` UX | C2 | Clear user-facing working-unit label |
 
 ### Completed queue snapshot
 
 - EQ-1 through EQ-12 are complete.
+- Halo parity is intentionally closed for the current rebuild scope; the separate vignette overlay pass was removed after it caused export banding.
+- Scatter now runs a deterministic operator-side relax/repulsion pass, so the full-frame point field no longer clumps like a simple random fill.
+- An experimental fuzzy-boids GPU spike landed behind `?gpuBoids=1` or `localStorage["brand-layout-ops-gpu-boids-spike"] = "1"`; it uses WebGL2 all-active-neighbor simulation and CPU `PointField` readback so SVG/single-frame export can consume the same snapshot seam.
 - Key completed milestones: baseline-foundry shell swap, operator selector, operator-owned fuzzy-boids/phyllotaxis/scatter panels, document-owned scene-family configs, persisted background graph, and the list-first network view.
 - Pre-B cleanup landed: `scene-family-preview.ts` now renders non-halo families as point-field-only layers without preview guide or connective geometry, and the follow-up source cleanup removed palette-driven boid phasing while moving non-halo defaults toward full-frame white-point output.
 - The downstream shell cleanup pass is materially complete for both surface classes and baseline shell runtime; remaining preview-shell debt is concentrated in dock-mode policy and other higher-level controllers rather than local alias CSS.

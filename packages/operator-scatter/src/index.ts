@@ -68,6 +68,12 @@ export interface ScatterPathShape {
 
 export type ScatterResolvedShape = ScatterEllipseShape | ScatterRectShape | ScatterPathShape;
 
+interface ScatterRelaxResult {
+  points: PointRecord[];
+  targetSpacingPx: number;
+  iterations: number;
+}
+
 const DEFAULT_SCATTER_POINT_COLOR: ColorRgba = {
   r: 255,
   g: 255,
@@ -376,6 +382,237 @@ function getDensityWeight(point: Vector3, bounds: ScatterShapeBounds, center: Ve
   return clamp(1 - normalizedDistance * 0.85, 0.08, 1);
 }
 
+function getPolygonArea(points: Vector3[]): number {
+  if (points.length < 3) {
+    return 0;
+  }
+
+  let area = 0;
+  for (let index = 0; index < points.length; index += 1) {
+    const current = points[index];
+    const next = points[(index + 1) % points.length];
+    area += current.x * next.y - next.x * current.y;
+  }
+
+  return Math.abs(area) * 0.5;
+}
+
+function getScatterShapeArea(shape: ScatterResolvedShape, marginPx: number): number {
+  if (shape.kind === "ellipse") {
+    return Math.PI
+      * Math.max(0.001, shape.radiusXPx - marginPx)
+      * Math.max(0.001, shape.radiusYPx - marginPx);
+  }
+
+  if (shape.kind === "svg-path") {
+    return Math.max(0.001, getPolygonArea(shape.points));
+  }
+
+  if (shape.kind === "rect") {
+    return Math.max(0.001, shape.widthPx - marginPx * 2)
+      * Math.max(0.001, shape.heightPx - marginPx * 2);
+  }
+
+  if (shape.kind === "rounded-rect") {
+    const widthPx = Math.max(0.001, shape.widthPx - marginPx * 2);
+    const heightPx = Math.max(0.001, shape.heightPx - marginPx * 2);
+    const radiusPx = clamp(shape.cornerRadiusPx - marginPx, 0, Math.min(widthPx, heightPx) * 0.5);
+    return widthPx * heightPx - (4 - Math.PI) * radiusPx * radiusPx;
+  }
+
+  return Math.max(0.001, shape.widthPx * shape.heightPx);
+}
+
+function getRelaxTargetSpacingPx(shape: ScatterResolvedShape, marginPx: number, pointCount: number): number {
+  if (pointCount <= 1) {
+    return 0;
+  }
+
+  const areaPx = Math.max(1, getScatterShapeArea(shape, marginPx));
+  return Math.max(2, Math.sqrt(areaPx / pointCount) * 0.82);
+}
+
+function getDeterministicUnitVector(pairIndex: number, iteration: number): { x: number; y: number } {
+  const phase = Math.sin((pairIndex + 1) * 12.9898 + (iteration + 1) * 78.233) * 43758.5453;
+  const angle = (phase - Math.floor(phase)) * Math.PI * 2;
+  return {
+    x: Math.cos(angle),
+    y: Math.sin(angle)
+  };
+}
+
+function movePointWithinShape(
+  point: Vector3,
+  deltaX: number,
+  deltaY: number,
+  shape: ScatterResolvedShape,
+  marginPx: number
+): Vector3 {
+  let stepScale = 1;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const candidate = {
+      x: point.x + deltaX * stepScale,
+      y: point.y + deltaY * stepScale,
+      z: point.z
+    };
+
+    if (isPointInShape(candidate, shape, marginPx)) {
+      return candidate;
+    }
+
+    stepScale *= 0.5;
+  }
+
+  return point;
+}
+
+function relaxScatterPoints(
+  sourcePoints: PointRecord[],
+  shape: ScatterResolvedShape,
+  marginPx: number,
+  distributionMode: ScatterDistributionMode
+): ScatterRelaxResult {
+  if (sourcePoints.length < 2) {
+    return {
+      points: sourcePoints,
+      targetSpacingPx: 0,
+      iterations: 0
+    };
+  }
+
+  const points = sourcePoints.map((point) => ({
+    ...point,
+    position: { ...point.position },
+    attributes: { ...point.attributes }
+  }));
+
+  const targetSpacingPx = getRelaxTargetSpacingPx(shape, marginPx, points.length);
+  const cellSizePx = Math.max(4, targetSpacingPx);
+  const maxIterations = Math.min(10, Math.max(4, Math.round(4 + Math.log2(points.length + 1) * 0.6)));
+  const maxStepPx = Math.max(1, targetSpacingPx * 0.35);
+  let completedIterations = 0;
+
+  for (let iteration = 0; iteration < maxIterations; iteration += 1) {
+    const cellMap = new Map<string, number[]>();
+    const displacementX = new Float64Array(points.length);
+    const displacementY = new Float64Array(points.length);
+
+    for (let index = 0; index < points.length; index += 1) {
+      const point = points[index];
+      const cellX = Math.floor((point.position.x - shape.bounds.left) / cellSizePx);
+      const cellY = Math.floor((point.position.y - shape.bounds.top) / cellSizePx);
+      const key = `${cellX},${cellY}`;
+      const bucket = cellMap.get(key);
+      if (bucket) {
+        bucket.push(index);
+      } else {
+        cellMap.set(key, [index]);
+      }
+    }
+
+    for (let leftIndex = 0; leftIndex < points.length; leftIndex += 1) {
+      const leftPoint = points[leftIndex];
+      const baseCellX = Math.floor((leftPoint.position.x - shape.bounds.left) / cellSizePx);
+      const baseCellY = Math.floor((leftPoint.position.y - shape.bounds.top) / cellSizePx);
+
+      for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+        for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+          const bucket = cellMap.get(`${baseCellX + offsetX},${baseCellY + offsetY}`);
+          if (!bucket) {
+            continue;
+          }
+
+          for (const rightIndex of bucket) {
+            if (rightIndex <= leftIndex) {
+              continue;
+            }
+
+            const rightPoint = points[rightIndex];
+            let deltaX = leftPoint.position.x - rightPoint.position.x;
+            let deltaY = leftPoint.position.y - rightPoint.position.y;
+            let distanceSq = deltaX * deltaX + deltaY * deltaY;
+
+            let pairTargetSpacingPx = targetSpacingPx;
+            if (distributionMode === "density-weighted") {
+              const averageDensityWeight = clamp(
+                (Number(leftPoint.attributes.scatter_density_weight ?? 1) + Number(rightPoint.attributes.scatter_density_weight ?? 1)) * 0.5,
+                0.08,
+                1
+              );
+              pairTargetSpacingPx *= 1.35 - averageDensityWeight * 0.63;
+            }
+
+            if (distanceSq >= pairTargetSpacingPx * pairTargetSpacingPx) {
+              continue;
+            }
+
+            let distancePx = Math.sqrt(distanceSq);
+            if (distancePx <= 0.0001) {
+              const direction = getDeterministicUnitVector(leftIndex * points.length + rightIndex, iteration);
+              deltaX = direction.x;
+              deltaY = direction.y;
+              distancePx = 1;
+              distanceSq = 1;
+            }
+
+            const overlapPx = pairTargetSpacingPx - distancePx;
+            if (overlapPx <= 0) {
+              continue;
+            }
+
+            const pushScale = (overlapPx * 0.5) / Math.sqrt(distanceSq);
+            displacementX[leftIndex] += deltaX * pushScale;
+            displacementY[leftIndex] += deltaY * pushScale;
+            displacementX[rightIndex] -= deltaX * pushScale;
+            displacementY[rightIndex] -= deltaY * pushScale;
+          }
+        }
+      }
+    }
+
+    let didMove = false;
+    for (let index = 0; index < points.length; index += 1) {
+      const deltaX = displacementX[index];
+      const deltaY = displacementY[index];
+      const displacementLengthPx = Math.hypot(deltaX, deltaY);
+      if (displacementLengthPx <= 0.001) {
+        continue;
+      }
+
+      const dampedScale = Math.min(1, maxStepPx / displacementLengthPx) * 0.85;
+      const nextPosition = movePointWithinShape(
+        points[index].position,
+        deltaX * dampedScale,
+        deltaY * dampedScale,
+        shape,
+        marginPx
+      );
+
+      if (nextPosition !== points[index].position) {
+        points[index].position = nextPosition;
+        didMove = true;
+      }
+    }
+
+    completedIterations = iteration + 1;
+    if (!didMove) {
+      break;
+    }
+  }
+
+  for (const point of points) {
+    const densityWeight = getDensityWeight(point.position, shape.bounds, shape.center);
+    point.attributes.scatter_density_weight = densityWeight;
+    point.attributes.pscale = 0.55 + densityWeight * 0.75;
+  }
+
+  return {
+    points,
+    targetSpacingPx,
+    iterations: completedIterations
+  };
+}
+
 export function resolveScatterShape(params: ScatterParams, centroidInput?: Partial<Vector3> | null): ScatterResolvedShape {
   const centroid = toVector3(centroidInput);
   const origin = toVector3(params.shape.origin);
@@ -477,18 +714,22 @@ export function resolveScatterPointField(params: ScatterParams, centroidInput?: 
     });
   }
 
+  const relaxedScatter = relaxScatterPoints(points, shape, marginPx, distributionMode);
+
   return {
-    points,
+    points: relaxedScatter.points,
     detail: {
       center: shape.center,
       requested_point_count: pointCount,
-      point_count: points.length,
+      point_count: relaxedScatter.points.length,
       attempts,
       max_attempts: maxAttempts,
       margin_px: marginPx,
       distribution_mode: distributionMode,
       shape_kind: shape.kind,
-      shape_bounds: shape.bounds
+      shape_bounds: shape.bounds,
+      relax_iterations: relaxedScatter.iterations,
+      relax_target_spacing_px: relaxedScatter.targetSpacingPx
     }
   };
 }

@@ -18,8 +18,10 @@ import {
   resolveScatterPointField,
   type ScatterDistributionMode,
 } from "@brand-layout-ops/operator-scatter";
+import { GpuFuzzyBoidsSpike } from "./gpu-fuzzy-boids-spike.js";
 
 const fuzzyBoidsSimulation = new FuzzyBoidsSimulation();
+const gpuFuzzyBoidsSpike = new GpuFuzzyBoidsSpike();
 import type { HaloFieldConfig } from "@brand-layout-ops/operator-halo-field";
 let fuzzyBoidsPreviewGraphKey = "";
 
@@ -42,6 +44,7 @@ export interface FuzzyBoidsSceneFamilyPreviewState extends BaseSceneFamilyPrevie
   sceneFamilyKey: "fuzzy-boids";
   boidField: BoidField;
   dotSizePx: number;
+  simulationBackend: "cpu" | "gpu-spike";
 }
 
 export interface ScatterSceneFamilyPreviewState extends BaseSceneFamilyPreviewState {
@@ -317,6 +320,7 @@ export function buildSceneFamilyPreviewState(
     distributionMode?: ScatterDistributionMode;
     maxRadiusPx?: number;
     dotSizePx?: number;
+    simulationBackend?: "cpu" | "gpu-spike";
   }
 
   const resolvedNodeCache = new Map<string, ResolvedBackgroundNode | null>();
@@ -399,10 +403,11 @@ export function buildSceneFamilyPreviewState(
         });
         if (topologyKey !== fuzzyBoidsPreviewGraphKey) {
           fuzzyBoidsSimulation.reset();
+          gpuFuzzyBoidsSpike.reset();
           fuzzyBoidsPreviewGraphKey = topologyKey;
         }
 
-        const fuzzyBoids = fuzzyBoidsSimulation.resolve({
+        const fuzzyParams = {
           timeSeconds: options.playbackTimeSec,
           deltaTimeSeconds: 1 / 30,
           subSteps: bc.subSteps,
@@ -445,13 +450,17 @@ export function buildSceneFamilyPreviewState(
               }
               : {})
           }
-        }, center, seedField);
+        };
+
+        const fuzzyBoids = gpuFuzzyBoidsSpike.resolve(fuzzyParams, center, seedField)
+          ?? fuzzyBoidsSimulation.resolve(fuzzyParams, center, seedField);
 
         resolvedNode = {
           sceneFamilyKey: "fuzzy-boids",
           pointField: fuzzyBoids.pointField,
           boidField: fuzzyBoids.boidField,
-          dotSizePx: Math.max(0.5, bc.dotSizePx ?? 3)
+          dotSizePx: Math.max(0.5, bc.dotSizePx ?? 3),
+          simulationBackend: fuzzyBoids.pointField.detail.simulation_backend === "gpu-spike" ? "gpu-spike" : "cpu"
         };
         break;
       }
@@ -491,7 +500,8 @@ export function buildSceneFamilyPreviewState(
       sceneFamilyKey: "fuzzy-boids",
       pointField: resolvedActiveNode.pointField,
       boidField: resolvedActiveNode.boidField,
-      dotSizePx: resolvedActiveNode.dotSizePx ?? 3
+      dotSizePx: resolvedActiveNode.dotSizePx ?? 3,
+      simulationBackend: resolvedActiveNode.simulationBackend ?? "cpu"
     };
   }
 
