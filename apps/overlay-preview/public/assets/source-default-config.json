@@ -3,11 +3,11 @@
   "version": 1,
   "metadata": {
     "name": "Untitled document",
-    "createdAt": "2026-03-28T22:05:37.982Z",
-    "updatedAt": "2026-03-28T22:05:37.982Z"
+    "createdAt": "2026-03-29T12:40:25.912Z",
+    "updatedAt": "2026-03-29T12:40:25.912Z"
   },
   "project": {
-    "sceneFamilyKey": "fuzzy-boids",
+    "sceneFamilyKey": "halo",
     "activeTargetId": "screen_3840x2160",
     "targets": [
       {
@@ -36,26 +36,26 @@
         "numPoints": 720,
         "radiusPx": 367,
         "radiusFalloff": 0.68,
-        "angleOffsetDeg": 0,
-        "animationEnabled": true,
+        "angleOffsetDeg": -168.8,
+        "animationEnabled": false,
         "animationSpeedDegPerSecond": 14
       },
       "fuzzyBoids": {
-        "numBoids": 220,
+        "numBoids": 2200,
         "seed": 1,
         "spawnRadiusPx": 353,
         "staggerStartSeconds": 0,
         "initialSpeedPxPerSecond": 70,
         "initialSpeedJitter": 0.35,
         "minSpeedPxPerSecond": 19,
-        "maxSpeedPxPerSecond": 97,
+        "maxSpeedPxPerSecond": 299,
         "maxAccelerationPxPerSecond2": 97,
         "massMin": 0.85,
         "massMax": 1.15,
         "pscaleMin": 1.2,
         "pscaleMax": 1.1,
         "separationRadiusPx": 132,
-        "separationStrength": 0.55,
+        "separationStrength": 3,
         "alignmentRadiusPx": 62,
         "alignmentStrength": 0.17,
         "cohesionRadiusPx": 106,
@@ -80,60 +80,15 @@
       }
     },
     "backgroundGraph": {
-      "activeNodeId": "background-fuzzy-boids",
+      "activeNodeId": "background-halo",
       "nodes": [
         {
-          "id": "background-fuzzy-seed",
-          "operatorKey": "operator.phyllotaxis",
-          "params": {
-            "numPoints": 220,
-            "radiusPx": 395.36,
-            "radiusFalloff": 0.5,
-            "angleOffsetDeg": 0,
-            "animationEnabled": true,
-            "animationSpeedDegPerSecond": 8
-          }
-        },
-        {
-          "id": "background-fuzzy-boids",
-          "operatorKey": "operator.fuzzy-boids",
-          "params": {
-            "numBoids": 220,
-            "seed": 1,
-            "spawnRadiusPx": 353,
-            "staggerStartSeconds": 0,
-            "initialSpeedPxPerSecond": 70,
-            "initialSpeedJitter": 0.35,
-            "minSpeedPxPerSecond": 19,
-            "maxSpeedPxPerSecond": 97,
-            "maxAccelerationPxPerSecond2": 97,
-            "massMin": 0.85,
-            "massMax": 1.15,
-            "pscaleMin": 1.2,
-            "pscaleMax": 1.1,
-            "separationRadiusPx": 132,
-            "separationStrength": 0.55,
-            "alignmentRadiusPx": 62,
-            "alignmentStrength": 0.17,
-            "cohesionRadiusPx": 106,
-            "cohesionStrength": 0.08,
-            "centerPullStrength": 0.06,
-            "maxNeighbors": 3,
-            "boundsKind": "radial",
-            "boundsRadiusPx": 302,
-            "boundsMarginPx": 86,
-            "boundsForcePxPerSecond2": 346
-          }
+          "id": "background-halo",
+          "operatorKey": "background.halo",
+          "params": {}
         }
       ],
-      "edges": [
-        {
-          "fromNodeId": "background-fuzzy-seed",
-          "fromPortKey": "pointField",
-          "toNodeId": "background-fuzzy-boids",
-          "toPortKey": "seedField"
-        }
-      ]
+      "edges": []
     }
   },
   "state": {
@@ -1031,6 +986,33 @@
       }
     },
     "haloConfig": {
+      "mascot_fade": {
+        "enabled": false,
+        "duration_sec": 3
+      },
+      "head_turn": {
+        "enabled": true,
+        "duration_sec": 0.333,
+        "peak_angle_deg": -30,
+        "reverse_angle_deg": 30,
+        "overshoot_angle_deg": -3,
+        "peak_frac": 0.25,
+        "reverse_frac": 0.56,
+        "dot_overlap_sec": 1,
+        "overshoot_frac": 0.75
+      },
+      "blink": {
+        "enabled": true,
+        "start_delay_sec": 0.04,
+        "duration_sec": 0.12,
+        "close_frac": 0.42,
+        "hold_closed_frac": 0.12,
+        "eye_scale_y_closed": 0.08
+      },
+      "sneeze": {
+        "enabled": true,
+        "nose_bob_up_px": 1.5
+      },
       "composition": {
         "center_x_px": 1920,
         "center_y_px": 1162,
@@ -1127,6 +1109,7 @@
         "halo_inner_radius_u": 0.255
       },
       "vignette": {
+        "enabled": true,
         "shape_fade": 1,
         "shape_fade_start": 0.3,
         "shape_fade_end": 0.85
@@ -1134,6 +1117,33 @@
     },
     "haloConfigByProfile": {
       "story_1080x1920": {
+        "mascot_fade": {
+          "enabled": false,
+          "duration_sec": 3
+        },
+        "head_turn": {
+          "enabled": true,
+          "duration_sec": 0.333,
+          "peak_angle_deg": -30,
+          "reverse_angle_deg": 30,
+          "overshoot_angle_deg": -3,
+          "peak_frac": 0.25,
+          "reverse_frac": 0.56,
+          "dot_overlap_sec": 1,
+          "overshoot_frac": 0.75
+        },
+        "blink": {
+          "enabled": true,
+          "start_delay_sec": 0.04,
+          "duration_sec": 0.12,
+          "close_frac": 0.42,
+          "hold_closed_frac": 0.12,
+          "eye_scale_y_closed": 0.08
+        },
+        "sneeze": {
+          "enabled": true,
+          "nose_bob_up_px": 1.5
+        },
         "composition": {
           "center_x_px": 540,
           "center_y_px": 804,
@@ -1230,12 +1240,40 @@
           "halo_inner_radius_u": 0.255
         },
         "vignette": {
+          "enabled": true,
           "shape_fade": 1,
           "shape_fade_start": 0.23,
           "shape_fade_end": 0.79
         }
       },
       "instagram_1080x1350": {
+        "mascot_fade": {
+          "enabled": false,
+          "duration_sec": 3
+        },
+        "head_turn": {
+          "enabled": true,
+          "duration_sec": 0.333,
+          "peak_angle_deg": -30,
+          "reverse_angle_deg": 30,
+          "overshoot_angle_deg": -3,
+          "peak_frac": 0.25,
+          "reverse_frac": 0.56,
+          "dot_overlap_sec": 1,
+          "overshoot_frac": 0.75
+        },
+        "blink": {
+          "enabled": true,
+          "start_delay_sec": 0.04,
+          "duration_sec": 0.12,
+          "close_frac": 0.42,
+          "hold_closed_frac": 0.12,
+          "eye_scale_y_closed": 0.08
+        },
+        "sneeze": {
+          "enabled": true,
+          "nose_bob_up_px": 1.5
+        },
         "composition": {
           "center_x_px": 540,
           "center_y_px": 554,
@@ -1332,12 +1370,40 @@
           "halo_inner_radius_u": 0.255
         },
         "vignette": {
+          "enabled": true,
           "shape_fade": 1,
           "shape_fade_start": 0.24,
           "shape_fade_end": 0.88
         }
       },
       "landscape_1280x720": {
+        "mascot_fade": {
+          "enabled": false,
+          "duration_sec": 3
+        },
+        "head_turn": {
+          "enabled": true,
+          "duration_sec": 0.333,
+          "peak_angle_deg": -30,
+          "reverse_angle_deg": 30,
+          "overshoot_angle_deg": -3,
+          "peak_frac": 0.25,
+          "reverse_frac": 0.56,
+          "dot_overlap_sec": 1,
+          "overshoot_frac": 0.75
+        },
+        "blink": {
+          "enabled": true,
+          "start_delay_sec": 0.04,
+          "duration_sec": 0.12,
+          "close_frac": 0.42,
+          "hold_closed_frac": 0.12,
+          "eye_scale_y_closed": 0.08
+        },
+        "sneeze": {
+          "enabled": true,
+          "nose_bob_up_px": 1.5
+        },
         "composition": {
           "center_x_px": 640,
           "center_y_px": 334,
@@ -1434,12 +1500,40 @@
           "halo_inner_radius_u": 0.255
         },
         "vignette": {
+          "enabled": true,
           "shape_fade": 1,
           "shape_fade_start": 0.3,
           "shape_fade_end": 0.85
         }
       },
       "screen_3840x2160": {
+        "mascot_fade": {
+          "enabled": false,
+          "duration_sec": 3
+        },
+        "head_turn": {
+          "enabled": true,
+          "duration_sec": 0.333,
+          "peak_angle_deg": -30,
+          "reverse_angle_deg": 30,
+          "overshoot_angle_deg": -3,
+          "peak_frac": 0.25,
+          "reverse_frac": 0.56,
+          "dot_overlap_sec": 1,
+          "overshoot_frac": 0.75
+        },
+        "blink": {
+          "enabled": true,
+          "start_delay_sec": 0.04,
+          "duration_sec": 0.12,
+          "close_frac": 0.42,
+          "hold_closed_frac": 0.12,
+          "eye_scale_y_closed": 0.08
+        },
+        "sneeze": {
+          "enabled": true,
+          "nose_bob_up_px": 1.5
+        },
         "composition": {
           "center_x_px": 1920,
           "center_y_px": 1162,
@@ -1536,6 +1630,7 @@
           "halo_inner_radius_u": 0.255
         },
         "vignette": {
+          "enabled": true,
           "shape_fade": 1,
           "shape_fade_start": 0.3,
           "shape_fade_end": 0.85

@@ -54,404 +54,123 @@ Use this map before changing code so parity work stays anchored to the reference
 
 If the gap is visual, run both apps and compare screenshots before editing.
 
-## Order of Work Checklist
+## Completed Phases (summary)
 
-### Phase 1. Lock the operator boundaries
+**Phase 1 — Lock the operator boundaries:** Done. 10 initial packages established. Spoke math kept coarse.
 
-Keep the first split intentionally coarse.
+**Phase 2 — Runnable preview app:** Done. Document snapshot loading, graph evaluation, layout overlay, motion background, and manifest-driven parameter surfaces all working.
 
-- [x] Establish the initial package families:
-	`@brand-layout-ops/core-types`,
-	`@brand-layout-ops/graph-runtime`,
-	`@brand-layout-ops/layout-grid`,
-	`@brand-layout-ops/layout-text`,
-	`@brand-layout-ops/layout-engine`,
-	`@brand-layout-ops/operator-overlay-layout`,
-	`@brand-layout-ops/operator-spokes`,
-	`@brand-layout-ops/operator-orbits`,
-	`@brand-layout-ops/overlay-interaction`,
-	`@brand-layout-ops/parameter-ui`
-- [x] Keep all spoke-generation math in one operator family at first.
-- [x] Do not prematurely split construction spokes, inner spokes, and phase-masked spokes.
+**Phase 3 — Layout stack port:** Done. Baseline grid, text wrapping, logo placement, CSV/inline content, selected-element interaction, grid snapping all verified against reference.
 
-### Phase 2. Build a runnable preview app in the new repo
+**Phase 4 — Editor interaction port:** Done. Selection, drag, resize, inline editing, shift-lock, guide toggle, style labels, text CRUD, CSV drafts with writeback staging, file-backed document workflow (open/save/save-as/duplicate/reopen), per-profile output profiles, content-format buckets, preset save/update/delete/import/export, keyboard shortcuts, and baseline-aware text-box inset all landed. Document model carries shared project metadata (scene family, targets, sceneFamilyConfigs, backgroundGraph) through the overlay-document envelope.
 
-This preview app is for parity validation, not for polishing the final product UI yet.
+### Phase 5. Port the animation background as coarse operators (in progress)
 
-- [x] Load a document snapshot.
-- [x] Evaluate the operator graph.
-- [x] Render the current layout overlay.
-- [x] Render the current motion background using coarse operators.
-- [x] Surface operator parameters from manifests and schemas instead of preview-specific controls.
+Completed: `operator-orbits`, `operator-spokes`, coarse motion preview integration. Mascot-specific motion stays in adapter/scene-family layer until reuse is concrete. Mascot fade now multiplies through whole scene. First-pass vignette overlay landed.
 
-### Phase 3. Port the layout stack first
-
-Port in this order.
-
-- [x] Baseline grid and layout grid math.
-- [x] Text wrapping and placement.
-- [x] Logo placement.
-- [x] CSV or inline content resolution.
-- [x] Selected-element interaction model fully ported.
-
-The layout-grid package must preserve the current behavior where:
-
-- [x] All rows snap to the baseline grid and are verified against the reference app.
-- [x] Remainder height is added to the bottom margin and is verified against the reference app.
-- [x] Keylines and spans determine text width and are verified against the reference app.
-
-### Phase 4. Port editor interaction as an operator-facing layer
-
-Port the current interaction model into `overlay-interaction` and `parameter-ui`.
-
-- [x] Selected-element editing foundation.
-- [x] Direct text drag.
-- [x] Logo drag.
-- [x] Snapped text movement by row and column.
-- [x] Shift-drag axis locking.
-- [x] Double-click inline editing.
-- [x] Guide toggle shortcut parity.
-- [x] Style-based labels in the selected-element editor.
-- [x] Resize handles for text fields with snapping to grid field widths and baselines.
-- [x] CSV draft editing and source writeback staging at parity quality.
-	Pending CSV drafts now mark the document dirty while editing, source-default writeback flushes staged drafts through the new `/__authoring/overlay-csv` path before posting the shared overlay-document payload, the save status explicitly reports how many CSV files were updated first, and source-default save now blocks conflicting staged drafts that target the same asset path instead of silently letting one profile bucket overwrite another.
-- [x] Persistent local document workflow for authored layout state.
-	The preview can now open, save, save as, duplicate, and reopen recent local `.brand-layout-ops.json` files that persist the current working snapshot plus the preset library instead of relying only on browser-local presets.
-	Follow-up anti-drift work remains: preview documents now persist the shared `operator-overlay-layout` document metadata/state envelope plus shared `project` metadata for scene-family selection, document targets, and non-halo `sceneFamilyConfigs` while `apps/overlay-preview/src/preview-document.ts` keeps preview-only extras and backward compatibility for earlier preview-local files; startup no longer seeds the working state from browser-local preset storage; preview-local file orchestration, dirty-state UI, recent-document reopen, and fallback download handling now live in `apps/overlay-preview/src/document-workspace.ts`; preview-side source-default snapshot plus document build/apply/reset plumbing now live in `apps/overlay-preview/src/preview-document-bridge.ts`; the Output Format panel now edits scene family plus add or delete document sizes against that shared schema; non-halo scene families now render through `apps/overlay-preview/src/scene-family-preview.ts` with richer family-specific canvas passes; source-default authoring now still reads older raw snapshots but writes the shared overlay-document payload so authored defaults restore the shared project metadata too; decide later whether those preview-only extras belong in a broader shared document package.
-	Longer-term document direction is now explicit: a document should grow beyond the current halo scene and own a swappable scene-family or background operator stack, one or more target output sizes, and exportable state while CSV stays secondary.
-	Near-term persistence rule: the active background operator, its typed parameters, and the first saved operator handoff are now document-owned state through shared `project.sceneFamilyConfigs` plus `project.backgroundGraph`, so save/save-as, duplicate, reopen, and source-default writeback preserve whether the document is using halo, phyllotaxis, fuzzy-boids, scatter, or a future solver instead of rebuilding that choice from preview-local state.
-- [x] Baseline guide showing at first baseline of text field, to aid alignment across columns.
-- [x] Text-box inset parity: text fields now clamp their first baseline to an ascent-aware minimum offset so the first line stays visibly inside the field bounds while remaining baseline-grid aligned.
-- [x] Output-profile parity: named screen sizes, seeded safe areas, and reference frame-rate defaults.
-	Shared `OUTPUT_PROFILES` now match the reference app's named size list, seeded safe areas, and default frame rates, and the authored source-default document now carries those same safe-area values for the live startup path. The portrait-vs-landscape startup default remains a separate product choice rather than part of this parity checkbox.
-- [x] Overlay content-format parity: `generic_social` and `speaker_highlight` field buckets with alias-based CSV matching.
-	Both formats are now exposed again through the shared `OVERLAY_CONTENT_FORMAT_ORDER`, the preview keeps per-profile buckets for each format, and alias-based CSV matching already routes through shared `operator-overlay-layout` helpers instead of preview-local field maps.
-- [x] Selected-element authoring parity: add text blocks, style assignment, and richer selected-item controls.
-	The Selected Element section now owns text-item quick switching, add/delete text actions, inline style assignment, inline style metrics, text editing, CSV-backed status notes, layout controls, and the richer selected-logo controls, so selected-item editing no longer requires bouncing to a separate Paragraph Styles accordion.
-- [x] Preset workflow parity: save, update, delete, import, and export presets.
-- [x] Shortcut parity: `W` guide toggle, `Ctrl`/`Cmd+S` document save, `Ctrl`/`Cmd+Shift+S` save as, `Ctrl`/`Cmd+Alt+S` source-default writeback, `Space` or `P` playback toggle, `Tab` control-panel show or hide, and inline-editor commit semantics.
-
-### Phase 5. Port the animation background as coarse operators
-
-Use larger passes, not tiny ones.
-
-- [x] `operator-orbits`.
-- [x] `operator-spokes`.
-- [x] Integrate coarse motion preview into the preview shell.
-- [ ] Add one coarse `operator-ubuntu-summit-animation` scene-family operator as the parity-first home for the entire reference sequence: mascot, head shake, blink, dot splash, spokes, radio lines, Ubuntu release labels, construction lines, finale, and screensaver loop.
+Remaining:
+- [ ] Finish `operator-ubuntu-summit-animation` as the coarse scene-family operator for the full reference sequence (mascot, head shake, blink, dot splash, spokes, radio lines, release labels, construction lines, finale, screensaver loop).
 - [ ] Match the current animation background look closely enough for parity signoff.
-- [x] Decide whether mascot-specific motion stays in an adapter or becomes a coarse scene-family operator.
-- [ ] Halo-field parity: phase masks, spoke-width transitions, screensaver pulsing, and mascot face or halo composition.
+- [ ] Halo-field behavioral parity: remaining mascot-linked choreography, finale-detail passes, screensaver pulsing, and visual-timing polish.
 
-The mascot head shake is probably too specific to deserve its own operator.
-
-If it remains unique to one scene family, keep it as part of a mascot animation operator or preview adapter.
-
-Decision so far:
-
-- keep mascot-specific face or head motion in an adapter or scene-family layer until reuse becomes concrete
-- parity signoff basis for the current motion background: the preview now reproduces the main coarse visual motifs from the reference app at the adapter level: central aura, dual phase lobes, echo rings, orbit structure, and phase-biased spoke density, without widening the kernel too early
-- updated 2026-03-27: the next parity pass should port the entire Ubuntu Summit animation wholesale into one coarse scene-family operator before attempting finer decomposition. Reuse can be evaluated after parity.
-- clarified 2026-03-28: the long-term target is a Houdini-like operator app with rigorous document layout plus backend-driven exports, where halo, boids, phyllotaxis, and later scene families can be swapped under the same document and template model.
-- updated 2026-03-28: mascot fade, head turn, blink, sneeze, and finale timing now read from shared `HaloFieldConfig` state and are exposed in the Halo Field panel instead of being hardcoded inside `operator-ubuntu-summit-animation`, so the next remaining motion parity work should focus on missing scene visuals and renderer fidelity rather than more baked timing constants.
-- updated 2026-03-29: `apps/overlay-preview/src/halo-renderer.ts` now multiplies the shared mascot fade through halo spokes, echo markers, and Ubuntu release labels instead of only the face overlay, closing the renderer-level whole-scene fade mismatch with the reference pass while leaving the next motion work focused on any remaining missing visuals or fidelity gaps.
-- updated 2026-03-29: `apps/overlay-preview/src/halo-renderer.ts` now also draws a first-pass vignette overlay above the halo and release-label passes using the shared vignette settings, closing another renderer-level polish gap from the reference pass while leaving the next motion work focused on the remaining final overlay or scene passes.
-
-### Phase 6. Verify parity here
-
-Before adding features, verify that the new repo reproduces the current app's working behaviors.
+### Phase 6. Verify parity (in progress)
 
 - [x] Overlay text layout.
-- [ ] Overlay logo placement semantics.
 - [x] Baseline and composition guides.
+- [ ] Overlay logo placement semantics.
 - [ ] Selected-element editor behavior.
 - [ ] Current animation background look.
 - [ ] Export-relevant geometry consistency.
-- [ ] Export workflow parity: current-frame stills, frame sequences, video export, and transparent-background handling.
-- [ ] Preset and source-default workflow parity: reference-style editor persistence and source writeback.
+- [ ] Export workflow parity.
+- [ ] Preset and source-default workflow parity.
 
-### Phase 7. Continue feature work only after parity
+### Phase 7. Feature work (blocked on Phase 6)
 
-Only after parity is proven in this repo should new feature work resume.
+Deferred: further operatorization, Houdini digital asset ports, SVG/print backends, additional templates, stakeholder workflow, watch-folder automation.
 
-- [ ] Further operatorization of the motion system.
-- [ ] Port user-authored Houdini digital assets where they still make sense in this architecture.
-- [ ] SVG and print backends.
-- [ ] Additional templates once CMYK-capable export exists.
-- [ ] Stakeholder workflow.
-- [ ] Watch-folder automation.
+## Deviation Log (summary)
 
-## Deviation Log
+All deviations are resolved and justified. Key patterns: motion preview was pulled forward to improve parity visibility (2026-03-26), Phase 6 was reopened after a full cross-repo audit (2026-03-27), the `portable-vertical-rhythm` and then `baseline-foundry` shell swaps landed during parity work at user request (2026-03-28), file-backed documents were prioritized over CSV polish and browser-local presets (2026-03-28), and shared document project metadata plus scatter as a full scene family both landed before all UI was exposed (2026-03-28). Detailed reasoning preserved in git history.
 
-- [x] 2026-03-26: Motion preview integration from Phase 5 was pulled forward before Phase 4 and Phase 6 were complete.
-	Reason: Phase 2 already required the preview shell to render the current motion background using coarse operators, and integrating it now improved parity visibility without moving layout semantics into the preview adapter.
-- [x] 2026-03-26: CSV or inline content work landed before the remaining editor-polish items.
-	Reason: This still fits the original ordering because content resolution belongs to Phase 3, while the missing pieces are mainly Phase 4 parity polish.
-- [x] 2026-03-27: Phase 6 parity signoff was reopened after a full reference-repo audit and screenshot comparison.
-	Reason: the new repo has coarse parity on several kernels, but the reference app still leads on output profiles, presets and exports, source-backed content formats, style-aware authoring, logo asset semantics, and the halo-field render stack.
-- [x] 2026-03-27: Full cross-repo parity audit added to this file (18 gap categories).
-	Reason: systematic line-by-line comparison of config-schema.js, default-config-source.js, editor-constants.js, index.js, rendering.js, and halo-field.js against the current brand-layout-ops implementation. Gaps categorized as critical (5), high (7), medium (4), and low (2).
-- [x] 2026-03-27: Audit delta recorded after the interaction-layer rebuild and current-repo scaffold expansion.
-	Reason: the repo is no longer at the same state as the first 18-gap audit. Output-profile scaffolding, content-format specs, 3 text styles, linked title-size helper logic, preset localStorage scaffolding, stronger guides, and direct authoring interactions now exist, so the remaining parity work is narrower and more architectural than the original snapshot suggests.
-- [x] 2026-03-28: The preview control-surface migration to `portable-vertical-rhythm` landed before parity signoff.
-	Reason: the user explicitly requested the swap during active parity work, and the broken Halo Field slider rendering was caused by the preview still using the old Vanilla dependency path instead of the sibling package's themed range controls.
-- [x] 2026-03-28: Seeded overlay defaults were moved from `sample-document.ts` into `operator-overlay-layout` before the config-section registry refactor was complete.
-	Reason: document-owned defaults were a clearer anti-drift seam and reduced preview-shell ownership immediately without blocking the later UI-surface registration work.
-- [x] 2026-03-28: Profile-bucket normalization and the section-registry primitive were moved into shared packages before operator packages self-register their own panels.
-	Reason: the highest-value anti-drift seam was to stop reimplementing active bucket selection in `main.ts` and to move the registry primitive into `parameter-ui` first, even though operator-owned panel manifests are still a later step.
-- [x] 2026-03-28: The preview's docked control shell was moved back onto `portable-vertical-rhythm`'s pinned-aside application layout before broader panel-registration work landed.
-	Reason: the preview had drifted into a local reserved-width and fixed-position dock that created empty panel space and fought the sibling package's shell ownership, so restoring the shared app-shell path was the higher-value anti-drift move.
-- [x] 2026-03-28: Source-default snapshot construction and sanitization were moved into `operator-overlay-layout` before the remaining writeback orchestration and panel-manifest work were finished.
-	Reason: the highest-value anti-drift seam was to move canonical snapshot shape and normalization rules out of `main.ts` first, even though the preview still owns the network writeback trigger and some surrounding editor flow.
-- [x] 2026-03-28: CSV parity polish was deprioritized behind a local filesystem-backed document workflow.
-	Reason: browser-local presets are the wrong long-term abstraction for authored layout state, and persistent in-editor document editing is a higher-value product seam than continuing to deepen CSV-first authoring behavior right now.
-- [x] 2026-03-28: The first file-backed document workflow landed in preview-local modules before broader shared document package extraction was finished.
-	Reason: getting authored state out of browser-local preset storage had higher product value than waiting for a perfect shared document boundary, and the schema can continue moving downward once the document shape stabilizes under real use.
-- [x] 2026-03-28: Browser-local preset storage was demoted from startup source-of-truth before the broader document package shape was finished.
-	Reason: the product direction is now explicit that documents, not browser presets, are the working unit, so the preview should not silently seed a new session from stale local preset state even while localStorage mirroring still exists as a temporary shell behavior.
-- [x] 2026-03-28: Preview-local document workspace orchestration was extracted into `apps/overlay-preview/src/document-workspace.ts` before the broader shared document shape was fully designed.
-	Reason: the highest-value next anti-drift move was to stop letting `apps/overlay-preview/src/main.ts` own recent-document reopen, file save or open orchestration, dirty-state UI, and fallback download plumbing, without prematurely freezing the broader shared document schema for scene-family selection and multi-target output.
-- [x] 2026-03-28: Shared document project metadata and preview-side document state bridging landed before scene-family or multi-target UI was exposed.
-	Reason: preserving the emerging scene-family and target schema through file open/save and removing the remaining `apps/overlay-preview/src/main.ts` document serialization seam was lower risk than building more preview-local UI state on top of an unstable document contract.
-- [x] 2026-03-28: Scatter landed as a first-class document scene family instead of as a selector-only operator.
-	Reason: the current operator selector and preview renderer are both keyed to `documentProject.sceneFamilyKey`, so promoting scatter to that seam was the smallest coherent change that preserved the existing document-owned background model.
-- [x] 2026-03-28: The remaining `baseline-foundry` selector ports were left to the sibling repo's parallel agent, so this pass stayed downstream-only in `brand-layout-ops`.
-	Reason: avoiding conflicting cross-repo edits was more important than duplicating package work here, and the replacement report still allowed dead selector removal plus app-only override cleanup inside the preview repo.
+## Remaining Parity Gaps
 
-## Parity Gap Audit — 2026-03-27
+Consolidated from the 2026-03-27 cross-repo audit and subsequent delta passes. DONE items removed. Only open gaps remain.
 
-Full cross-repo audit comparing `brand-layout-ops` against `racoon-anim` reference app.
-Each gap is categorized by severity and roughly ordered by dependency priority.
+### Halo scene family — renderer and motion
 
-### Critical — must land before any visual comparison is meaningful
+| # | Gap | Status | Remaining work |
+|---|-----|--------|----------------|
+| 1 | Ubuntu Summit animation sequence | PARTIAL | `operator-ubuntu-summit-animation` owns phase classification, timing, mascot-box, reveal geometry, screensaver pulse, and spoke transitions. Missing: intro dot/orbit splash nuance, finale halo shrink + mascot choreography, blink/sneeze cadence, head-turn timing, radio-line detail pass. |
+| 2 | Halo-field renderer | PARTIAL | Three.js rendering, phase masks, spoke width interpolation, echo rings, release labels, and screensaver pulse are implemented. Missing: reference-grade mascot-linked reveal, finale-detail passes, visual-timing polish. |
+| 3 | Mascot composition | PARTIAL | Face SVG, halo SVG, white eyes, nose-bob, blink, head-turn are drawn. Missing: full reference texture-loading path, original Three.js mesh stack fidelity. Decision: keep adapter-side until reuse is concrete. |
+| 4 | Vignette | PARTIAL | First-pass overlay using shared shape_fade settings. Missing: inner/outer radius, feather, choke, dither, safe-area-aware compositing. |
+| 5 | Safe area fill layering | PARTIAL | `safe_area_fill_color` exists. Missing: `safe_area_fill_above_animation` toggle for render-order switching. |
+| 6 | Screensaver state machine | MISSING | Continuous post-finale loop with cycle timing, ramp-in, pulse breathing, min spoke count floor, phase boundary transitions. |
+| 7 | Release label finesse | PARTIAL | Rotated and upright-flipped. Missing: spacing, anchor placement, collision tuning. |
 
-1. **Output profiles (PARTIAL).**
-	Reference has 5 named profiles with per-profile center, scale, safe area, frame rate, grid, text, logo, motion, and mascot configs. Global shared paths (colors, title, logo asset, content format) propagate across profiles.
-	Profiles: `landscape_1280x720`, `instagram_1080x1350`, `story_1080x1920` (default), `screen_3840x2160`, `tablet_2560x1600`.
-	Current repo now has profile switching, per-profile overlay buckets, per-profile export settings, and per-profile halo config persistence in preview state, source-default snapshots, and presets, but it still lacks full profile-owned motion, mascot, and complete source-default scene trees matching the reference app.
-	Reference files: `config-schema.js` (`OUTPUT_PROFILES`, `get_output_profile_metrics`), `default-config-source.js` (per-profile full configs), `index.js` (profile architecture init, profile tab UI).
+### Overlay, layout, and document
 
-2. **Content format system (PARTIAL).**
-	Reference has 2 overlay content formats: `generic_social` (3 fields: body_intro, detail_primary, detail_secondary) and `speaker_highlight` (3 fields: session_title, speaker_name, speaker_role). Each field has id, label, style, legacy_slot, and aliases for CSV column matching. Per-format field layout overrides (keyline_index, column_span, y_row_index, y_offset_baselines) are stored in format buckets per profile. Format switching syncs runtime fields to/from the active format bucket.
-	Current repo now has format specs, per-format buckets, shared bucket-state types and clone helpers, operator-side CSV alias matching, shared operator-owned seeded field layouts, logo defaults, sample CSV drafts, default overlay-param generation, shared profile-scoped content-format resolution, shared active-bucket normalization, and file-backed source-default plus CSV writeback, but pending CSV staging still remains preview-local and profile-scoped instead of becoming a more canonical per-format document concern.
-	Reference files: `config-schema.js` (format specs, alias matching, format bucket sync), `default-config-source.js` (per-profile overlay_content_formats).
+| # | Gap | Status | Remaining work |
+|---|-----|--------|----------------|
+| 8 | Output profiles scene ownership | PARTIAL | Per-profile overlay buckets, export settings, halo config, content-format selection all persist. Missing: profile-owned motion and mascot defaults at reference completeness. |
+| 9 | Linked title-to-logo sizing | PARTIAL | Helper in `layout-engine`, normalization in `operator-overlay-layout`, UI toggle in logo panel. Missing: fully canonical document-owned normalization (still preview-driven in places). |
+| 10 | Preset workflow | PARTIAL | Save/update/delete/import/export, file-backed documents, dirty-state tracking. Missing: reference-grade tabbed workflow and directory-picker export path. |
+| 11 | Source-default writeback | PARTIAL | Load, reset, write, CSV flush, shared normalization. Missing: remaining orchestration still in `main.ts`. |
+| 12 | Export pipeline | PARTIAL | Single PNG, PNG sequence, headless Playwright, FFmpeg MP4 encode, transparent BG — all working. Missing: final `output/{dimensions}/` workflow polish. |
+| 13 | Keyboard shortcuts | PARTIAL | All major shortcuts landed. Missing: block shortcuts during future export modal. |
 
-3. **Text style parity (DONE).**
-	Reference has 3 distinct styles: `title` (A Head, 42px/48px, weight 200), `b_head` (B Head, 24px/32px, weight 400), `paragraph` (P, 24px/32px, weight 400). Current repo now has all 3 styles with shared base definitions, per-profile font size overrides, and shared overlay-layout display labels.
+### Non-halo scene families
 
-4. **Linked title-to-logo sizing (PARTIAL).**
-	`link_title_size_to_logo_height = true` scales title font size proportionally to `overlay_logo.height_px` using `LINKED_TITLE_BASE_FONT_SIZE_PX = 63` as the reference base. Current repo has no linked sizing logic.
-	Reference files: `rendering.js` (linked title font size calculation in text rendering).
-	Update 2026-03-27 late pass: a preview-side helper now exists. Update 2026-03-28: the preview now also normalizes loaded/switching params so title size remains the canonical driver for logo size in state. Latest anti-drift pass: the sizing helper lives in `layout-engine` and linked title/logo normalization now routes through `operator-overlay-layout`, and the selected-logo panel now lets the user toggle that lock on or off plus swap the logo asset path, but this still remains open until broader document normalization is no longer preview-driven.
+| # | Gap | Status | Remaining work |
+|---|-----|--------|----------------|
+| 14 | Phyllotaxis | PARTIAL | Renders through `scene-family-preview.ts`. Missing: arm lines are preview-only connective geometry — should be removed or demoted. Points-only rendering needed. |
+| 15 | Fuzzy-boids | PARTIAL | Renders and has operator panel. Missing: Houdini/VEX parity audit — force semantics (separation, alignment, cohesion, bounds) may not match original. |
+| 16 | Scatter | PARTIAL | Renders as document scene family. Missing: relax/repulsion pass for even distribution, full-frame behavior instead of confined centered shape. |
 
-5. **Logo asset sizing and aspect ratio (DONE).**
-	Logo image is loaded via `Image`, `naturalWidth`/`naturalHeight` read for dynamic aspect ratio. Width derived from configured height via `getCurrentLogoAspectRatio()`. Logo drag and resize with aspect-ratio lock on corner handles.
+### Architectural note
 
-### High — required for editor and workflow parity
+Item 18 from the original audit (Three.js vs SVG renderer difference) is an intentional architectural choice, not a parity gap. Visual output parity is the goal, not renderer parity.
 
-6. **Style-based labels in selected-element editor (DONE).**
-	`getOverlayFieldDisplayLabel` produces "A Head", "B Head 1", "P 2" etc. with ordinal counting when multiple fields share a style. Logo is "Selected Logo". The label helpers now live in `packages/operator-overlay-layout/src/index.ts` instead of preview-local maps.
+### Principled parity rules
 
-7. **Selected-element authoring surface (DONE).**
-	The current repo now has selection + drag + resize + inline editing, quick-select buttons for text items inside the Selected Element section, add/delete text blocks, inline style assignment, selected-text controls for font size, line height, and weight, explicit no-default selection behavior, CSV-backed status notes for selected text, and selected-logo controls for toggling the title-size lock plus swapping the logo asset path. The final shape is intentionally a unified selected-item surface instead of reproducing the reference app's older separate paragraph-style panel.
-	Reference files: `editor-constants.js` (`OVERLAY_TEXT_STYLE_TAB_SPECS`, `OVERLAY_LOGO_CONTROL_ROWS`, `OVERLAY_GRID_CONTROL_ROWS`), `index.js` (editor panel architecture).
+1. Port the full Ubuntu Summit sequence into `operator-ubuntu-summit-animation` as one coarse operator before attempting finer decomposition.
+2. Keep label orientation in adapters, not kernels — the operator emits spoke angle and label-slot data.
+3. Keep mascot composition adapter-side until reuse is concrete.
+4. Finish profile/content/preset authority before chasing fine visual polish.
 
-8. **Preset workflow (PARTIAL).**
-	Save, update, delete presets in localStorage. Import/export as JSON files with auto-versioned naming. Active preset dirty-state now exists and payloads are normalized against generated defaults instead of always writing full snapshots. Presets now also carry the preview's per-profile export settings map and per-profile halo config map.
-	A file-backed document workflow now persists the working snapshot plus the preset library into local `.brand-layout-ops.json` files via open, save, save-as, duplicate, and recent-document reopen actions, so browser localStorage is no longer the only persistence path.
-	Recent anti-drift pass: the persisted core document now routes through the shared overlay document metadata/state envelope, with `apps/overlay-preview/src/preview-document.ts` acting as a compatibility layer for preview-only extras and older preview-local files.
-	Recent anti-drift pass: the shared overlay document schema now also carries `project` metadata for `sceneFamilyKey`, `activeTargetId`, the document's target output profiles, and non-halo `sceneFamilyConfigs`.
-	Recent anti-drift pass: startup no longer seeds the working state from browser-local preset storage, because documents are now the intended source of truth.
-	Recent anti-drift pass: preview-local document workspace state, recent-document rendering, file open or save orchestration, and fallback download handling now live in `apps/overlay-preview/src/document-workspace.ts` instead of `apps/overlay-preview/src/main.ts`.
-	Recent anti-drift pass: preview-side source-default snapshot plus document build/apply/reset logic now live in `apps/overlay-preview/src/preview-document-bridge.ts` instead of `apps/overlay-preview/src/main.ts`.
-	Recent anti-drift pass: shared `document.project.sceneFamilyConfigs` now owns the phyllotaxis, fuzzy-boids, and scatter settings, and the source-default authoring file now round-trips that shared project metadata instead of only a raw snapshot.
-	Remaining gap: preview-only extras still live in preview-local modules, while fuller graph authoring stays intentionally deferred after the new list-first inspector proves out the saved-chain workflow.
-	User direction on 2026-03-28: browser-local presets are the wrong long-term product shape; a first pass of filesystem-backed documents is now landed, and follow-up work should keep extending that path instead of deepening localStorage-first UX blindly.
-	Reference files: `index.js` (save_preset, delete_active_preset, export_current_preset, import_presets_from_file, apply_preset_by_id).
+## Package split status
 
-9. **Source-default writeback (PARTIAL).**
-	The preview shell now loads authored source defaults on startup, resets back to those authored defaults, exposes a Write Source Default button, flushes staged CSV drafts to authored asset files before save, and writes the current shared overlay-document payload to `/__authoring/source-default-config` via `Ctrl/Cmd+Alt+S` or the button. Active profile-format bucket normalization for those snapshots now routes through shared `operator-overlay-layout` helpers instead of preview-local code, and the UI reports how many CSV files were updated as part of the save.
-	Typed source-default snapshot creation, fallback construction, cloning, document-project sanitization, and legacy raw-snapshot compatibility now also route through shared `operator-overlay-layout` helpers instead of preview-local snapshot structs in `main.ts`.
-	Reference files: `index.js` (write_source_default_snapshot, read_source_default_snapshot).
+All initial first splits complete: grid, text, overlay composition, overlay interaction, parameter surface, orbits, spokes. Mask operators remain deferred.
 
-10. **Export pipeline (PARTIAL).**
-	Single frame PNG ✔, PNG sequence with frame-range modal + File System Access directory picker ✔, headless Playwright PNG exporter (`scripts/export-headless.ts`) ✔, FFmpeg MP4 encoder (`scripts/encode-mp4.ts`) ✔ (libx264, CRF 10/14, yuv444p/yuv420p, slow preset, -tune animation, bt709). `window.__layoutOpsAutomation` API matches reference `__mascotAutomation` pattern. Transparent background option ✔.
-	End-to-end verification now confirmed with a 48-frame, 2-second headless export at 1080x1350 followed by MP4 encode on Windows using a local FFmpeg install, and fade-in/fade-out encode flags are verified against that frame sequence.
-	The single-frame PNG regression that dropped the halo layer was fixed by switching the WebGL halo renderer to `preserveDrawingBuffer: true`, and the user manually revalidated that the halo layer is present again in still exports.
-	Remaining: finish any final `output/{dimensions}/` workflow polish.
-	Reference files: `index.js` (export_current_frame_png, export_png_sequence, export_current_mp4).
+## Drift Signals — 2026-03-29
 
-11. **Guide toggle 3-state cycle (DONE).**
-	`W` and `G` cycle: off → composition → baseline → off. Matches reference `W` cycle. `GUIDE_MODES` array in `main.ts` drives `cycleGuideMode()`.
+Active architectural risks requiring attention during the next work cycle.
 
-12. **Keyboard shortcuts (PARTIAL).**
-	`Ctrl/Cmd+S` now saves the current document, `Ctrl/Cmd+Shift+S` forces Save As, `Ctrl/Cmd+Alt+S` writes source defaults, `Escape` closes the inline editor and drawer, and `P` or `Space` now toggles the preview motion loop.
-	Remaining gap: shortcuts should still be blocked during any future export modal.
-	Reference files: `index.js` (keydown handler).
+| Signal | Severity | Detail |
+|--------|----------|--------|
+| `main.ts` at 4,147 lines | **High** | Section builders extracted, but state management (~12 CSV draft functions), presets, authoring interaction (~350 lines), export pipeline (~340 lines), and automation API (~190 lines) remain. Next extraction targets: authoring controller, export controller, source-default orchestration. |
+| `operator-overlay-layout/src/index.ts` at 2,187 lines | **Medium** | Largest package file. Accumulated document normalization, bucket management, field defaults, CSV resolution, and seeded layouts. Internal decomposition into sub-modules would reduce risk without changing the package boundary. |
+| `scene-family-preview.ts` at 983 lines | **Medium** | Single adapter serving phyllotaxis, fuzzy-boids, and scatter. As scene families grow more distinct, this should split per-family. Also still draws preview-only connective geometry (arm lines, velocity trails, shape guides) that does not fit the intended full-scene layer behavior. |
+| `halo-config-section.ts` at 611 lines | **Low** | Largest section builder — 3–4× the section average. Not urgent but heading toward its own complexity problem. |
 
-### Medium — needed for visual fidelity on the animation layer
+## Preview Shell Extraction — Current Status
 
-13. **Halo-field renderer (PARTIAL).**
-	Three.js halo rendering, phase-mask geometry, spoke width interpolation, echo ring variants, release-label drawing, and screensaver pulse controls are now implemented in the preview shell, and the coarse frame-state handoff for intro/finale/screensaver motion now routes through `operator-ubuntu-summit-animation`.
-	Remaining gap: reference-grade mascot-linked choreography, finale-detail passes, and any remaining visual-timing polish still need to be ported.
-	Reference files: `halo-field.js` (full module), `rendering.js` (spoke rendering pipeline).
+### What is done
 
-14. **Mascot composition (PARTIAL).**
-	The preview now draws the local face SVG, optional halo SVG behind the face, white eye layers, and a reference-leaning fixed-nose plus animated cutout pass on the overlay canvas using the scene-family operator's mascot box plus blink, head-turn, and nose-bob motion state. Remaining gap: this still does not match the full reference texture-loading path or the original Three.js mesh stack exactly, but the visible eye, halo, and nose layering is now closer to parity. Decision: keep mascot-specific composition in the adapter or scene-family layer until reuse becomes concrete.
-	Reference files: `rendering.js` (mascot mesh setup, nose texture, eye rendering), `config-schema.js` (MASCOT_* constants).
-
-15. **Vignette system (PARTIAL).**
-	A first-pass vignette overlay now exists in `apps/overlay-preview/src/halo-renderer.ts` using the shared `vignette.enabled`, `shape_fade`, `shape_fade_start`, and `shape_fade_end` settings, so the outer scene band no longer ends only at the shape-level radial fade. Remaining gap: the fuller reference vignette controls such as inner or outer radius, feather, choke, dither, and safe-area-aware compositing are still missing.
-	Reference files: `default-config-source.js` (vignette config per profile), `rendering.js` (draw_vignette_overlay).
-
-16. **Safe area fill layering (PARTIAL).**
-	Reference has `safe_area_fill_above_animation` toggle that changes render order — fill can be behind or on top of the Three.js animation layer. Current repo has `safe_area_fill_color` but may not fully replicate the layering behavior.
-	Reference files: `rendering.js` (SAFE_AREA_FILL_ORDER vs SAFE_AREA_FILL_OVERLAY_ORDER).
-
-### Low — architecture differences or deferred items
-
-17. **Screensaver / post-finale animation state machine (MISSING).**
-	Continuous loop after intro ends. Cycle timing, ramp-in, orbit/spoke pulse breathing, min spoke count floor, phase boundary transitions. Current repo has simple time-based animation.
-	Reference files: `halo-field.js` (build_post_finale_halo_field_state), `rendering.js` (screensaver loop).
-
-18. **Three.js vs SVG renderer (ARCHITECTURAL DIFFERENCE).**
-	Reference uses Three.js WebGLRenderer + 2D canvas overlay. Current repo uses pure SVG motion + HTML overlay. This is intentional — visual output parity is the goal, not renderer parity. Note: the Three.js path gets higher DPI fidelity on dots and uses GPU blending, which affects visual subtleties at high zoom.
-
-## Audit Delta — 2026-03-27 Late Pass
-
-This delta supersedes parts of the earlier parity snapshot above.
-It reflects the current repo after the overlay-preview rebuild, reference-doc reread, and cross-repo re-audit against the old app.
-
-### What is no longer fully missing
-
-1. **Output profiles are now scaffolded, and the preview now keeps per-profile overlay buckets.**
-	`core-types` now defines the 5 reference profile keys plus dimensions, safe areas, and default frame rates.
-	The preview shell now preserves overlay params per output profile instead of mutating one shared document when the profile changes.
-	The shared overlay-layout path now also owns profile-switch frame resync, carried-over heading or shared overlay-state normalization between per-format buckets, and active bucket selection normalization for presets and source-default snapshots, instead of leaving those document rules in preview-only helpers.
-	Landed follow-up: the shared `OUTPUT_PROFILES` constants and the authored source-default document now also match the reference safe-area defaults for `instagram_1080x1350`, `screen_3840x2160`, and `tablet_2560x1600`, while the default frame rates were already aligned.
-	Remaining gap: profile ownership still does not extend to full reference-style motion and mascot defaults the way the reference app does, even though source-default persistence now round-trips shared document project metadata and background-operator configs.
-
-2. **Content-format structure exists, and the preview now keeps per-format buckets inside each profile.**
-	`core-types` now defines `generic_social` and `speaker_highlight` field specs, aliases, and legacy-slot mapping.
-	The preview shell now preserves format-specific field layouts, inline text, and CSV draft state per profile rather than rebuilding formats from scratch on each switch.
-	Shared `operator-overlay-layout` helpers now also own the bucket-state types, clone helpers, and active-format normalization used by profile switches, presets, and source-default snapshots.
-	Landed follow-up: `speaker_highlight` is selectable again through the shared format order, so the preview UI now exposes both reference formats while continuing to use alias-based CSV matching and shared per-profile bucket seeding.
-	Remaining gap: fully canonical renderer/layout ownership is still missing, even though the shared format specs, bucket seeding, and CSV alias resolution now match the reference app's two-format surface.
-
-3. **Text-style parity is closer than the earlier audit suggested.**
-	The current repo now has `title`, `b_head`, and `paragraph` styles with the expected Ubuntu Sans weight pattern.
-	The preview shell now also uses style-aware labels for selected items and authoring boxes, including ordinal labels for repeated paragraph-style fields, and the selected-item panel can add or delete text blocks within the active format bucket.
-	The shared overlay-layout editing path now also applies an ascent-aware first-baseline inset so a field aligned to a grid row keeps its first line visibly inside the field bounds instead of letting the ascender protrude above the box.
-	Remaining gap: the richer selected-item editor and per-style authoring controls from the reference app are still not ported.
-
-4. **Linked title sizing exists only as a preview-side helper.**
-	There is now a helper that updates the title font size when logo height is edited in the preview shell.
-	Remaining gap: the reference rule is config-driven and renderer/layout aware, including intrinsic logo aspect ratio handling. The current helper is not yet the canonical kernel rule.
-
-5. **Preset workflow is partially scaffolded.**
-	The preview toolbar now supports browser-local preset save, update, import, and export, these payloads capture the per-profile/per-format overlay bucket state, and saved or exported preset payloads are now normalized against the generated profile or format defaults instead of always writing full snapshots.
-	The active preset row also now reflects dirty state in the preview shell.
-	The preview shell also now supports source-default snapshot loading and writeback through the dev authoring route.
-	Remaining gap: there is still no reference-grade tabbed workflow or directory-picker export path.
-
-### Highest-priority remaining parity gaps after the late audit
-
-0. **Whole-scene Ubuntu Summit animation port is now the top explicit parity strategy.**
-	User decision on 2026-03-27: import the entire reference animation as one finished scene-family generator operator first, so parity can be achieved before any attempt to generalize. This should include mascot motion, blink, head shake, dot splash, spokes, radio lines, Ubuntu release labels, construction lines, finale behavior, and the screensaver loop.
-	Architectural rule: keep this as one coarse operator boundary for now, with rendering/orientation details still handled in adapters.
-	Incremental progress: `operator-ubuntu-summit-animation` now owns phase classification, runtime timing, loop timing, mascot-box descriptor data, reveal geometry, screensaver pulse counts, and transient spoke-transition maps, and the preview renderer plus automation API now route through that descriptor instead of bypassing the package entirely.
-
-1. **Animation timeline state is still fundamentally missing.**
-	The current preview now has an operator-owned frame-state builder for intro/finale/screensaver handoff, but not the full reference sequence.
-	What is missing from the reference behavior:
-	- intro dot/orbit splash nuance beyond the current coarse phase timing
-	- finale halo shrink and mascot-specific choreography details
-	- blink/sneeze cadence and head-turn-linked timing state
-
-2. **Ubuntu release labels are now rotated in the adapter, but still need reference-grade finesse.**
-	The preview now rotates each label pill to the spoke angle and flips it upright on the far side of the halo.
-	Remaining gap: spacing, exact anchor placement, and any reference-specific collision tuning still need refinement in the adapter.
-
-3. **The halo-field system is still adapter-scaffold parity, not behavioral parity.**
-	The current repo now has operator-owned intro-to-finale-to-screensaver handoff plus phase-boundary timing for post-finale spoke count and width changes, but it still falls short of the reference behavior:
-	- no full mascot-linked reveal choreography
-	- no face, blink, or head-turn scene timing inside the coarse operator
-	- no reference-grade radio-line or finale-detail pass yet
-
-4. **Output profiles still do not own the whole scene.**
-	The reference app stores per-profile text, logo, layout, motion, mascot, safe area, and content-format buckets.
-	The current repo now restores per-profile overlay buckets, export settings, halo config, and active content-format selection through live state, source-default snapshots, and presets.
-	Remaining gap: the scene still lacks profile-owned motion and mascot defaults at the same completeness as the reference architecture.
-
-5. **Logo semantics remain incomplete even though basic coupling exists.**
-	Missing reference behaviors:
-	- intrinsic asset aspect ratio loading from the real image
-	- renderer/layout use of that aspect ratio for canonical logo width
-	- consistent coupling rule between title sizing and logo sizing across profile changes and preset loads
-	This item is now explicitly elevated by user direction: logo-to-heading lock is one canonical coupled feature. A Head sizing should drive logo scale, and the lock must remain intact across screen sizes rather than being treated as two independent settings.
-
-### Principled parity path implied by this audit
-
-1. **Do not keep expanding preview-local motion patches.**
-	The next parity milestone should port the entire Ubuntu Summit sequence into `operator-ubuntu-summit-animation` as one coarse scene-family operator that owns intro, finale, post-finale, mascot timing, and scene metadata.
-
-2. **Keep label orientation in the adapter, not in the kernel.**
-	The field operator should emit spoke angle and label-slot data; the preview/export adapters should decide how to orient and draw the release labels.
-
-3. **Treat mascot composition as adapter-side until reuse is concrete.**
-	Face, halo, blink, and head-turn choreography still read as scene-family behavior rather than reusable generic kernel payloads.
-
-4. **Finish profile/content/preset authority before chasing fine visual polish.**
-	Without the reference app's scene-default and profile-bucket model, parity validation keeps happening against the wrong document state.
-
-## Package split recommendations
-
-### Good first splits
-
-- [x] Grid math.
-- [x] Text layout.
-- [x] Overlay composition.
-- [x] Overlay interaction.
-- [x] Parameter surface generation.
-- [x] Orbits.
-- [x] Spokes.
-- [ ] Mask operators.
-
-## Preview Shell Audit — 2026-03-28
-
-### Problem
-
-`apps/overlay-preview/src/main.ts` is 4 187 lines with 200+ named functions. The operator and kernel architecture is holding — layout math, grid, text, interaction, field generation, and document-schema authority are in shared packages. But the preview composition root has accumulated adapter-side responsibilities that belong in separate modules.
-
-### Concentration points
-
-| Concern | Lines | Issue |
-|---------|-------|-------|
-| Form helpers (`createFormGroup`, `createSliderInput`, `createNumberInput`, etc.) | ~2 433–2 631 | Generic DOM builders with zero closure dependencies. Belong in `parameter-ui`. |
-| SVG overlay adapter (`renderSvgOverlay`, `createGuideMarkup`, `createSafeAreaMarkup`, `createTextMarkup`, `createLogoMarkup`) | ~1 718–1 880 | Pure adapter functions that answer "how do I draw this?" — per architecture.md L57 these belong in a dedicated adapter module, not the composition root. |
-| Inline section builders (content format, overlay, paragraph, grid, halo config) | ~2 669–3 588 | 9 hardcoded section registrations at L2 379. The registry primitive exists in `parameter-ui` but no operator package uses it. |
-| Authoring interaction (hit testing, pointer capture, inline editing, selection) | ~3 589–4 195 | One large local controller with tight but extractable closure coupling. |
-| Export + automation (export modal, PNG sequence, headless API) | ~4 200–4 905 | Bolted onto the same file; can be a separate controller. |
-
-### What is holding
-
-- Canonical layout rules are in `layout-engine`, `layout-grid`, `layout-text`.
-- Document persistence routed through `preview-document.ts`, `preview-document-bridge.ts`, `document-workspace.ts`.
+- Form helpers extracted to `parameter-ui/src/accordion-form-helpers.ts`.
+- SVG overlay extracted to `svg-overlay-adapter.ts`.
+- State-sharing protocol in `preview-app-context.ts`.
+- 12 section builders extracted (halo-config, grid, playback-export, document, output-format, presets, content-format, overlay, fuzzy-boids, phyllotaxis, scatter, paragraph-styles).
+- Document workspace in `document-workspace.ts`, document bridge in `preview-document-bridge.ts`.
 - Halo rendering in `halo-renderer.ts`, scene-family preview in `scene-family-preview.ts`.
-- Section registry primitive in `parameter-ui`.
 
-### Extraction order
+### Remaining extraction targets
 
-1. ~~Form helpers → `parameter-ui` (zero risk, ~200 lines, no closure deps).~~ **Done** — `packages/parameter-ui/src/accordion-form-helpers.ts`, `buildSectionEl` renamed to `buildAccordionSectionEl` across 10 call sites.
-2. ~~SVG overlay → `svg-overlay-adapter.ts` (pure functions, ~160 lines).~~ **Done** — `apps/overlay-preview/src/svg-overlay-adapter.ts`, `renderSvgOverlay` rewritten as thin orchestrator.
-3. ~~State-sharing protocol.~~ **Done** — `apps/overlay-preview/src/preview-app-context.ts` defines `PreviewAppContext` interface with typed action callbacks; `main.ts` creates the concrete `ctx` object. Section builders now receive `ctx` instead of capturing module-level closures.
-4. Section builders → individual panel modules. **In progress.** Two builders extracted so far:
-   - ~~`buildHaloConfigSection` → `halo-config-section.ts` (~365 lines).~~
-   - ~~`buildGridSection` → `grid-section.ts` (~142 lines).~~
-   - Remaining: `buildPlaybackExportSection`, `buildDocumentSection`, `buildOutputFormatSection`, `buildPresetsSection`, `buildContentFormatSection`, `buildOverlaySection`, `buildParagraphStylesSection`. Each uses the same `ctx` pattern — no new protocol work needed, just extraction.
-5. Authoring interaction → `authoring-controller.ts`. Same `ctx` pattern applies.
-6. Export + automation → `export-controller.ts`. Same `ctx` pattern applies.
-7. Leave `main.ts` as a thin composition root that wires state, controllers, and renderers.
+1. [ ] **Authoring interaction** → dedicated controller module. Selection, drag, resize, hit testing, inline editing (~350 lines in `main.ts`).
+2. [ ] **Export + automation** → dedicated controller module. Export modal, composed-frame helpers, PNG sequence, automation API (~530 lines).
+3. [ ] **Source-default orchestration** → move remaining `applySourceDefaultSnapshot`, `readSourceDefaultSnapshot`, `writeCurrentAsSourceDefault` out of `main.ts`.
+4. [ ] **Dead panel cleanup** → confirm `presets-section.ts` and `paragraph-styles-section.ts` are no longer referenced, then remove.
+5. [ ] Goal: `main.ts` becomes a thin composition root wiring state, renderers, section registration, and controllers.
 
 ## Houdini-Like Parameter Pane — Architectural North Star
 
@@ -488,18 +207,43 @@ This does not need to land all at once. The extraction work above is the prerequ
 
 ## Approved Execution Queue — Active Only
 
-Keep this section lean. Completed queue items should stay in git history and brief handoff notes rather than accumulating here.
+Concrete, dependency-ordered steps. Work top-down within each lane. Lanes are independent unless noted.
 
-### Active priorities
+### Lane A — Halo parity (highest priority)
 
-- [ ] **Ubuntu Summit parity passes**
-	Close the remaining renderer-level gaps in `operator-ubuntu-summit-animation` and `halo-renderer.ts`, with the current lead candidate being safe-area fill or whatever layer-stack-friendly replacement best captures the reference behavior without hard-coding another one-off feature.
-- [ ] **Non-halo scene-family fidelity**
-	Make `phyllotaxis`, `fuzzy-boids`, and `scatter` behave like full-stage scene layers where appropriate, remove preview-only connective geometry from point generators, and re-audit boids or scatter behavior against the Houdini intent before treating the current preview semantics as canonical.
-- [ ] **Authoring-shell direction**
-	Move the product toward a clearer project-oriented authoring environment: shell navigation for project or file actions, cleaner separation of playback versus export versus default-authoring controls, and less reliance on a long mixed inspector stack for app-level commands.
-- [ ] **Project model clarification**
-	Keep treating the saved `.brand-layout-ops.json` file as the real working unit, and decide later whether the UI should explicitly rename that unit from "document" to "project" once the file UX is less ambiguous.
+| Step | Task | Depends on | Exit criteria |
+|------|------|------------|---------------|
+| A1 | Finish `operator-ubuntu-summit-animation` scene descriptor: intro splash nuance, finale halo shrink, blink/sneeze cadence, head-turn timing | — | Operator emits the full reference sequence timing without preview-local patches |
+| A2 | Halo renderer fidelity: mascot-linked reveal choreography, radio-line detail, finale pass | A1 | Reference re-check passes for halo scale zoom and release-label fold-seam |
+| A3 | Screensaver state machine: post-finale continuous loop, cycle timing, pulse breathing, spoke count floor | A2 | Screensaver loop matches reference visual behavior |
+| A4 | Vignette control parity: inner/outer radius, feather, choke, safe-area-aware compositing | A2 | Vignette controls match reference `draw_vignette_overlay` |
+| A5 | Safe-area fill layering: `safe_area_fill_above_animation` render-order toggle | A2 | Fill order matches reference behavior; enters through a layer-stack-friendly seam |
+
+### Lane B — Non-halo scene-family fidelity
+
+| Step | Task | Depends on | Exit criteria |
+|------|------|------------|---------------|
+| B1 | Remove preview-only connective geometry from `scene-family-preview.ts` (phyllotaxis arm lines, scatter shape guides, boids velocity trails) | — | Non-halo previews render as clean full-stage point fields |
+| B2 | Fuzzy-boids Houdini/VEX parity audit: verify separation, alignment, cohesion, bounds against original | B1 | Force semantics documented as matching or intentionally diverged |
+| B3 | Scatter relax/repulsion pass and full-frame behavior | B1 | Points distribute evenly, not clumped in centered shape |
+
+### Lane C — Preview shell concentration reduction
+
+| Step | Task | Depends on | Exit criteria |
+|------|------|------------|---------------|
+| C1 | Extract authoring interaction controller from `main.ts` (selection, drag, resize, hit-test, inline editing) | — | ~350 lines out of `main.ts`, same `ctx` pattern as section builders |
+| C2 | Extract export + automation controller from `main.ts` (export modal, PNG sequence, automation API) | — | ~530 lines out of `main.ts` |
+| C3 | Extract source-default orchestration (apply, read, write) from `main.ts` into bridge/controller seam | C1 | Source-default I/O no longer mixed with composition root |
+| C4 | Remove dead panel modules (`presets-section.ts`, `paragraph-styles-section.ts`) after confirming no references | C1 | Clean module inventory |
+| C5 | `operator-overlay-layout/src/index.ts` internal decomposition — split into document normalization, bucket management, field defaults, CSV resolution sub-modules | — | Package index under 500 lines, internals well-bounded |
+
+### Lane D — Authoring shell direction (lower priority, after A+C progress)
+
+| Step | Task | Depends on | Exit criteria |
+|------|------|------------|---------------|
+| D1 | Separate playback, export, and authored-default controls into distinct action groups | C2 | No mixed control cluster for play/export/set-default |
+| D2 | Move app-level file actions (new/open/save/duplicate) toward dedicated shell chrome | C3 | File operations are distinct from operator parameter panels |
+| D3 | Decide document vs project naming for `.brand-layout-ops.json` UX | D2 | Clear user-facing working-unit label |
 
 ### Completed queue snapshot
 
@@ -514,42 +258,17 @@ Keep this section lean. Completed queue items should stay in git history and bri
 
 ## Discussion Items Not Yet Scheduled
 
-These matter, but they are not approved active work until we discuss placement, cost, and effect on parity sequencing.
+Deferred until explicitly promoted. Each carries a working assumption.
 
-- [ ] Timeline and clip model like Houdini or After Effects.
-	Working assumption: this belongs after parity, probably as a sequencing layer above the operator graph rather than as ad hoc timing logic inside each operator.
-- [ ] Broader document-owned operator-graph persistence beyond the current constrained background chain.
-	Working assumption: the first typed background-chain persistence is now landed through shared `project.backgroundGraph`; the remaining future work is expanding that into a broader graph model only after the list-first network view proves out the operator-selection and parameter-surface workflow.
-- [ ] Execution backend strategy for heavier SOP-like work.
-	Working assumption: keep layout, SVG, document semantics, and moderate-size procedural operators in TypeScript; allow GPU-backed execution paths or adapters for high-count 3D or simulation-heavy operators where profiling proves TypeScript is not enough.
-- [ ] Future spokes decomposition.
-	Working assumption: keep the current `operator-spokes` coarse for parity, then later split toward a wave operator that can run in cartesian and polar coordinates, separate mask operators, and a polar field or radial layout operator for instanced shapes and text.
-- [ ] Move beyond a strict background or overlay abstraction toward a proper layer stack and compositor model.
-	Working assumption: safe-area fill, halo layers, images, large type, and future media should eventually become ordered layers rather than hard-coded special-case passes, but the short-term work should still enter through parity-friendly seams instead of a premature full compositor rewrite.
-- [ ] Authoring-shell navigation separate from operator panels.
-	Working assumption: app-level actions such as new/open/save/duplicate/export should migrate toward dedicated shell navigation or pinned authoring chrome instead of staying mixed into the same inspector surface as operator parameters.
-- [ ] Lean active-plan discipline.
-	Working assumption: the canonical plan should stay focused on current work only; completed milestones belong in terse summaries plus git history rather than growing into a second audit log inside the live queue.
-- [x] Operator-registered accordion panels for the config editor UI.
-	Working assumption: promoted to EQ-2/EQ-3/EQ-4 above.
-- [x] Incremental control-surface swap from Vanilla to the sibling `portable-vertical-rhythm` package for the overlay-preview shell.
-	Working assumption: landed, now being superseded by EQ-1 (swap to `baseline-foundry`).
-- [ ] Filesystem-backed document/project model instead of browser-local presets.
-	Working assumption: partially landed. EQ-6 addresses the remaining presets question.
-- [ ] Non-halo scene-family preview fidelity and full-frame coverage.
-	Working assumption: `phyllotaxis`, `fuzzy-boids`, and `scatter` should fill the same whole-stage footprint that halo uses unless an operator is intentionally shape-bounded, and point generators should not draw extra preview geometry such as phyllotaxis arm lines or other connective strokes that really belong in downstream operators.
-- [ ] Fuzzy-boids Houdini/VEX parity audit.
-	Working assumption: the current `operator-fuzzy-boids` implementation is still a coarse TypeScript boids pass rather than a verified 1:1 port of the Houdini control surface, so its parameter list and force semantics should be re-audited against the original Houdini/VEX setup before trusting the current separation, alignment, cohesion, and bounds controls as canonical.
-- [ ] Scatter full-frame behavior and Houdini-style relax.
-	Working assumption: scatter should support a better point-relax or repulsion pass so points do not visibly clump, and its default scene-family presentation should not stay confined to a tiny centered shape unless the user explicitly wants a bounded scatter source.
-- [ ] Playback, export, and authored-defaults control-surface cleanup.
-	Working assumption: the pause button is probably redundant if `Space` remains the primary playback toggle, export actions should become a dedicated strip (`PNG`, sequence, `MP4`) separate from playback, and `Reset Default` / `Set Default` should sit together as authored-default actions rather than living inside the same mixed control cluster.
-- [ ] Low-priority arbitrary output-size authoring.
-	Working assumption: the Output Format panel should eventually allow custom sizes in addition to the named presets, but that stays below the current parity-critical renderer and workflow work.
-- [ ] Document vs project naming and file-workflow UX.
-	Working assumption: the saved `.brand-layout-ops.json` file already behaves more like a file-backed project than a single flat document because it carries multiple target sizes plus shared scene-family state; decide later whether the UI should rename the working unit to "project", but in either case `Open`, `Save`, and `Duplicate` should behave like explicit draw.io-style file operations with clear created-file feedback instead of feeling like no-ops.
-- [ ] Content-format abstraction versus saved project variants.
-	Working assumption: if file-backed project variants become the main way to distinguish things like generic social versus speaker highlight, the current content-format switching may shrink or disappear later, but it should not be removed until the project model fully replaces that workflow.
+- **Timeline and clip model.** Belongs after parity, as a sequencing layer above the operator graph.
+- **Broader graph persistence.** First background-chain persistence landed via `project.backgroundGraph`. Expand only after list-first network view proves out.
+- **GPU/execution backends.** Keep moderate operators in TypeScript. Allow GPU paths only where profiling proves TypeScript insufficient.
+- **Spokes decomposition.** Keep `operator-spokes` coarse for parity. Later split toward wave, mask, and polar-field operators.
+- **Full compositor model.** Layer-stack direction is committed but the active queue should add parity-friendly seams first, not schedule a premature compositor rewrite.
+- **Arbitrary output-size authoring.** Custom sizes stay below parity-critical work.
+- **Paragraph-style set authoring.** Wait for stable project model and operator-scoped parameter surfaces.
+- **Content-format vs project variants.** If file-backed variants replace content-format switching, current format UI can shrink later.
+- **Cross-operator transition choreography.** Future timeline/sequencing concern, not preview-local temporal glue.
 
 ### Splits to not get bogged down with
 
