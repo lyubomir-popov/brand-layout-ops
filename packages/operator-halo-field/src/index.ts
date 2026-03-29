@@ -177,6 +177,7 @@ export interface HaloFieldConfig {
     halo_inner_radius_u: number;
   };
   vignette?: {
+    enabled: boolean;
     shape_fade: number;
     shape_fade_start: number;
     shape_fade_end: number;
@@ -1008,6 +1009,7 @@ export function createDefaultHaloFieldConfig(): HaloFieldConfig {
       halo_inner_radius_u: 0.255
     },
     vignette: {
+      enabled: true,
       shape_fade: 1,
       shape_fade_start: 0.3,
       shape_fade_end: 0.85
