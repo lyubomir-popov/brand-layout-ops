@@ -109,25 +109,43 @@ export type OverlayScatterShapeKind = "ellipse" | "rect" | "rounded-rect" | "svg
 export interface OverlayFuzzyBoidsConfig {
   numBoids: number;
   seed: number;
+  subSteps: number;
   spawnRadiusPx: number;
   staggerStartSeconds: number;
-  initialSpeedPxPerSecond: number;
+  initialSpeed: number;
   initialSpeedJitter: number;
-  minSpeedPxPerSecond: number;
-  maxSpeedPxPerSecond: number;
-  maxAccelerationPxPerSecond2: number;
   massMin: number;
   massMax: number;
   pscaleMin: number;
   pscaleMax: number;
-  separationRadiusPx: number;
-  separationStrength: number;
-  alignmentRadiusPx: number;
-  alignmentStrength: number;
-  cohesionRadiusPx: number;
-  cohesionStrength: number;
-  centerPullStrength: number;
   maxNeighbors: number;
+
+  // Separation (VEX: separation by n)
+  separationMinDist: number;
+  separationMaxDist: number;
+  separationMaxStrength: number;
+
+  // Fuzzy alignment (VEX: fuzzy alignment wrangle)
+  alignNearThreshold: number;
+  alignFarThreshold: number;
+  alignSpeedThreshold: number;
+
+  // Cohesion (VEX: cohesion wrangle)
+  cohesionMinDist: number;
+  cohesionMaxDist: number;
+  cohesionMaxAccel: number;
+  attractToOrigin: boolean;
+
+  // Integration (VEX: integrate wrangle)
+  minSpeedLimit: number;
+  maxSpeedLimit: number;
+  minAccelLimit: number;
+  maxAccelLimit: number;
+
+  // Preview
+  dotSizePx: number;
+
+  // Bounds
   boundsKind: OverlayFuzzyBoidsBoundsKind;
   boundsRadiusPx: number;
   boundsMarginPx: number;
@@ -161,40 +179,77 @@ export interface OverlaySceneFamilyConfigs {
   scatter: OverlayScatterConfig;
 }
 
-export function createDefaultOverlayFuzzyBoidsConfig(): OverlayFuzzyBoidsConfig {
+function getOverlaySceneFrame(profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY): FrameSize {
+  const profile = getOutputProfile(profileKey);
   return {
-    numBoids: 220,
+    widthPx: profile.widthPx,
+    heightPx: profile.heightPx
+  };
+}
+
+function getOverlayFullFrameRadiusPx(frame: FrameSize): number {
+  return Math.ceil(Math.hypot(frame.widthPx, frame.heightPx) * 0.5);
+}
+
+function getOverlaySceneMarginPx(frame: FrameSize, ratio = 0.04, minimumPx = 24): number {
+  return Math.max(minimumPx, Math.round(Math.min(frame.widthPx, frame.heightPx) * ratio));
+}
+
+export function createDefaultOverlayFuzzyBoidsConfig(profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY): OverlayFuzzyBoidsConfig {
+  const frame = getOverlaySceneFrame(profileKey);
+  const fullFrameRadiusPx = getOverlayFullFrameRadiusPx(frame);
+  return {
+    numBoids: 50,
     seed: 1,
-    spawnRadiusPx: 173,
+    subSteps: 2,
+    spawnRadiusPx: fullFrameRadiusPx,
     staggerStartSeconds: 0,
-    initialSpeedPxPerSecond: 70,
-    initialSpeedJitter: 0.35,
-    minSpeedPxPerSecond: 19,
-    maxSpeedPxPerSecond: 97,
-    maxAccelerationPxPerSecond2: 97,
+    initialSpeed: 9,
+    initialSpeedJitter: 0.25,
     massMin: 0.85,
     massMax: 1.15,
     pscaleMin: 0.4,
     pscaleMax: 1.1,
-    separationRadiusPx: 38,
-    separationStrength: 0.55,
-    alignmentRadiusPx: 130,
-    alignmentStrength: 0.28,
-    cohesionRadiusPx: 173,
-    cohesionStrength: 0.22,
-    centerPullStrength: 0.12,
-    maxNeighbors: 14,
-    boundsKind: "radial",
-    boundsRadiusPx: 302,
-    boundsMarginPx: 86,
-    boundsForcePxPerSecond2: 346
+    maxNeighbors: 6,
+
+    // Separation — exact Houdini defaults (world units)
+    separationMinDist: 0,
+    separationMaxDist: 5,
+    separationMaxStrength: 0.25,
+
+    // Fuzzy alignment — exact Houdini defaults (world units)
+    alignNearThreshold: 1,
+    alignFarThreshold: 5,
+    alignSpeedThreshold: 50,
+
+    // Cohesion — exact Houdini defaults (world units)
+    cohesionMinDist: 20,
+    cohesionMaxDist: 200,
+    cohesionMaxAccel: 2.5,
+    attractToOrigin: false,
+
+    // Integration — exact Houdini defaults (world units)
+    minSpeedLimit: 4,
+    maxSpeedLimit: 12,
+    minAccelLimit: 0,
+    maxAccelLimit: 50,
+
+    // Preview
+    dotSizePx: 3,
+
+    // Bounds (pixel-space containment — replaces Houdini SDF volumes)
+    boundsKind: "box",
+    boundsRadiusPx: fullFrameRadiusPx,
+    boundsMarginPx: getOverlaySceneMarginPx(frame, 0.15, 80),
+    boundsForcePxPerSecond2: 50000
   };
 }
 
-export function createDefaultOverlayPhyllotaxisConfig(): OverlayPhyllotaxisConfig {
+export function createDefaultOverlayPhyllotaxisConfig(profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY): OverlayPhyllotaxisConfig {
+  const frame = getOverlaySceneFrame(profileKey);
   return {
     numPoints: 720,
-    radiusPx: 367,
+    radiusPx: getOverlayFullFrameRadiusPx(frame),
     radiusFalloff: 0.68,
     angleOffsetDeg: 0,
     animationEnabled: true,
@@ -202,25 +257,26 @@ export function createDefaultOverlayPhyllotaxisConfig(): OverlayPhyllotaxisConfi
   };
 }
 
-export function createDefaultOverlayScatterConfig(): OverlayScatterConfig {
+export function createDefaultOverlayScatterConfig(profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY): OverlayScatterConfig {
+  const frame = getOverlaySceneFrame(profileKey);
   return {
     pointCount: 420,
     seed: 1,
     distributionMode: "uniform",
-    marginPx: 16,
-    shapeKind: "rounded-rect",
-    widthPx: 620,
-    heightPx: 420,
+    marginPx: getOverlaySceneMarginPx(frame),
+    shapeKind: "rect",
+    widthPx: frame.widthPx,
+    heightPx: frame.heightPx,
     cornerRadiusPx: 64,
     svgPath: "M -220 0 L -120 -150 L 120 -150 L 220 0 L 120 150 L -120 150 Z"
   };
 }
 
-export function createDefaultOverlaySceneFamilyConfigs(): OverlaySceneFamilyConfigs {
+export function createDefaultOverlaySceneFamilyConfigs(profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY): OverlaySceneFamilyConfigs {
   return {
-    phyllotaxis: createDefaultOverlayPhyllotaxisConfig(),
-    fuzzyBoids: createDefaultOverlayFuzzyBoidsConfig(),
-    scatter: createDefaultOverlayScatterConfig()
+    phyllotaxis: createDefaultOverlayPhyllotaxisConfig(profileKey),
+    fuzzyBoids: createDefaultOverlayFuzzyBoidsConfig(profileKey),
+    scatter: createDefaultOverlayScatterConfig(profileKey)
   };
 }
 
@@ -284,11 +340,15 @@ export interface OverlayBackgroundGraph {
   edges: OverlayBackgroundEdge[];
 }
 
-function createDefaultOverlayFuzzySeedConfig(fuzzyBoidsConfig: OverlayFuzzyBoidsConfig): OverlayPhyllotaxisConfig {
+function createDefaultOverlayFuzzySeedConfig(
+  fuzzyBoidsConfig: OverlayFuzzyBoidsConfig,
+  profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY
+): OverlayPhyllotaxisConfig {
+  const defaultPhyllotaxisConfig = createDefaultOverlayPhyllotaxisConfig(profileKey);
   return {
     numPoints: Math.max(1, Math.round(fuzzyBoidsConfig.numBoids)),
-    radiusPx: Math.max(48, fuzzyBoidsConfig.spawnRadiusPx * 1.12),
-    radiusFalloff: 0.5,
+    radiusPx: Math.max(defaultPhyllotaxisConfig.radiusPx, fuzzyBoidsConfig.spawnRadiusPx),
+    radiusFalloff: defaultPhyllotaxisConfig.radiusFalloff,
     angleOffsetDeg: 0,
     animationEnabled: true,
     animationSpeedDegPerSecond: 8
@@ -325,7 +385,8 @@ export function getOverlaySceneFamilyKeyForBackgroundOperator(
 
 export function createDefaultOverlayBackgroundGraph(
   sceneFamilyKey: OverlaySceneFamilyKey = DEFAULT_OVERLAY_SCENE_FAMILY_KEY,
-  sceneFamilyConfigs: OverlaySceneFamilyConfigs = createDefaultOverlaySceneFamilyConfigs()
+  sceneFamilyConfigs: OverlaySceneFamilyConfigs = createDefaultOverlaySceneFamilyConfigs(),
+  profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY
 ): OverlayBackgroundGraph {
   switch (sceneFamilyKey) {
     case "phyllotaxis":
@@ -345,7 +406,7 @@ export function createDefaultOverlayBackgroundGraph(
           {
             id: OVERLAY_BACKGROUND_FUZZY_SEED_NODE_ID,
             operatorKey: OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY,
-            params: createDefaultOverlayFuzzySeedConfig(sceneFamilyConfigs.fuzzyBoids)
+            params: createDefaultOverlayFuzzySeedConfig(sceneFamilyConfigs.fuzzyBoids, profileKey)
           },
           {
             id: OVERLAY_BACKGROUND_FUZZY_BOIDS_NODE_ID,
@@ -581,7 +642,7 @@ function normalizeOverlayPhyllotaxisConfig(
   const rawPhyllotaxis = isRecord(rawConfig) ? rawConfig : {};
   return {
     numPoints: Math.max(1, Math.round(normalizeOverlayNumber(rawPhyllotaxis.numPoints, fallbackConfig.numPoints))),
-    radiusPx: normalizeOverlayNumber(rawPhyllotaxis.radiusPx, fallbackConfig.radiusPx),
+    radiusPx: Math.max(normalizeOverlayNumber(rawPhyllotaxis.radiusPx, fallbackConfig.radiusPx), fallbackConfig.radiusPx),
     radiusFalloff: normalizeOverlayNumber(rawPhyllotaxis.radiusFalloff, fallbackConfig.radiusFalloff),
     angleOffsetDeg: normalizeOverlayNumber(rawPhyllotaxis.angleOffsetDeg, fallbackConfig.angleOffsetDeg),
     animationEnabled: normalizeOverlayBoolean(rawPhyllotaxis.animationEnabled, fallbackConfig.animationEnabled),
@@ -600,28 +661,31 @@ function normalizeOverlayFuzzyBoidsConfig(
   return {
     numBoids: Math.max(1, Math.round(normalizeOverlayNumber(rawFuzzyBoids.numBoids, fallbackConfig.numBoids))),
     seed: Math.max(0, Math.round(normalizeOverlayNumber(rawFuzzyBoids.seed, fallbackConfig.seed))),
+    subSteps: Math.max(1, Math.round(normalizeOverlayNumber(rawFuzzyBoids.subSteps, fallbackConfig.subSteps))),
     spawnRadiusPx: normalizeOverlayNumber(rawFuzzyBoids.spawnRadiusPx, fallbackConfig.spawnRadiusPx),
     staggerStartSeconds: normalizeOverlayNumber(rawFuzzyBoids.staggerStartSeconds, fallbackConfig.staggerStartSeconds),
-    initialSpeedPxPerSecond: normalizeOverlayNumber(rawFuzzyBoids.initialSpeedPxPerSecond, fallbackConfig.initialSpeedPxPerSecond),
+    initialSpeed: normalizeOverlayNumber(rawFuzzyBoids.initialSpeed, fallbackConfig.initialSpeed),
     initialSpeedJitter: normalizeOverlayNumber(rawFuzzyBoids.initialSpeedJitter, fallbackConfig.initialSpeedJitter),
-    minSpeedPxPerSecond: normalizeOverlayNumber(rawFuzzyBoids.minSpeedPxPerSecond, fallbackConfig.minSpeedPxPerSecond),
-    maxSpeedPxPerSecond: normalizeOverlayNumber(rawFuzzyBoids.maxSpeedPxPerSecond, fallbackConfig.maxSpeedPxPerSecond),
-    maxAccelerationPxPerSecond2: normalizeOverlayNumber(
-      rawFuzzyBoids.maxAccelerationPxPerSecond2,
-      fallbackConfig.maxAccelerationPxPerSecond2
-    ),
     massMin: normalizeOverlayNumber(rawFuzzyBoids.massMin, fallbackConfig.massMin),
     massMax: normalizeOverlayNumber(rawFuzzyBoids.massMax, fallbackConfig.massMax),
     pscaleMin: normalizeOverlayNumber(rawFuzzyBoids.pscaleMin, fallbackConfig.pscaleMin),
     pscaleMax: normalizeOverlayNumber(rawFuzzyBoids.pscaleMax, fallbackConfig.pscaleMax),
-    separationRadiusPx: normalizeOverlayNumber(rawFuzzyBoids.separationRadiusPx, fallbackConfig.separationRadiusPx),
-    separationStrength: normalizeOverlayNumber(rawFuzzyBoids.separationStrength, fallbackConfig.separationStrength),
-    alignmentRadiusPx: normalizeOverlayNumber(rawFuzzyBoids.alignmentRadiusPx, fallbackConfig.alignmentRadiusPx),
-    alignmentStrength: normalizeOverlayNumber(rawFuzzyBoids.alignmentStrength, fallbackConfig.alignmentStrength),
-    cohesionRadiusPx: normalizeOverlayNumber(rawFuzzyBoids.cohesionRadiusPx, fallbackConfig.cohesionRadiusPx),
-    cohesionStrength: normalizeOverlayNumber(rawFuzzyBoids.cohesionStrength, fallbackConfig.cohesionStrength),
-    centerPullStrength: normalizeOverlayNumber(rawFuzzyBoids.centerPullStrength, fallbackConfig.centerPullStrength),
-    maxNeighbors: Math.max(1, Math.round(normalizeOverlayNumber(rawFuzzyBoids.maxNeighbors, fallbackConfig.maxNeighbors))),
+    maxNeighbors: Math.max(0, Math.round(normalizeOverlayNumber(rawFuzzyBoids.maxNeighbors, fallbackConfig.maxNeighbors))),
+    separationMinDist: normalizeOverlayNumber(rawFuzzyBoids.separationMinDist, fallbackConfig.separationMinDist),
+    separationMaxDist: normalizeOverlayNumber(rawFuzzyBoids.separationMaxDist, fallbackConfig.separationMaxDist),
+    separationMaxStrength: normalizeOverlayNumber(rawFuzzyBoids.separationMaxStrength, fallbackConfig.separationMaxStrength),
+    alignNearThreshold: normalizeOverlayNumber(rawFuzzyBoids.alignNearThreshold, fallbackConfig.alignNearThreshold),
+    alignFarThreshold: normalizeOverlayNumber(rawFuzzyBoids.alignFarThreshold, fallbackConfig.alignFarThreshold),
+    alignSpeedThreshold: normalizeOverlayNumber(rawFuzzyBoids.alignSpeedThreshold, fallbackConfig.alignSpeedThreshold),
+    cohesionMinDist: normalizeOverlayNumber(rawFuzzyBoids.cohesionMinDist, fallbackConfig.cohesionMinDist),
+    cohesionMaxDist: normalizeOverlayNumber(rawFuzzyBoids.cohesionMaxDist, fallbackConfig.cohesionMaxDist),
+    cohesionMaxAccel: normalizeOverlayNumber(rawFuzzyBoids.cohesionMaxAccel, fallbackConfig.cohesionMaxAccel),
+    attractToOrigin: normalizeOverlayBoolean(rawFuzzyBoids.attractToOrigin, fallbackConfig.attractToOrigin),
+    minSpeedLimit: normalizeOverlayNumber(rawFuzzyBoids.minSpeedLimit, fallbackConfig.minSpeedLimit),
+    maxSpeedLimit: normalizeOverlayNumber(rawFuzzyBoids.maxSpeedLimit, fallbackConfig.maxSpeedLimit),
+    minAccelLimit: normalizeOverlayNumber(rawFuzzyBoids.minAccelLimit, fallbackConfig.minAccelLimit),
+    maxAccelLimit: normalizeOverlayNumber(rawFuzzyBoids.maxAccelLimit, fallbackConfig.maxAccelLimit),
+    dotSizePx: Math.max(0.5, normalizeOverlayNumber(rawFuzzyBoids.dotSizePx, fallbackConfig.dotSizePx)),
     boundsKind: normalizeOverlayFuzzyBoidsBoundsKind(rawFuzzyBoids.boundsKind, fallbackConfig.boundsKind),
     boundsRadiusPx: normalizeOverlayNumber(rawFuzzyBoids.boundsRadiusPx, fallbackConfig.boundsRadiusPx),
     boundsMarginPx: normalizeOverlayNumber(rawFuzzyBoids.boundsMarginPx, fallbackConfig.boundsMarginPx),
@@ -643,15 +707,18 @@ function normalizeOverlayScatterConfig(
     distributionMode: normalizeOverlayScatterDistributionMode(rawScatter.distributionMode, fallbackConfig.distributionMode),
     marginPx: normalizeOverlayNumber(rawScatter.marginPx, fallbackConfig.marginPx),
     shapeKind: normalizeOverlayScatterShapeKind(rawScatter.shapeKind, fallbackConfig.shapeKind),
-    widthPx: normalizeOverlayNumber(rawScatter.widthPx, fallbackConfig.widthPx),
-    heightPx: normalizeOverlayNumber(rawScatter.heightPx, fallbackConfig.heightPx),
+    widthPx: Math.max(normalizeOverlayNumber(rawScatter.widthPx, fallbackConfig.widthPx), fallbackConfig.widthPx),
+    heightPx: Math.max(normalizeOverlayNumber(rawScatter.heightPx, fallbackConfig.heightPx), fallbackConfig.heightPx),
     cornerRadiusPx: normalizeOverlayNumber(rawScatter.cornerRadiusPx, fallbackConfig.cornerRadiusPx),
     svgPath: normalizeOverlayDocumentString(rawScatter.svgPath, fallbackConfig.svgPath)
   };
 }
 
-export function normalizeOverlaySceneFamilyConfigs(rawConfigs: unknown): OverlaySceneFamilyConfigs {
-  const defaults = createDefaultOverlaySceneFamilyConfigs();
+export function normalizeOverlaySceneFamilyConfigs(
+  rawConfigs: unknown,
+  profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY
+): OverlaySceneFamilyConfigs {
+  const defaults = createDefaultOverlaySceneFamilyConfigs(profileKey);
   if (!isRecord(rawConfigs)) {
     return defaults;
   }
@@ -883,14 +950,14 @@ export function normalizeOverlayDocumentProject<
     const activeTargetId = fallbackTargets.find((target) => target.outputProfileKey === snapshot.outputProfileKey)?.id
       ?? fallbackTargets[0]?.id
       ?? getOverlayDocumentTargetId(snapshot.outputProfileKey);
-    const sceneFamilyConfigs = createDefaultOverlaySceneFamilyConfigs();
+    const sceneFamilyConfigs = createDefaultOverlaySceneFamilyConfigs(snapshot.outputProfileKey);
 
     return {
       sceneFamilyKey: DEFAULT_OVERLAY_SCENE_FAMILY_KEY,
       activeTargetId,
       targets: fallbackTargets,
       sceneFamilyConfigs,
-      backgroundGraph: createDefaultOverlayBackgroundGraph(DEFAULT_OVERLAY_SCENE_FAMILY_KEY, sceneFamilyConfigs)
+      backgroundGraph: createDefaultOverlayBackgroundGraph(DEFAULT_OVERLAY_SCENE_FAMILY_KEY, sceneFamilyConfigs, snapshot.outputProfileKey)
     };
   }
 
@@ -952,7 +1019,7 @@ export function normalizeOverlayDocumentProject<
     ? rawProject.activeTargetId
     : snapshotTargetId;
   const sceneFamilyKey = normalizeOverlaySceneFamilyKey(rawProject.sceneFamilyKey);
-  const sceneFamilyConfigs = normalizeOverlaySceneFamilyConfigs(rawProject.sceneFamilyConfigs);
+  const sceneFamilyConfigs = normalizeOverlaySceneFamilyConfigs(rawProject.sceneFamilyConfigs, snapshot.outputProfileKey);
 
   return {
     sceneFamilyKey,

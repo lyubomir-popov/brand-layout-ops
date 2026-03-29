@@ -56,6 +56,14 @@ body {
   overscroll-behavior: contain;
 }
 
+/* Override baseline-foundry .bf-panel.is-fill { min-block-size: 100% }
+   which makes the panel grow unbounded inside the fixed-height aside,
+   preventing .bf-panel__content overflow: auto from ever triggering. */
+.mascot-app .bf-panel.is-fill {
+  block-size: 100%;
+  min-block-size: 0;
+}
+
 .mascot-app .bf-panel__content {
   min-block-size: 0;
   overflow: auto;

@@ -22,7 +22,7 @@ export function buildGridSection(ctx: PreviewAppContext): HTMLElement {
   const grid = state.params.grid;
 
   const displayFields = document.createElement("div");
-  displayFields.className = "grid-row";
+  displayFields.className = "bf-grid";
 
   displayFields.append(wrapCol(1, createCheckboxFormGroup(
     "Show Overlay",
@@ -57,7 +57,7 @@ export function buildGridSection(ctx: PreviewAppContext): HTMLElement {
   body.append(displayFields);
 
   const fields = document.createElement("div");
-  fields.className = "grid-row";
+  fields.className = "bf-grid";
 
   fields.append(wrapCol(1, createFormGroup("Baseline (px)",
     createNumberInput(grid.baselineStepPx, { min: 1, max: 48, step: 1 }, v => {
@@ -97,7 +97,7 @@ export function buildGridSection(ctx: PreviewAppContext): HTMLElement {
   body.append(fields);
 
   const margins = document.createElement("div");
-  margins.className = "grid-row";
+  margins.className = "bf-grid";
 
   margins.append(wrapCol(1, createFormGroup("Top Margin",
     createNumberInput(grid.marginTopBaselines, { min: 0, max: 48, step: 1 }, v => {
@@ -128,7 +128,7 @@ export function buildGridSection(ctx: PreviewAppContext): HTMLElement {
   if (grid.fitWithinSafeArea !== false) {
     const safeArea = state.params.safeArea;
     const safeFields = document.createElement("div");
-    safeFields.className = "grid-row";
+    safeFields.className = "bf-grid";
 
     safeFields.append(wrapCol(1, createFormGroup("Safe Top",
       createNumberInput(safeArea.top, { min: 0, step: 1 }, v => {

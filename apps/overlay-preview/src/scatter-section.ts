@@ -49,7 +49,7 @@ export function buildScatterSection(ctx: PreviewAppContext): HTMLElement {
   }
 
   const pointFields = document.createElement("div");
-  pointFields.className = "grid-row";
+  pointFields.className = "bf-grid";
 
   pointFields.append(wrapCol(1, createFormGroup("Point Count",
     createNumberInput(sc.pointCount, { min: 1, max: 4000, step: 1 }, (value) => {
@@ -81,7 +81,7 @@ export function buildScatterSection(ctx: PreviewAppContext): HTMLElement {
   body.append(pointFields);
 
   const shapeFields = document.createElement("div");
-  shapeFields.className = "grid-row";
+  shapeFields.className = "bf-grid";
 
   shapeFields.append(wrapCol(1, createFormGroup("Shape",
     createSelectInput(sc.shapeKind, [

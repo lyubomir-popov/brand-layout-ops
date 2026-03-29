@@ -64,14 +64,9 @@ If the gap is visual, run both apps and compare screenshots before editing.
 
 **Phase 4 — Editor interaction port:** Done. Selection, drag, resize, inline editing, shift-lock, guide toggle, style labels, text CRUD, CSV drafts with writeback staging, file-backed document workflow (open/save/save-as/duplicate/reopen), per-profile output profiles, content-format buckets, preset save/update/delete/import/export, keyboard shortcuts, and baseline-aware text-box inset all landed. Document model carries shared project metadata (scene family, targets, sceneFamilyConfigs, backgroundGraph) through the overlay-document envelope.
 
-### Phase 5. Port the animation background as coarse operators (in progress)
+### Phase 5. Port the animation background as coarse operators (done)
 
 Completed: `operator-orbits`, `operator-spokes`, coarse motion preview integration. Mascot-specific motion stays in adapter/scene-family layer until reuse is concrete. Mascot fade now multiplies through whole scene. First-pass vignette overlay landed.
-
-Remaining:
-- [ ] Finish `operator-ubuntu-summit-animation` as the coarse scene-family operator for the full reference sequence (mascot, head shake, blink, dot splash, spokes, radio lines, release labels, construction lines, finale, screensaver loop).
-- [ ] Match the current animation background look closely enough for parity signoff.
-- [ ] Halo-field behavioral parity: remaining mascot-linked choreography, finale-detail passes, screensaver pulsing, and visual-timing polish.
 
 ### Phase 6. Verify parity (in progress)
 
@@ -123,9 +118,8 @@ Consolidated from the 2026-03-27 cross-repo audit and subsequent delta passes. D
 
 | # | Gap | Status | Remaining work |
 |---|-----|--------|----------------|
-| 14 | Phyllotaxis | PARTIAL | Renders through `scene-family-preview.ts`. Missing: arm lines are preview-only connective geometry — should be removed or demoted. Points-only rendering needed. |
-| 15 | Fuzzy-boids | PARTIAL | Renders and has operator panel. Missing: Houdini/VEX parity audit — force semantics (separation, alignment, cohesion, bounds) may not match original. |
-| 16 | Scatter | PARTIAL | Renders as document scene family. Missing: relax/repulsion pass for even distribution, full-frame behavior instead of confined centered shape. |
+| 14 | Fuzzy-boids | DONE | VEX-faithful rewrite landed: separation uses distance-normalized min/max range with quadratic falloff (matches `chramp` approximation), alignment uses per-neighbor fuzzy heading correction (cross-product left/right steer) plus per-neighbor speed matching, cohesion attracts toward flock centroid with distance-based accel (supports `attractToOrigin` toggle), integration matches VEX order (`accel * mass * dt`, speed clamp, flatten z). Old Reynolds-style steering removed. UI panel restructured to expose VEX parameter groups (separation min/max dist, align near/far threshold, cohesion min/max dist + max accel, integration min/max accel limits). |
+| 15 | Scatter | PARTIAL | Renders as a clean white point-field scene family with full-frame default coverage. Missing: relax/repulsion pass for even distribution so the field stops clumping like simple random scatter. |
 
 ### Architectural note
 
@@ -149,8 +143,8 @@ Active architectural risks requiring attention during the next work cycle.
 | Signal | Severity | Detail |
 |--------|----------|--------|
 | `main.ts` at 4,147 lines | **High** | Section builders extracted, but state management (~12 CSV draft functions), presets, authoring interaction (~350 lines), export pipeline (~340 lines), and automation API (~190 lines) remain. Next extraction targets: authoring controller, export controller, source-default orchestration. |
-| `operator-overlay-layout/src/index.ts` at 2,187 lines | **Medium** | Largest package file. Accumulated document normalization, bucket management, field defaults, CSV resolution, and seeded layouts. Internal decomposition into sub-modules would reduce risk without changing the package boundary. |
-| `scene-family-preview.ts` at 983 lines | **Medium** | Single adapter serving phyllotaxis, fuzzy-boids, and scatter. As scene families grow more distinct, this should split per-family. Also still draws preview-only connective geometry (arm lines, velocity trails, shape guides) that does not fit the intended full-scene layer behavior. |
+| `operator-overlay-layout/src/index.ts` at 2,215 lines | **Medium** | Largest package file. Accumulated document normalization, bucket management, field defaults, CSV resolution, and seeded layouts. Internal decomposition into sub-modules would reduce risk without changing the package boundary. |
+| `scene-family-preview.ts` at 518 lines | **Medium** | Single adapter serving phyllotaxis, fuzzy-boids, and scatter. The preview-only connective geometry and color-phasing pass are gone, but per-family rendering and simulation hookup still live in one file and should split as those adapters diverge. |
 | `halo-config-section.ts` at 611 lines | **Low** | Largest section builder — 3–4× the section average. Not urgent but heading toward its own complexity problem. |
 
 ## Preview Shell Extraction — Current Status
@@ -165,7 +159,8 @@ Active architectural risks requiring attention during the next work cycle.
 - Halo rendering in `halo-renderer.ts`, scene-family preview in `scene-family-preview.ts`.
 - The real overlay preview now consumes the canonical `baseline-foundry` surface classes for stage shell, fill-height panel shell, choice rows, option cards, tight helper text, compact color input, and nowrap action rows; the local alias layer for those patterns has been removed from `apps/overlay-preview/src/styles.css`.
 - The real overlay preview now also uses shipped `baseline-foundry` drawer and pinned-aside runtime: overlay close/backdrop behavior comes from `initPanelDrawers()`, pinned resize behavior comes from `initResizableAsides()`, and the mobile shell now has a real `Controls` toggle instead of relying only on local close-state bookkeeping.
-- Remaining downstream shell seam is now mostly shell policy: the preview still decides when the inspector docks vs overlays, and it still keeps the `Tab` shortcut as a local shell toggle.
+- Inspector rows in the live preview now resolve through the canonical `bf-grid` surface, with `bf-grid-scope` applied at `bf-panel__content` and `bf-accordion__panel` so local parameter sections keep the same keyline contract as the surrounding shell instead of using a separate dense control-grid abstraction.
+- The inspector overlay panel now has a working internal scroll chain (`.bf-panel.is-fill` constrained inside the aside), and the local shell toggle moved off `Tab` to `P` so normal keyboard form navigation works again.
 
 ### Remaining extraction targets
 
@@ -226,9 +221,8 @@ Concrete, dependency-ordered steps. Work top-down within each lane. Lanes are in
 
 | Step | Task | Depends on | Exit criteria |
 |------|------|------------|---------------|
-| B1 | Remove preview-only connective geometry from `scene-family-preview.ts` (phyllotaxis arm lines, scatter shape guides, boids velocity trails) | — | Non-halo previews render as clean full-stage point fields |
-| B2 | Fuzzy-boids Houdini/VEX parity audit: verify separation, alignment, cohesion, bounds against original | B1 | Force semantics documented as matching or intentionally diverged |
-| B3 | Scatter relax/repulsion pass and full-frame behavior | B1 | Points distribute evenly, not clumped in centered shape |
+| B1 | ~~Fuzzy-boids Houdini/VEX parity audit~~ | — | **DONE.** VEX-faithful rewrite: distance-normalized separation with quadratic falloff, fuzzy heading+speed alignment, centroid cohesion, VEX-order semi-implicit Euler integration. `chramp` approximated as `(1-t)^2`. `subSteps` mirrors Houdini Solver SOP SubSteps. World-space coordinate conversion inside `stepBoids` preserves Houdini's intentional dimensional mixing — raw Houdini parameter values work directly via `worldScale` (px-per-world-unit) bridge. Follow-up interactivity polish also landed: topology-only preview resets, structural-only sim cache keys, one-frame post-reset cap, zero-allocation top-k neighbor selection, dot-size slider, interactive preview defaults (`numBoids: 50`, `subSteps: 2`), and seed fields no longer hard-cap total boid count. |
+| B2 | Scatter relax/repulsion pass | — | Points distribute evenly across the full frame without centered clumping |
 
 ### Lane C — Preview shell concentration reduction
 
@@ -252,6 +246,7 @@ Concrete, dependency-ordered steps. Work top-down within each lane. Lanes are in
 
 - EQ-1 through EQ-12 are complete.
 - Key completed milestones: baseline-foundry shell swap, operator selector, operator-owned fuzzy-boids/phyllotaxis/scatter panels, document-owned scene-family configs, persisted background graph, and the list-first network view.
+- Pre-B cleanup landed: `scene-family-preview.ts` now renders non-halo families as point-field-only layers without preview guide or connective geometry, and the follow-up source cleanup removed palette-driven boid phasing while moving non-halo defaults toward full-frame white-point output.
 - The downstream shell cleanup pass is materially complete for both surface classes and baseline shell runtime; remaining preview-shell debt is concentrated in dock-mode policy and other higher-level controllers rather than local alias CSS.
 - Use git history for audit detail instead of expanding the live plan.
 

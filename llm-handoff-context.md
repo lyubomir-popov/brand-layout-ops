@@ -47,14 +47,15 @@ If you want the shortest high-level snapshot, read this file first.
 **Stage 1 — Parity Rebuild** is in progress. The cold-start facts that still matter are:
 
 - The preview is usable for real parity work: text or logo selection, drag, resize, inline editing, guides, per-profile overlay state, source-default writeback, and the existing export path are all working.
-- The real working artifact is now a local `.brand-layout-ops.json` file rather than browser-local preset state. Documents persist shared overlay metadata plus shared `project` state such as scene family, targets, `sceneFamilyConfigs`, and the saved `backgroundGraph`.
+- The real working artifact is now a local `.brand-layout-ops.json` file rather than browser-local preset state. Documents persist shared overlay metadata plus shared `project` state such as scene family, targets, `sceneFamilyConfigs`, and the saved `backgroundGraph`; operator settings already live in that document-owned project state, and the future network view is intended to sit on top of the same persisted graph rather than introduce a second model.
 - Non-halo scene families (`phyllotaxis`, `fuzzy-boids`, `scatter`) now render through `apps/overlay-preview/src/scene-family-preview.ts` and are driven by operator-owned panels that write into the shared document project state.
 - The halo path now carries shared mascot fade across scene passes and has a first-pass vignette overlay, but the remaining Ubuntu Summit parity work is still mostly renderer-level scene fidelity and final overlay or layer behavior.
 - Current-stage shell drift is now clearer: section-builder extraction is substantially complete (12 modules), but authoring interaction, export/automation, and source-default orchestration still remain concentrated in `main.ts` (4,147 lines). The next refactor targets are concrete: authoring controller, export controller, then thin composition root.
-- Current-stage non-halo drift is also explicit: `scene-family-preview.ts` still renders phyllotaxis arm lines, scatter shape guides, and fuzzy-boids link or velocity helpers that should be treated as fidelity cleanup rather than canonical output.
-- Current-stage package drift: `operator-overlay-layout/src/index.ts` has grown to 2,187 lines — the largest package file — and needs internal decomposition into sub-modules for document normalization, bucket management, field defaults, and CSV resolution.
+- Current-stage non-halo cleanup landed in three passes: `scene-family-preview.ts` now renders phyllotaxis, scatter, and fuzzy-boids as clean point-field layers without preview-only guide geometry, boids no longer inherit palette color or index-ramped `pscale`, inactive boid ghost dots are gone, and non-halo defaults now bias toward full-frame coverage with white point output. The fuzzy-boids VEX-faithful rewrite is complete: `stepBoids` internally converts pixel-space positions ↔ Houdini-like world coordinates via a `worldScale` bridge (px per world unit), preserving the Houdini VEX's intentional dimensional mixing so raw Houdini values work directly. Force computation mirrors the Houdini solver wrangle order — distance-normalized separation with `(1-t)^2` falloff, per-neighbor fuzzy heading correction via cross-product left/right steer plus speed matching, centroid-based cohesion with `attractToOrigin` toggle, and VEX-order semi-implicit Euler integration (`accel * mass * dt` then speed clamp then flatten z). Bounds applied post-accel-clamp as a pixel-space override. `subSteps` still mirrors Houdini Solver SOP SubSteps, but preview defaults are now intentionally tuned for interactivity (`numBoids: 50`, `subSteps: 2`) rather than strict screenshot parity, a dot-size slider now exists in the boids panel, and connected seed fields no longer hard-cap total boid count. Remaining B-lane work is a real relax/repulsion pass for `scatter`.
+- Current-stage package drift: `operator-overlay-layout/src/index.ts` has grown to 2,215 lines — the largest package file — and needs internal decomposition into sub-modules for document normalization, bucket management, field defaults, and CSV resolution.
 - `baseline-foundry` now owns most preview-shell surface styling and shell runtime in the real app as well, not just in isolated demos: the overlay preview now uses the shipped stage shell, fill-height panel shell, choice rows, option cards, tight help text, compact color input, nowrap action row, drawer overlay, and resizable pinned-aside runtime instead of local aliases or one-off shell mechanics.
-- The remaining shell seam is now mostly policy rather than component/runtime implementation: the preview still decides when the inspector docks vs overlays, and the `Tab` shortcut still acts as a local shell toggle.
+- Inspector parameter rows now reuse the canonical `bf-grid` surface inside `bf-grid-scope` panel and accordion containers, so subpanel keylines resolve against the same grid contract as the parent shell instead of a separate dense control-grid surface.
+- The remaining shell seam is now mostly policy rather than component/runtime implementation: the preview still decides when the inspector docks vs overlays, but the local panel toggle is now on `P` so `Tab` is free for normal form navigation again.
 - The next product shift is toward a clearer authoring shell with ordered visual layers and dedicated project or export chrome instead of more inspector-local special cases.
 
 Detailed parity gaps, audit history, deviation notes, and preview-shell extraction status live in `docs/rebuild-plan.md`.
@@ -68,15 +69,15 @@ All earlier EQ-1 through EQ-12 items are complete. The queue is now structured a
 ### Lane summary
 
 - **Lane A — Halo parity (highest priority):** Finish `operator-ubuntu-summit-animation` scene descriptor → halo renderer fidelity → screensaver state machine → vignette controls → safe-area fill layering.
-- **Lane B — Non-halo fidelity:** Remove preview-only connective geometry → fuzzy-boids VEX audit → scatter relax/full-frame.
+- **Lane B — Non-halo fidelity:** ~~Fuzzy-boids VEX audit~~ (done) → scatter relax/repulsion.
 - **Lane C — Preview shell reduction:** Extract authoring interaction controller → extract export/automation controller → extract source-default orchestration → dead panel cleanup → `operator-overlay-layout` internal decomposition.
 - **Lane D — Authoring shell (after A+C progress):** Separate playback/export/default controls → shell chrome for file actions → document vs project naming.
 
 ### Drift signals to watch
 
 - `main.ts` is 4,147 lines — next extractions are authoring interaction (~350 lines) and export+automation (~530 lines).
-- `operator-overlay-layout/src/index.ts` is 2,187 lines — needs internal decomposition into sub-modules.
-- `scene-family-preview.ts` still draws preview-only connective geometry that doesn't match intended full-scene layer behavior.
+- `operator-overlay-layout/src/index.ts` is 2,215 lines — needs internal decomposition into sub-modules.
+- `scene-family-preview.ts` is down to 518 lines after the point-field and white-dot cleanup, but it still centralizes all non-halo family rendering and should split per family when those adapters diverge further.
 
 ### Standing rules
 

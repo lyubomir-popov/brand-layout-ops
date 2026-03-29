@@ -1,4 +1,4 @@
-import type { OperatorDefinition, PointField, Vector3 } from "@brand-layout-ops/core-types";
+import type { ColorRgba, OperatorDefinition, PointField, Vector3 } from "@brand-layout-ops/core-types";
 
 export interface PhyllotaxisParams {
   numPoints: number;
@@ -7,6 +7,13 @@ export interface PhyllotaxisParams {
   angleOffsetDeg: number;
   origin?: Partial<Vector3>;
 }
+
+const DEFAULT_PHYLLOTAXIS_POINT_COLOR: ColorRgba = {
+  r: 255,
+  g: 255,
+  b: 255,
+  a: 1
+};
 
 function toVector3(value: Partial<Vector3> | null | undefined): Vector3 {
   return {
@@ -62,7 +69,8 @@ export function resolvePhyllotaxisField(
       position,
       attributes: {
         philo_index: index,
-        philo_radius: pointRadius
+        philo_radius: pointRadius,
+        color: DEFAULT_PHYLLOTAXIS_POINT_COLOR
       }
     });
     maxRadius = Math.max(maxRadius, pointRadius);

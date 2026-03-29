@@ -1,4 +1,5 @@
 import type {
+  ColorRgba,
   OperatorDefinition,
   PointField,
   PointRecord,
@@ -66,6 +67,13 @@ export interface ScatterPathShape {
 }
 
 export type ScatterResolvedShape = ScatterEllipseShape | ScatterRectShape | ScatterPathShape;
+
+const DEFAULT_SCATTER_POINT_COLOR: ColorRgba = {
+  r: 255,
+  g: 255,
+  b: 255,
+  a: 1
+};
 
 function toNumber(value: unknown, fallback: number): number {
   const numeric = Number(value);
@@ -463,7 +471,8 @@ export function resolveScatterPointField(params: ScatterParams, centroidInput?: 
         scatter_density_weight: densityWeight,
         shape_kind: shape.kind,
         distribution_mode: distributionMode,
-        pscale: 0.55 + densityWeight * 0.75
+        pscale: 0.55 + densityWeight * 0.75,
+        color: DEFAULT_SCATTER_POINT_COLOR
       }
     });
   }

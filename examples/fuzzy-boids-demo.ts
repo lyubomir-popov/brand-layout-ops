@@ -5,6 +5,10 @@ import { FUZZY_BOIDS_OPERATOR_KEY, fuzzyBoidsOperator } from "../packages/operat
 import { phyllotaxisOperator } from "../packages/operator-phyllotaxis/src/index.js";
 
 const PROTOTYPE_LIBRARY_OPERATOR_KEY = "demo.prototype-library";
+const FRAME_WIDTH_PX = 1280;
+const FRAME_HEIGHT_PX = 720;
+const FRAME_CENTER = { x: FRAME_WIDTH_PX * 0.5, y: FRAME_HEIGHT_PX * 0.5, z: 0 };
+const FULL_FRAME_RADIUS_PX = Math.ceil(Math.hypot(FRAME_WIDTH_PX, FRAME_HEIGHT_PX) * 0.5);
 
 const prototypeLibrary: PrototypeLibrary = {
   prototypes: [
@@ -53,10 +57,10 @@ const graph: OperatorGraph = {
       operatorKey: "operator.phyllotaxis",
       params: {
         numPoints: 48,
-        radius: 180,
+        radius: FULL_FRAME_RADIUS_PX,
         radiusFalloff: 0.55,
         angleOffsetDeg: 0,
-        origin: { x: 340, y: 260, z: 0 }
+        origin: FRAME_CENTER
       }
     },
     {
@@ -65,37 +69,38 @@ const graph: OperatorGraph = {
       params: {
         timeSeconds: 3.5,
         deltaTimeSeconds: 1 / 24,
+        subSteps: 2,
+        worldScale: Math.min(FRAME_WIDTH_PX, FRAME_HEIGHT_PX) / 6,
         seed: 7,
-        spawnRadiusPx: 160,
-        staggerStartSeconds: 0.9,
-        initialSpeedPxPerSecond: 72,
-        initialSpeedJitter: 0.3,
-        minSpeedPxPerSecond: 28,
-        maxSpeedPxPerSecond: 140,
-        maxAccelerationPxPerSecond2: 96,
-        massMin: 0.8,
-        massMax: 1.2,
+        spawnRadiusPx: FULL_FRAME_RADIUS_PX,
+        staggerStartSeconds: 0,
+        initialSpeed: 9,
+        initialSpeedJitter: 0.25,
+        massMin: 0.85,
+        massMax: 1.15,
         pscaleMin: 0.45,
         pscaleMax: 1.15,
-        separationRadiusPx: 38,
-        separationStrength: 0.42,
-        alignmentRadiusPx: 92,
-        alignmentStrength: 0.085,
-        cohesionRadiusPx: 118,
-        cohesionStrength: 0.06,
-        centerPullStrength: 0.02,
-        maxNeighbors: 14,
+        maxNeighbors: 6,
+        separationMinDist: 0,
+        separationMaxDist: 5,
+        separationMaxStrength: 0.25,
+        alignNearThreshold: 1,
+        alignFarThreshold: 5,
+        alignSpeedThreshold: 50,
+        cohesionMinDist: 20,
+        cohesionMaxDist: 200,
+        cohesionMaxAccel: 2.5,
+        minSpeedLimit: 4,
+        maxSpeedLimit: 12,
+        minAccelLimit: 0,
+        maxAccelLimit: 50,
         bounds: {
-          kind: "radial",
-          radiusPx: 260,
-          marginPx: 56,
+          kind: "box",
+          widthPx: FRAME_WIDTH_PX,
+          heightPx: FRAME_HEIGHT_PX,
+          marginPx: 48,
           forcePxPerSecond2: 220
         },
-        palette: [
-          { r: 1, g: 0.88, b: 0.68, a: 1 },
-          { r: 0.8, g: 0.91, b: 1, a: 1 },
-          { r: 1, g: 0.98, b: 0.92, a: 0.95 }
-        ],
         prototypeIds: ["dot", "spark", "dot"]
       }
     },

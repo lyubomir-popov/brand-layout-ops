@@ -169,7 +169,7 @@ export function buildAccordionSectionEl(title: string): { root: HTMLElement; bod
   heading.append(tab);
 
   const body = document.createElement("section");
-  body.className = "bf-accordion__panel";
+  body.className = "bf-accordion__panel bf-grid-scope";
   body.id = sectionId;
   body.setAttribute("aria-hidden", "true");
   body.setAttribute("aria-labelledby", id);
@@ -210,7 +210,8 @@ export function setupAccordion(accordionContainer: HTMLElement): void {
 
 export function wrapCol(span: number, el: HTMLElement): HTMLElement {
   const wrapper = document.createElement("div");
-  wrapper.className = `col-${span}`;
+  const normalizedSpan = Math.max(1, Math.min(4, Math.round(span)));
+  wrapper.className = `bf-span-${normalizedSpan}`;
   wrapper.append(el);
   return wrapper;
 }

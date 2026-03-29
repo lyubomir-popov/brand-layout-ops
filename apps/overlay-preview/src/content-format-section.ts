@@ -24,7 +24,7 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
   const { state } = ctx;
 
   const formatFields = document.createElement("div");
-  formatFields.className = "grid-row";
+  formatFields.className = "bf-grid";
 
   formatFields.append(wrapCol(2, createFormGroup("Format",
     createSelectInput(

@@ -50,7 +50,7 @@ export function buildFuzzyBoidsSection(ctx: PreviewAppContext): HTMLElement {
 
   /* --- Flock --- */
   const flockFields = document.createElement("div");
-  flockFields.className = "grid-row";
+  flockFields.className = "bf-grid";
 
   flockFields.append(wrapCol(1, createFormGroup("Boid Count",
     createNumberInput(bc.numBoids, { min: 1, max: 2000, step: 1 }, v => update({ numBoids: Math.round(v) }))
@@ -58,6 +58,10 @@ export function buildFuzzyBoidsSection(ctx: PreviewAppContext): HTMLElement {
 
   flockFields.append(wrapCol(1, createFormGroup("Seed",
     createNumberInput(bc.seed, { min: 0, max: 9999, step: 1 }, v => update({ seed: Math.round(v) }))
+  )));
+
+  flockFields.append(wrapCol(1, createFormGroup("Sub Steps",
+    createNumberInput(bc.subSteps, { min: 1, max: 20, step: 1 }, v => update({ subSteps: Math.round(v) }))
   )));
 
   flockFields.append(wrapCol(1, createFormGroup("Spawn Radius",
@@ -68,14 +72,22 @@ export function buildFuzzyBoidsSection(ctx: PreviewAppContext): HTMLElement {
     createSliderInput(bc.staggerStartSeconds, { min: 0, max: 10, step: 0.1 }, v => update({ staggerStartSeconds: v }))
   )));
 
+  flockFields.append(wrapCol(1, createFormGroup("Max Neighbors",
+    createNumberInput(bc.maxNeighbors, { min: 0, max: 100, step: 1 }, v => update({ maxNeighbors: Math.round(v) }))
+  )));
+
+  flockFields.append(wrapCol(1, createFormGroup("Dot Size (px)",
+    createSliderInput(bc.dotSizePx, { min: 0.5, max: 12, step: 0.25 }, v => update({ dotSizePx: v }))
+  )));
+
   body.append(flockFields);
 
-  /* --- Speed --- */
+  /* --- Initial + Integration (VEX: INITIAL + INTEGRATE) --- */
   const speedFields = document.createElement("div");
-  speedFields.className = "grid-row";
+  speedFields.className = "bf-grid";
 
   speedFields.append(wrapCol(1, createFormGroup("Initial Speed",
-    createSliderInput(bc.initialSpeedPxPerSecond, { min: 0, max: 400, step: 1 }, v => update({ initialSpeedPxPerSecond: v }))
+    createSliderInput(bc.initialSpeed, { min: 0, max: 20, step: 0.5 }, v => update({ initialSpeed: v }))
   )));
 
   speedFields.append(wrapCol(1, createFormGroup("Speed Jitter",
@@ -83,60 +95,80 @@ export function buildFuzzyBoidsSection(ctx: PreviewAppContext): HTMLElement {
   )));
 
   speedFields.append(wrapCol(1, createFormGroup("Min Speed",
-    createSliderInput(bc.minSpeedPxPerSecond, { min: 0, max: 400, step: 1 }, v => update({ minSpeedPxPerSecond: v }))
+    createSliderInput(bc.minSpeedLimit, { min: 0, max: 50, step: 0.5 }, v => update({ minSpeedLimit: v }))
   )));
 
   speedFields.append(wrapCol(1, createFormGroup("Max Speed",
-    createSliderInput(bc.maxSpeedPxPerSecond, { min: 0, max: 600, step: 1 }, v => update({ maxSpeedPxPerSecond: v }))
+    createSliderInput(bc.maxSpeedLimit, { min: 0, max: 100, step: 0.5 }, v => update({ maxSpeedLimit: v }))
   )));
 
-  speedFields.append(wrapCol(1, createFormGroup("Max Accel.",
-    createSliderInput(bc.maxAccelerationPxPerSecond2, { min: 0, max: 600, step: 1 }, v => update({ maxAccelerationPxPerSecond2: v }))
+  speedFields.append(wrapCol(1, createFormGroup("Min Accel",
+    createSliderInput(bc.minAccelLimit, { min: 0, max: 100, step: 0.5 }, v => update({ minAccelLimit: v }))
+  )));
+
+  speedFields.append(wrapCol(1, createFormGroup("Max Accel",
+    createSliderInput(bc.maxAccelLimit, { min: 0, max: 200, step: 0.5 }, v => update({ maxAccelLimit: v }))
   )));
 
   body.append(speedFields);
 
-  /* --- Flocking forces --- */
-  const forceFields = document.createElement("div");
-  forceFields.className = "grid-row";
+  /* --- Separation (VEX: separation by n) --- */
+  const sepFields = document.createElement("div");
+  sepFields.className = "bf-grid";
 
-  forceFields.append(wrapCol(1, createFormGroup("Sep. Radius",
-    createSliderInput(bc.separationRadiusPx, { min: 0, max: 300, step: 1 }, v => update({ separationRadiusPx: v }))
+  sepFields.append(wrapCol(1, createFormGroup("Sep. Min Dist",
+    createSliderInput(bc.separationMinDist, { min: 0, max: 20, step: 0.1 }, v => update({ separationMinDist: v }))
   )));
 
-  forceFields.append(wrapCol(1, createFormGroup("Sep. Strength",
-    createSliderInput(bc.separationStrength, { min: 0, max: 3, step: 0.01 }, v => update({ separationStrength: v }))
+  sepFields.append(wrapCol(1, createFormGroup("Sep. Max Dist",
+    createSliderInput(bc.separationMaxDist, { min: 0.1, max: 50, step: 0.1 }, v => update({ separationMaxDist: v }))
   )));
 
-  forceFields.append(wrapCol(1, createFormGroup("Align Radius",
-    createSliderInput(bc.alignmentRadiusPx, { min: 0, max: 500, step: 1 }, v => update({ alignmentRadiusPx: v }))
+  sepFields.append(wrapCol(1, createFormGroup("Sep. Strength",
+    createSliderInput(bc.separationMaxStrength, { min: 0, max: 5, step: 0.01 }, v => update({ separationMaxStrength: v }))
   )));
 
-  forceFields.append(wrapCol(1, createFormGroup("Align Strength",
-    createSliderInput(bc.alignmentStrength, { min: 0, max: 3, step: 0.01 }, v => update({ alignmentStrength: v }))
+  body.append(sepFields);
+
+  /* --- Fuzzy Alignment (VEX: fuzzy alignment wrangle) --- */
+  const alignFields = document.createElement("div");
+  alignFields.className = "bf-grid";
+
+  alignFields.append(wrapCol(1, createFormGroup("Align Near",
+    createSliderInput(bc.alignNearThreshold, { min: 0, max: 20, step: 0.1 }, v => update({ alignNearThreshold: v }))
   )));
 
-  forceFields.append(wrapCol(1, createFormGroup("Cohesion Radius",
-    createSliderInput(bc.cohesionRadiusPx, { min: 0, max: 500, step: 1 }, v => update({ cohesionRadiusPx: v }))
+  alignFields.append(wrapCol(1, createFormGroup("Align Far",
+    createSliderInput(bc.alignFarThreshold, { min: 0.1, max: 50, step: 0.1 }, v => update({ alignFarThreshold: v }))
   )));
 
-  forceFields.append(wrapCol(1, createFormGroup("Cohesion Str.",
-    createSliderInput(bc.cohesionStrength, { min: 0, max: 3, step: 0.01 }, v => update({ cohesionStrength: v }))
+  alignFields.append(wrapCol(1, createFormGroup("Align Speed",
+    createSliderInput(bc.alignSpeedThreshold, { min: 0, max: 200, step: 1 }, v => update({ alignSpeedThreshold: v }))
   )));
 
-  forceFields.append(wrapCol(1, createFormGroup("Center Pull",
-    createSliderInput(bc.centerPullStrength, { min: 0, max: 3, step: 0.01 }, v => update({ centerPullStrength: v }))
+  body.append(alignFields);
+
+  /* --- Cohesion (VEX: cohesion wrangle) --- */
+  const cohFields = document.createElement("div");
+  cohFields.className = "bf-grid";
+
+  cohFields.append(wrapCol(1, createFormGroup("Coh. Min Dist",
+    createSliderInput(bc.cohesionMinDist, { min: 0, max: 100, step: 0.5 }, v => update({ cohesionMinDist: v }))
   )));
 
-  forceFields.append(wrapCol(1, createFormGroup("Max Neighbors",
-    createNumberInput(bc.maxNeighbors, { min: 1, max: 100, step: 1 }, v => update({ maxNeighbors: Math.round(v) }))
+  cohFields.append(wrapCol(1, createFormGroup("Coh. Max Dist",
+    createSliderInput(bc.cohesionMaxDist, { min: 1, max: 500, step: 1 }, v => update({ cohesionMaxDist: v }))
   )));
 
-  body.append(forceFields);
+  cohFields.append(wrapCol(1, createFormGroup("Coh. Max Accel",
+    createSliderInput(bc.cohesionMaxAccel, { min: 0, max: 20, step: 0.1 }, v => update({ cohesionMaxAccel: v }))
+  )));
+
+  body.append(cohFields);
 
   /* --- Particle scale + mass --- */
   const scaleFields = document.createElement("div");
-  scaleFields.className = "grid-row";
+  scaleFields.className = "bf-grid";
 
   scaleFields.append(wrapCol(1, createFormGroup("P-Scale Min",
     createSliderInput(bc.pscaleMin, { min: 0.05, max: 5, step: 0.05 }, v => update({ pscaleMin: v }))
@@ -158,29 +190,38 @@ export function buildFuzzyBoidsSection(ctx: PreviewAppContext): HTMLElement {
 
   /* --- Bounds --- */
   const boundsFields = document.createElement("div");
-  boundsFields.className = "grid-row";
+  boundsFields.className = "bf-grid";
 
   boundsFields.append(wrapCol(1, createFormGroup("Bounds",
     createSelectInput(bc.boundsKind, [
       { value: "none", label: "None" },
-      { value: "radial", label: "Radial" },
-      { value: "box", label: "Box" }
+      { value: "box", label: "Box" },
+      { value: "radial", label: "Radial" }
     ], v => update({ boundsKind: v as FuzzyBoidsPreviewConfig["boundsKind"] }))
   )));
 
-  boundsFields.append(wrapCol(1, createFormGroup("Bounds Radius",
-    createSliderInput(bc.boundsRadiusPx, { min: 0, max: 1000, step: 1 }, v => update({ boundsRadiusPx: v }))
-  )));
+  if (bc.boundsKind === "radial") {
+    boundsFields.append(wrapCol(1, createFormGroup("Bounds Radius",
+      createSliderInput(bc.boundsRadiusPx, { min: 0, max: 1000, step: 1 }, v => update({ boundsRadiusPx: v }))
+    )));
+  }
 
   boundsFields.append(wrapCol(1, createFormGroup("Bounds Margin",
     createSliderInput(bc.boundsMarginPx, { min: 0, max: 300, step: 1 }, v => update({ boundsMarginPx: v }))
   )));
 
   boundsFields.append(wrapCol(1, createFormGroup("Bounds Force",
-    createSliderInput(bc.boundsForcePxPerSecond2, { min: 0, max: 1000, step: 1 }, v => update({ boundsForcePxPerSecond2: v }))
+    createSliderInput(bc.boundsForcePxPerSecond2, { min: 0, max: 200000, step: 1000 }, v => update({ boundsForcePxPerSecond2: v }))
   )));
 
   body.append(boundsFields);
+
+  if (bc.boundsKind === "box") {
+    const help = document.createElement("p");
+    help.className = "bf-form-help bf-u-no-margin--bottom";
+    help.textContent = "Box bounds follow the current frame size so the flock can occupy the whole canvas without a separate width or height control.";
+    body.append(help);
+  }
 
   return root;
 }

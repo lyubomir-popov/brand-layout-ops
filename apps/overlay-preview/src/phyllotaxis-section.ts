@@ -47,7 +47,7 @@ export function buildPhyllotaxisSection(ctx: PreviewAppContext): HTMLElement {
   }
 
   const geometryFields = document.createElement("div");
-  geometryFields.className = "grid-row";
+  geometryFields.className = "bf-grid";
 
   geometryFields.append(wrapCol(1, createFormGroup("Point Count",
     createNumberInput(pc.numPoints, { min: 1, max: 4000, step: 1 }, (value) => {
@@ -70,7 +70,7 @@ export function buildPhyllotaxisSection(ctx: PreviewAppContext): HTMLElement {
   body.append(geometryFields);
 
   const angleFields = document.createElement("div");
-  angleFields.className = "grid-row";
+  angleFields.className = "bf-grid";
 
   angleFields.append(wrapCol(1, createFormGroup("Angle Offset",
     createSliderInput(pc.angleOffsetDeg, { min: -180, max: 180, step: 0.1 }, (value) => {

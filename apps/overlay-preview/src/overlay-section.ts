@@ -35,7 +35,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
     const selectedStyle = state.params.textStyles.find((style) => style.key === field.styleKey);
 
     const metadataFields = document.createElement("div");
-    metadataFields.className = "grid-row";
+    metadataFields.className = "bf-grid";
 
     metadataFields.append(wrapCol(2, createFormGroup("Label", createReadonlySpan(getOverlayFieldDisplayLabel(state.params, field.id)))));
     metadataFields.append(wrapCol(2, createFormGroup("ID", createReadonlySpan(field.id))));
@@ -97,7 +97,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
 
     if (selectedStyle) {
       const styleGrid = document.createElement("div");
-      styleGrid.className = "grid-row";
+      styleGrid.className = "bf-grid";
 
       styleGrid.append(wrapCol(1, createFormGroup("Font Size",
         createNumberInput(selectedStyle.fontSizePx, { min: 1, max: 512, step: 1 }, (value) => {
@@ -130,7 +130,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
     }
 
     const grid = document.createElement("div");
-    grid.className = "grid-row";
+    grid.className = "bf-grid";
 
     grid.append(wrapCol(1, createFormGroup("Keyline",
       createNumberInput(field.keylineIndex, { min: 1, max: 24, step: 1 }, v => {
@@ -184,10 +184,10 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
       void ctx.renderStage();
     });
     const logoMetaFields = document.createElement("div");
-    logoMetaFields.className = "grid-row";
+    logoMetaFields.className = "bf-grid";
 
-    logoMetaFields.append(wrapCol(3, createFormGroup("Asset Path", assetInput)));
-    logoMetaFields.append(wrapCol(1, createCheckboxFormGroup(
+    logoMetaFields.append(wrapCol(2, createFormGroup("Asset Path", assetInput)));
+    logoMetaFields.append(wrapCol(2, createCheckboxFormGroup(
       "Lock A Head to Logo",
       logo.linkTitleSizeToHeight !== false,
       (checked) => {
@@ -209,7 +209,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
     body.append(logoMetaFields);
 
     const grid = document.createElement("div");
-    grid.className = "grid-row";
+    grid.className = "bf-grid";
 
     grid.append(wrapCol(1, createFormGroup("X",
       createNumberInput(logo.xPx, { step: 1 }, v => { ctx.updateLogo(l => ({ ...l, xPx: v })); void ctx.renderStage(); })

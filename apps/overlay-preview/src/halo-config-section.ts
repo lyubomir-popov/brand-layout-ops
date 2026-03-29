@@ -41,7 +41,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   };
 
   const compositionFields = document.createElement("div");
-  compositionFields.className = "grid-row";
+  compositionFields.className = "bf-grid";
 
   compositionFields.append(wrapCol(1, createFormGroup("Scale",
     createSliderInput(hc.composition.scale, { min: 0.1, max: 2, step: 0.01 }, v => {
@@ -78,7 +78,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   body.append(compositionFields);
 
   const generatorFields = document.createElement("div");
-  generatorFields.className = "grid-row";
+  generatorFields.className = "bf-grid";
 
   generatorFields.append(wrapCol(1, createFormGroup("Spokes",
     createNumberInput(hc.generator_wrangle.spoke_count, { min: 4, max: 120, step: 1 }, v => {
@@ -107,7 +107,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   body.append(generatorFields);
 
   const angleFields = document.createElement("div");
-  angleFields.className = "grid-row";
+  angleFields.className = "bf-grid";
 
   angleFields.append(wrapCol(1, createFormGroup("Base Angle",
     createSliderInput(hc.generator_wrangle.base_angle_deg, { min: -180, max: 180, step: 0.1 }, v => {
@@ -137,7 +137,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
 
   /* colors row */
   const colorFields = document.createElement("div");
-  colorFields.className = "grid-row";
+  colorFields.className = "bf-grid";
 
   for (const [label, getValue, setValue] of [
     ["Background", () => hc.composition.background_color,
@@ -168,7 +168,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
 
   /* spoke details row */
   const spokeDetails = document.createElement("div");
-  spokeDetails.className = "grid-row";
+  spokeDetails.className = "bf-grid";
 
   spokeDetails.append(wrapCol(1, createFormGroup("Spoke Width",
     createSliderInput(hc.spoke_lines.width_px, { min: 0, max: 16, step: 0.5 }, v => {
@@ -208,7 +208,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
 
   /* echo shape details row */
   const echoDetails = document.createElement("div");
-  echoDetails.className = "grid-row";
+  echoDetails.className = "bf-grid";
 
   echoDetails.append(wrapCol(1, createFormGroup("Phase End Width",
     createSliderInput(hc.spoke_lines.phase_end_width_px, { min: 0, max: 32, step: 1 }, v => {
@@ -238,7 +238,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
 
   /* echo pattern details row */
   const echoPatternDetails = document.createElement("div");
-  echoPatternDetails.className = "grid-row";
+  echoPatternDetails.className = "bf-grid";
 
   echoPatternDetails.append(wrapCol(1, createFormGroup("Shape Seed",
     createNumberInput(hc.spoke_lines.echo_shape_seed, { min: 0, max: 9999, step: 1 }, v => {
@@ -267,7 +267,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   body.append(echoPatternDetails);
 
   const screensaverDetails = document.createElement("div");
-  screensaverDetails.className = "grid-row";
+  screensaverDetails.className = "bf-grid";
 
   screensaverDetails.append(wrapCol(1, createFormGroup("Breath Cycle",
     createSliderInput(hc.screensaver?.cycle_sec ?? 60, { min: 0, max: 60, step: 0.1 }, v => {
@@ -296,7 +296,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   body.append(screensaverDetails);
 
   const motionToggleFields = document.createElement("div");
-  motionToggleFields.className = "grid-row";
+  motionToggleFields.className = "bf-grid";
 
   motionToggleFields.append(wrapCol(1, createCheckboxFormGroup(
     "Mascot Fade",
@@ -345,7 +345,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   body.append(motionToggleFields);
 
   const motionTimingFields = document.createElement("div");
-  motionTimingFields.className = "grid-row";
+  motionTimingFields.className = "bf-grid";
 
   motionTimingFields.append(wrapCol(1, createFormGroup("Fade Duration",
     createSliderInput(hc.mascot_fade.duration_sec, { min: 0, max: 3, step: 0.01 }, v => {
@@ -386,7 +386,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   body.append(motionTimingFields);
 
   const finaleMotionFields = document.createElement("div");
-  finaleMotionFields.className = "grid-row";
+  finaleMotionFields.className = "bf-grid";
 
   finaleMotionFields.append(wrapCol(1, createFormGroup("Finale Delay",
     createSliderInput(hc.finale?.delay_after_dots_sec ?? 0, { min: 0, max: 4, step: 0.01 }, v => {
@@ -427,7 +427,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   body.append(finaleMotionFields);
 
   const headTurnFields = document.createElement("div");
-  headTurnFields.className = "grid-row";
+  headTurnFields.className = "bf-grid";
 
   headTurnFields.append(wrapCol(1, createFormGroup("Peak Angle",
     createSliderInput(hc.head_turn.peak_angle_deg, { min: -90, max: 90, step: 0.1 }, v => {
@@ -470,7 +470,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   body.append(headTurnFields);
 
   const motionCurveFields = document.createElement("div");
-  motionCurveFields.className = "grid-row";
+  motionCurveFields.className = "bf-grid";
 
   motionCurveFields.append(wrapCol(1, createFormGroup("Peak Timing",
     createSliderInput(hc.head_turn.peak_frac, { min: 0, max: 1, step: 0.01 }, v => {
@@ -511,7 +511,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   body.append(motionCurveFields);
 
   const blinkCurveFields = document.createElement("div");
-  blinkCurveFields.className = "grid-row";
+  blinkCurveFields.className = "bf-grid";
 
   blinkCurveFields.append(wrapCol(1, createFormGroup("Blink Close",
     createSliderInput(hc.blink.close_frac, { min: 0, max: 1, step: 0.01 }, v => {
@@ -534,7 +534,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   body.append(blinkCurveFields);
 
   const toggleFields = document.createElement("div");
-  toggleFields.className = "grid-row";
+  toggleFields.className = "bf-grid";
 
   toggleFields.append(wrapCol(1, createCheckboxFormGroup(
     "Pulse Orbits",
@@ -567,7 +567,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
 
   if (hc.spoke_text?.enabled) {
     const labelFields = document.createElement("div");
-    labelFields.className = "grid-row";
+    labelFields.className = "bf-grid";
 
     labelFields.append(wrapCol(1, createFormGroup("Label Size",
       createSliderInput(hc.spoke_text.font_size_px, { min: 3, max: 24, step: 0.5 }, v => {
@@ -585,7 +585,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   }
 
   const debugFields = document.createElement("div");
-  debugFields.className = "grid-row";
+  debugFields.className = "bf-grid";
 
   debugFields.append(wrapCol(1, createCheckboxFormGroup(
     "Reference Halo",

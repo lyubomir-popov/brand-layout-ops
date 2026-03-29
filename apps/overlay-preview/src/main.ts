@@ -2040,7 +2040,7 @@ function buildOutputProfileOptions() {
   container.innerHTML = "";
 
   const sceneFields = document.createElement("div");
-  sceneFields.className = "grid-row";
+  sceneFields.className = "bf-grid";
 
   sceneFields.append(wrapCol(2, createFormGroup(
     "Document Sizes",
@@ -2127,7 +2127,7 @@ function buildOutputProfileOptions() {
   container.append(list);
 
   const details = document.createElement("div");
-  details.className = "grid-row";
+  details.className = "bf-grid";
 
   const labelInput = document.createElement("input");
   labelInput.type = "text";
@@ -3314,12 +3314,6 @@ function handleKeyDown(e: KeyboardEvent) {
     return;
   }
 
-  if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === "Tab") {
-    setDrawerOpen(!isControlPanelOpen());
-    e.preventDefault();
-    return;
-  }
-
   if (
     e.target instanceof HTMLInputElement ||
     e.target instanceof HTMLTextAreaElement ||
@@ -3332,13 +3326,19 @@ function handleKeyDown(e: KeyboardEvent) {
     return;
   }
 
+  if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === "p" || e.key === "P")) {
+    setDrawerOpen(!isControlPanelOpen());
+    e.preventDefault();
+    return;
+  }
+
   if (e.key === "g" || e.key === "G" || e.key === "w" || e.key === "W") {
     cycleGuideMode();
     void renderStage();
     return;
   }
 
-  if (e.key === " " || e.key === "Spacebar" || e.key === "p" || e.key === "P") {
+  if (e.key === " " || e.key === "Spacebar") {
     e.preventDefault();
     togglePlayback();
     return;

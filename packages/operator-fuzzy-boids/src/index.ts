@@ -11,31 +11,64 @@ export interface FuzzyBoidsBoundsParams {
   forcePxPerSecond2?: number;
 }
 
+/**
+ * VEX-aligned boid simulation parameters.
+ *
+ * All force, distance, speed, and acceleration values are in **world units**
+ * matching the Houdini coordinate space (default ~6 units across).
+ * `worldScale` (pixels per world unit) bridges pixel-space positions
+ * to the world-space simulation and back.
+ *
+ * Parameter groups match the Houdini solver wrangles:
+ * - Solver: subSteps controls how many iterations per render-frame dt
+ * - Initial: spawn layout and initial velocity
+ * - Separation: distance-normalized repulsion (separation by n wrangle)
+ * - Fuzzy Alignment: cross-product heading correction + speed matching
+ * - Cohesion: attract toward flock centroid or explicit origin
+ * - Integrate: semi-implicit Euler with accel + speed clamping
+ * - Bounds: box/radial boundary repulsion (replaces Houdini SDF volumes)
+ */
 export interface FuzzyBoidsParams {
   timeSeconds: number;
   deltaTimeSeconds: number;
+  subSteps?: number;
+  worldScale?: number;
   numBoids?: number;
   seed?: number;
   center?: Partial<Vector3>;
   spawnRadiusPx: number;
   staggerStartSeconds?: number;
-  initialSpeedPxPerSecond: number;
+  initialSpeed: number;
   initialSpeedJitter?: number;
-  minSpeedPxPerSecond: number;
-  maxSpeedPxPerSecond: number;
-  maxAccelerationPxPerSecond2: number;
   massMin?: number;
   massMax?: number;
   pscaleMin?: number;
   pscaleMax?: number;
-  separationRadiusPx: number;
-  separationStrength: number;
-  alignmentRadiusPx: number;
-  alignmentStrength: number;
-  cohesionRadiusPx: number;
-  cohesionStrength: number;
-  centerPullStrength?: number;
   maxNeighbors?: number;
+
+  // Separation (VEX: separation by n)
+  separationMinDist: number;
+  separationMaxDist: number;
+  separationMaxStrength: number;
+
+  // Fuzzy alignment (VEX: fuzzy alignment wrangle)
+  alignNearThreshold: number;
+  alignFarThreshold: number;
+  alignSpeedThreshold: number;
+
+  // Cohesion (VEX: cohesion wrangle)
+  cohesionMinDist: number;
+  cohesionMaxDist: number;
+  cohesionMaxAccel: number;
+  attractToOrigin?: boolean;
+  attractOrigin?: Partial<Vector3>;
+
+  // Integration (VEX: integrate wrangle)
+  minSpeedLimit: number;
+  maxSpeedLimit: number;
+  minAccelLimit: number;
+  maxAccelLimit: number;
+
   bounds?: FuzzyBoidsBoundsParams;
   palette?: ColorRgba[];
   prototypeIds?: string[];
@@ -46,6 +79,13 @@ export interface FuzzyBoidsOutputs extends Record<string, unknown> {
   pointField: PointField;
 }
 
+const DEFAULT_FUZZY_BOID_COLOR: ColorRgba = {
+  r: 255,
+  g: 255,
+  b: 255,
+  a: 1
+};
+
 interface MutableBoidState {
   id: string;
   position: Vector3;
@@ -54,7 +94,6 @@ interface MutableBoidState {
   mass: number;
   pscale: number;
   startTimeSeconds: number;
-  color?: ColorRgba;
   prototypeId?: string;
   attributes: Record<string, unknown>;
 }
@@ -109,31 +148,7 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function clampVectorMagnitude(vector: Vector3, maxMagnitude: number): Vector3 {
-  const magnitude = lengthOf(vector);
-  if (magnitude <= maxMagnitude || magnitude <= 0.00001) {
-    return vector;
-  }
 
-  return multiplyVector(vector, maxMagnitude / magnitude);
-}
-
-function withSpeedLimits(vector: Vector3, minSpeed: number, maxSpeed: number, fallbackDirection: Vector3): Vector3 {
-  const speed = lengthOf(vector);
-  if (speed <= 0.00001) {
-    return multiplyVector(normalizeVector(fallbackDirection), minSpeed);
-  }
-
-  if (speed < minSpeed) {
-    return multiplyVector(normalizeVector(vector, fallbackDirection), minSpeed);
-  }
-
-  if (speed > maxSpeed) {
-    return multiplyVector(normalizeVector(vector, fallbackDirection), maxSpeed);
-  }
-
-  return vector;
-}
 
 function createRng(seed: number): () => number {
   let state = Math.floor(seed) >>> 0;
@@ -148,14 +163,6 @@ function createRng(seed: number): () => number {
 
 function createPerpendicularUp(normal: Vector3): Vector3 {
   return normalizeVector({ x: -normal.y, y: normal.x, z: 0 }, { x: 0, y: 1, z: 0 });
-}
-
-function pickPaletteColor(palette: ColorRgba[] | undefined, index: number): ColorRgba | undefined {
-  if (!palette || palette.length === 0) {
-    return undefined;
-  }
-
-  return palette[index % palette.length];
 }
 
 function pickPrototypeId(prototypeIds: string[] | undefined, index: number): string | undefined {
@@ -214,8 +221,16 @@ function getBoundsForce(position: Vector3, center: Vector3, bounds: FuzzyBoidsBo
   return { x: accelX, y: accelY, z: 0 };
 }
 
-function createSteerForce(currentVelocity: Vector3, desiredVelocity: Vector3, strength: number): Vector3 {
-  return multiplyVector(subtractVectors(desiredVelocity, currentVelocity), Math.max(0, strength));
+
+
+function stripInheritedVisualAttributes(attributes: Record<string, unknown> | undefined): Record<string, unknown> {
+  if (!attributes) {
+    return {};
+  }
+
+  const nextAttributes = { ...attributes };
+  delete nextAttributes.color;
+  return nextAttributes;
 }
 
 function initializeBoids(
@@ -225,10 +240,17 @@ function initializeBoids(
 ): MutableBoidState[] {
   const rng = createRng(toNumber(params.seed, 1));
   const seededPoints = seedField?.points ?? [];
-  const numBoids = Math.max(0, Math.round(toNumber(params.numBoids, seededPoints.length)));
-  const safeCount = seededPoints.length > 0 ? Math.min(numBoids || seededPoints.length, seededPoints.length) : numBoids;
+  const hasExplicitNumBoids = params.numBoids !== undefined && params.numBoids !== null;
+  const numBoids = hasExplicitNumBoids
+    ? Math.max(0, Math.round(toNumber(params.numBoids, seededPoints.length)))
+    : seededPoints.length;
   const spawnRadiusPx = Math.max(0, toNumber(params.spawnRadiusPx, 0));
-  const baseSpeed = Math.max(0, toNumber(params.initialSpeedPxPerSecond, 0));
+  const worldScale = Math.max(1, toNumber(params.worldScale, 180));
+  // VEX: v@v = {0, -10, 0} * ch('speed') — initialSpeed is the ch('speed')
+  // channel; the VEX direction vector {0,-10,0} gives magnitude 10*speed.
+  // We use random direction instead of uniform downward, same magnitude.
+  const baseSpeedWorld = Math.max(0, toNumber(params.initialSpeed, 0)) * 10;
+  const baseSpeedPx = baseSpeedWorld * worldScale;
   const speedJitter = Math.max(0, toNumber(params.initialSpeedJitter, 0.25));
   const staggerStartSeconds = Math.max(0, toNumber(params.staggerStartSeconds, 0));
   const massMin = Math.max(0.001, toNumber(params.massMin, 0.85));
@@ -236,7 +258,7 @@ function initializeBoids(
   const pscaleMin = Math.max(0.05, toNumber(params.pscaleMin, 0.55));
   const pscaleMax = Math.max(pscaleMin, toNumber(params.pscaleMax, 1.2));
 
-  return Array.from({ length: safeCount }, (_, index) => {
+  return Array.from({ length: numBoids }, (_, index) => {
     const seededPoint = seededPoints[index];
     const angle = rng() * Math.PI * 2;
     const radius = Math.sqrt(rng()) * spawnRadiusPx;
@@ -245,146 +267,327 @@ function initializeBoids(
       y: Math.sin(angle) * radius,
       z: 0
     });
+    // VEX initial direction: default downward with jitter, or from seed
     const initialDirection = normalizeVector(
       seededPoint ? toVector3(seededPoint.attributes.velocity as Partial<Vector3> | undefined, { x: Math.cos(angle), y: Math.sin(angle), z: 0 }) : { x: Math.cos(angle), y: Math.sin(angle), z: 0 },
       { x: Math.cos(angle), y: Math.sin(angle), z: 0 }
     );
-    const speed = Math.max(0, baseSpeed * (1 - speedJitter + rng() * speedJitter * 2));
+    const speed = Math.max(0, baseSpeedPx * (1 - speedJitter + rng() * speedJitter * 2));
     const velocity = multiplyVector(initialDirection, speed);
-    const pscale = pscaleMin + (pscaleMax - pscaleMin) * clamp(index / Math.max(1, safeCount - 1), 0, 1);
-    const color = pickPaletteColor(params.palette, index) ?? (seededPoint?.attributes.color as ColorRgba | undefined);
+    const pscale = pscaleMin + (pscaleMax - pscaleMin) * rng();
     const prototypeId = pickPrototypeId(params.prototypeIds, index) ?? (typeof seededPoint?.attributes.prototype_id === "string" ? seededPoint.attributes.prototype_id : undefined);
 
     return {
       id: seededPoint?.id ?? `boid-${index}`,
-      position: seededPosition,
-      velocity,
+      // VEX: @P.z = 0 — flatten to XY plane
+      position: { x: seededPosition.x, y: seededPosition.y, z: 0 },
+      // VEX: @v.z = 0
+      velocity: { x: velocity.x, y: velocity.y, z: 0 },
       accel: { x: 0, y: 0, z: 0 },
       mass: massMin + (massMax - massMin) * rng(),
       pscale,
-      startTimeSeconds: safeCount <= 1 ? 0 : staggerStartSeconds * (index / Math.max(1, safeCount - 1)),
-      ...(color ? { color } : {}),
+      startTimeSeconds: numBoids <= 1 ? 0 : staggerStartSeconds * (index / Math.max(1, numBoids - 1)),
       ...(prototypeId ? { prototypeId } : {}),
-      attributes: seededPoint ? { ...seededPoint.attributes } : {}
+      attributes: seededPoint ? stripInheritedVisualAttributes(seededPoint.attributes) : {}
     };
   });
 }
 
+/**
+ * VEX-faithful boid step — runs in world coordinates internally.
+ *
+ * Converts pixel-space positions/velocities → world-space, computes all forces
+ * in the original Houdini coordinate system (preserving the intentional
+ * dimensional mixing), integrates, then converts back to pixel-space.
+ *
+ * Mirrors the Houdini solver wrangle order:
+ *   1. Separation by N — distance-normalized repulsion with quadratic falloff
+ *   2. Fuzzy alignment — per-neighbor heading correction (cross-product left/right)
+ *      plus per-neighbor speed matching
+ *   3. Cohesion — attract toward flock centroid (or explicit origin)
+ *   4. Integration — clamp accel, semi-implicit Euler (v += accel * mass * dt),
+ *      clamp speed, flatten to XY, integrate position
+ *   5. Bounds — box/radial pixel-space containment (applied after accel clamp
+ *      as an override, similar to Houdini SDF volumes)
+ */
 function stepBoids(states: MutableBoidState[], params: FuzzyBoidsParams, center: Vector3, simulationTimeSeconds: number): void {
-  if (states.length === 0) {
+  const n = states.length;
+  if (n === 0) {
     return;
   }
 
+  const worldScale = Math.max(1, toNumber(params.worldScale, 180));
+  const invScale = 1 / worldScale;
   const dt = Math.max(0.001, toNumber(params.deltaTimeSeconds, 1 / 30));
-  const maxNeighbors = Math.max(1, Math.round(toNumber(params.maxNeighbors, 12)));
-  const separationRadiusPx = Math.max(0, toNumber(params.separationRadiusPx, 0));
-  const alignmentRadiusPx = Math.max(0, toNumber(params.alignmentRadiusPx, 0));
-  const cohesionRadiusPx = Math.max(0, toNumber(params.cohesionRadiusPx, 0));
-  const separationStrength = Math.max(0, toNumber(params.separationStrength, 0));
-  const alignmentStrength = Math.max(0, toNumber(params.alignmentStrength, 0));
-  const cohesionStrength = Math.max(0, toNumber(params.cohesionStrength, 0));
-  const centerPullStrength = Math.max(0, toNumber(params.centerPullStrength, 0));
-  const minSpeed = Math.max(0, toNumber(params.minSpeedPxPerSecond, 0));
-  const maxSpeed = Math.max(minSpeed, toNumber(params.maxSpeedPxPerSecond, minSpeed));
-  const maxAcceleration = Math.max(0, toNumber(params.maxAccelerationPxPerSecond2, 0));
+  const maxNeighborsParam = Math.round(toNumber(params.maxNeighbors, 0));
+  const maxNeighbors = maxNeighborsParam > 0 ? maxNeighborsParam : n;
+  const needSort = maxNeighbors < n;
 
-  const snapshot = states.map((state) => ({
-    position: { ...state.position },
-    velocity: { ...state.velocity },
-    mass: state.mass,
-    startTimeSeconds: state.startTimeSeconds
-  }));
+  // Separation params (VEX: separation by n) — all in world units
+  const sepMinDist = Math.max(0, toNumber(params.separationMinDist, 0));
+  const sepMaxDist = Math.max(sepMinDist + 0.001, toNumber(params.separationMaxDist, 5));
+  const sepMaxStrength = Math.max(0, toNumber(params.separationMaxStrength, 0.25));
+  const sepDistRange = sepMaxDist - sepMinDist;
 
-  for (let index = 0; index < states.length; index += 1) {
+  // Fuzzy alignment params (VEX: fuzzy alignment wrangle) — world units
+  const alignNear = Math.max(0, toNumber(params.alignNearThreshold, 1));
+  const alignFar = Math.max(alignNear + 0.001, toNumber(params.alignFarThreshold, 5));
+  const alignSpeedThreshold = Math.max(0.001, toNumber(params.alignSpeedThreshold, 50));
+  const alignDistRange = alignFar - alignNear;
+
+  // Cohesion params (VEX: cohesion wrangle) — world units
+  const cohMinDist = Math.max(0, toNumber(params.cohesionMinDist, 20));
+  const cohMaxDist = Math.max(cohMinDist + 0.001, toNumber(params.cohesionMaxDist, 200));
+  const cohMaxAccel = Math.max(0, toNumber(params.cohesionMaxAccel, 2.5));
+  const cohDistRange = cohMaxDist - cohMinDist;
+  const attractToOrigin = Boolean(params.attractToOrigin);
+
+  // Integration params (VEX: integrate wrangle) — world units
+  const minSpeedLimit = Math.max(0, toNumber(params.minSpeedLimit, 4));
+  const maxSpeedLimit = Math.max(minSpeedLimit, toNumber(params.maxSpeedLimit, 12));
+  const minAccelLimit = Math.max(0, toNumber(params.minAccelLimit, 0));
+  const maxAccelLimit = Math.max(minAccelLimit, toNumber(params.maxAccelLimit, 50));
+
+  // Effective interaction radius — neighbors beyond this contribute zero
+  // force from both separation and alignment, so skip them entirely.
+  const effectiveRadius = Math.max(sepMaxDist, alignFar);
+  const effectiveRadiusSq = effectiveRadius * effectiveRadius;
+
+  // --- Flat snapshot arrays (no per-step heap allocation) ---
+  const wxArr = new Float64Array(n);
+  const wyArr = new Float64Array(n);
+  const wvxArr = new Float64Array(n);
+  const wvyArr = new Float64Array(n);
+  const activeArr = new Uint8Array(n);
+
+  let fcx = 0;
+  let fcy = 0;
+  let activeCount = 0;
+  for (let i = 0; i < n; i += 1) {
+    const s = states[i];
+    const wx = (s.position.x - center.x) * invScale;
+    const wy = (s.position.y - center.y) * invScale;
+    wxArr[i] = wx;
+    wyArr[i] = wy;
+    wvxArr[i] = s.velocity.x * invScale;
+    wvyArr[i] = s.velocity.y * invScale;
+    const isActive = simulationTimeSeconds >= s.startTimeSeconds ? 1 : 0;
+    activeArr[i] = isActive;
+    if (isActive) {
+      fcx += wx;
+      fcy += wy;
+      activeCount += 1;
+    }
+  }
+  if (activeCount > 0) {
+    fcx /= activeCount;
+    fcy /= activeCount;
+  }
+
+  // Cohesion target in world space
+  let ctX: number;
+  let ctY: number;
+  if (attractToOrigin) {
+    const origin = toVector3(params.attractOrigin, center);
+    ctX = (origin.x - center.x) * invScale;
+    ctY = (origin.y - center.y) * invScale;
+  } else {
+    ctX = fcx;
+    ctY = fcy;
+  }
+
+  // Pre-allocated typed-array buffers for top-k neighbor selection (zero per-frame allocations).
+  // Sized to maxNeighbors; reused across all boids within a step.
+  const topKIdx = needSort ? new Int32Array(maxNeighbors) : null;
+  const topKDistSq = needSort ? new Float64Array(maxNeighbors) : null;
+
+  for (let index = 0; index < n; index += 1) {
     const current = states[index];
-    const snapshotCurrent = snapshot[index];
-    if (simulationTimeSeconds < current.startTimeSeconds) {
+    if (!activeArr[index]) {
       current.accel = { x: 0, y: 0, z: 0 };
       continue;
     }
 
-    let separationForce = { x: 0, y: 0, z: 0 };
-    let alignmentVelocity = { x: 0, y: 0, z: 0 };
-    let cohesionCenter = { x: 0, y: 0, z: 0 };
-    let alignmentCount = 0;
-    let cohesionCount = 0;
-    let neighborsSeen = 0;
+    let ax = 0;
+    let ay = 0;
+    const wx = wxArr[index];
+    const wy = wyArr[index];
+    const wvx = wvxArr[index];
+    const wvy = wvyArr[index];
+    const wSpeedSq = wvx * wvx + wvy * wvy;
+    const wSpeed = Math.sqrt(wSpeedSq);
+    const nvx = wSpeed > 0.00001 ? wvx / wSpeed : 1;
+    const nvy = wSpeed > 0.00001 ? wvy / wSpeed : 0;
 
-    for (let neighborIndex = 0; neighborIndex < snapshot.length; neighborIndex += 1) {
-      if (neighborIndex === index) {
-        continue;
+    // correction_rt for fuzzy alignment
+    const crtx = nvy;
+    const crty = -nvx;
+    const crtLenSq = crtx * crtx + crty * crty;
+    const crtLen = Math.sqrt(crtLenSq);
+    const ncrtx = crtLen > 0.00001 ? crtx / crtLen : 0;
+    const ncrty = crtLen > 0.00001 ? crty / crtLen : 1;
+
+    if (needSort) {
+      // Zero-allocation top-k nearest neighbor selection.
+      // Uses pre-allocated typed arrays; defers sqrt to the final k neighbors.
+      const tkIdx = topKIdx!;
+      const tkDSq = topKDistSq!;
+      let nbrCount = 0;
+      let worstSlot = 0;
+      let worstDSq = 0;
+
+      for (let ni = 0; ni < n; ni += 1) {
+        if (ni === index || !activeArr[ni]) { continue; }
+        const dx = wxArr[ni] - wx;
+        const dy = wyArr[ni] - wy;
+        const distSq = dx * dx + dy * dy;
+        if (distSq <= 0.0000000001) { continue; }
+
+        if (nbrCount < maxNeighbors) {
+          tkIdx[nbrCount] = ni;
+          tkDSq[nbrCount] = distSq;
+          if (distSq > worstDSq) {
+            worstDSq = distSq;
+            worstSlot = nbrCount;
+          }
+          nbrCount += 1;
+        } else if (distSq < worstDSq) {
+          tkIdx[worstSlot] = ni;
+          tkDSq[worstSlot] = distSq;
+          // Rescan to find new worst among k entries
+          worstSlot = 0;
+          worstDSq = tkDSq[0];
+          for (let s = 1; s < maxNeighbors; s += 1) {
+            if (tkDSq[s] > worstDSq) {
+              worstDSq = tkDSq[s];
+              worstSlot = s;
+            }
+          }
+        }
       }
 
-      const neighbor = snapshot[neighborIndex];
-      if (simulationTimeSeconds < neighbor.startTimeSeconds) {
-        continue;
+      // Apply forces for the k nearest; compute sqrt only here
+      for (let k = 0; k < nbrCount; k += 1) {
+        applyNeighborForces(tkIdx[k], Math.sqrt(tkDSq[k]));
       }
-
-      const offset = subtractVectors(snapshotCurrent.position, neighbor.position);
-      const distance = lengthOf(offset);
-      if (distance <= 0.00001) {
-        continue;
-      }
-
-      neighborsSeen += 1;
-      if (neighborsSeen > maxNeighbors) {
-        break;
-      }
-
-      if (distance <= separationRadiusPx) {
-        const falloff = 1 - clamp(distance / Math.max(1, separationRadiusPx), 0, 1);
-        separationForce = addVectors(separationForce, multiplyVector(normalizeVector(offset), falloff));
-      }
-
-      if (distance <= alignmentRadiusPx) {
-        alignmentVelocity = addVectors(alignmentVelocity, neighbor.velocity);
-        alignmentCount += 1;
-      }
-
-      if (distance <= cohesionRadiusPx) {
-        cohesionCenter = addVectors(cohesionCenter, neighbor.position);
-        cohesionCount += 1;
+    } else {
+      // No sort needed — iterate all neighbors with distance cutoff
+      for (let ni = 0; ni < n; ni += 1) {
+        if (ni === index || !activeArr[ni]) { continue; }
+        const dx = wxArr[ni] - wx;
+        const dy = wyArr[ni] - wy;
+        const distSq = dx * dx + dy * dy;
+        if (distSq <= 0.0000000001 || distSq > effectiveRadiusSq) { continue; }
+        const dist = Math.sqrt(distSq);
+        applyNeighborForces(ni, dist);
       }
     }
 
-    let accel = { x: 0, y: 0, z: 0 };
+    function applyNeighborForces(ni: number, dist: number): void {
+      const nwx = wxArr[ni];
+      const nwy = wyArr[ni];
+      const nwvx = wvxArr[ni];
+      const nwvy = wvyArr[ni];
+      const dx = nwx - wx;
+      const dy = nwy - wy;
+      const ndx = dx / dist;
+      const ndy = dy / dist;
 
-    if (lengthOf(separationForce) > 0.00001) {
-      const desiredSeparationVelocity = multiplyVector(normalizeVector(separationForce), maxSpeed);
-      accel = addVectors(accel, createSteerForce(snapshotCurrent.velocity, desiredSeparationVelocity, separationStrength));
+      // === SEPARATION ===
+      if (dist < sepMaxDist) {
+        const normDist = (Math.max(dist, sepMinDist) - sepMinDist) / sepDistRange;
+        const falloff = (1 - normDist) * (1 - normDist);
+        const strength = falloff * sepMaxStrength;
+        ax += -ndx * strength;
+        ay += -ndy * strength;
+      }
+
+      // === FUZZY ALIGNMENT ===
+      if (dist < alignFar) {
+        const fitDist = clamp((dist - alignNear) / alignDistRange, 0, 1);
+        const sigW = 1 - fitDist;
+
+        const nVelSq = nwvx * nwvx + nwvy * nwvy;
+        const nSpeed = Math.sqrt(nVelSq);
+        const nnvx = nSpeed > 0.00001 ? nwvx / nSpeed : 1;
+        const nnvy = nSpeed > 0.00001 ? nwvy / nSpeed : 0;
+
+        // heading correction
+        const hcw = 1 - (nvx * nnvx + nvy * nnvy);
+        const crossZ = nvx * nnvy - nvy * nnvx;
+        const steerSign = crossZ < 0 ? 1 : -1;
+        ax += ncrtx * steerSign * hcw * sigW;
+        ay += ncrty * steerSign * hcw * sigW;
+
+        // speed correction
+        const vdx = nwvx - wvx;
+        const vdy = nwvy - wvy;
+        const speedDiffSq = vdx * vdx + vdy * vdy;
+        const speedDiff = Math.sqrt(speedDiffSq);
+        const scw = clamp(speedDiff / alignSpeedThreshold, 0, 1);
+        ax += vdx * scw * sigW;
+        ay += vdy * scw * sigW;
+      }
     }
 
-    if (alignmentCount > 0) {
-      const averageVelocity = divideVector(alignmentVelocity, alignmentCount);
-      const desiredAlignmentVelocity = multiplyVector(normalizeVector(averageVelocity, snapshotCurrent.velocity), clamp(lengthOf(averageVelocity), minSpeed, maxSpeed));
-      accel = addVectors(accel, createSteerForce(snapshotCurrent.velocity, desiredAlignmentVelocity, alignmentStrength));
+    // === COHESION (VEX: cohesion wrangle) ===
+    const cVecX = ctX - wx;
+    const cVecY = ctY - wy;
+    const cDistSq = cVecX * cVecX + cVecY * cVecY;
+    const cDist = Math.sqrt(cDistSq);
+    const cNormX = cDist > 0.00001 ? cVecX / cDist : 0;
+    const cNormY = cDist > 0.00001 ? cVecY / cDist : 0;
+    const clampedCDist = clamp(cDist, cohMinDist, cohMaxDist);
+    const cohStr = (clampedCDist / cohDistRange) * cohMaxAccel;
+    ax += cNormX * cohStr;
+    ay += cNormY * cohStr;
+
+    // === INTEGRATION (VEX: integrate wrangle) — all in world units ===
+    const accelMag = Math.sqrt(ax * ax + ay * ay);
+    if (accelMag > 0.00001) {
+      const clampedAccelMag = clamp(accelMag, minAccelLimit, maxAccelLimit);
+      const accelScale = clampedAccelMag / accelMag;
+      ax *= accelScale;
+      ay *= accelScale;
     }
 
-    if (cohesionCount > 0) {
-      const averagePosition = divideVector(cohesionCenter, cohesionCount);
-      const desiredCohesionVelocity = multiplyVector(normalizeVector(subtractVectors(averagePosition, snapshotCurrent.position), snapshotCurrent.velocity), maxSpeed);
-      accel = addVectors(accel, createSteerForce(snapshotCurrent.velocity, desiredCohesionVelocity, cohesionStrength));
+    let newVx = wvx + ax * current.mass * dt;
+    let newVy = wvy + ay * current.mass * dt;
+
+    const newSpeedSq = newVx * newVx + newVy * newVy;
+    let newSpeed = Math.sqrt(newSpeedSq);
+    if (newSpeed > 0.00001) {
+      const clampedSpeed = clamp(newSpeed, minSpeedLimit, maxSpeedLimit);
+      const speedScale = clampedSpeed / newSpeed;
+      newVx *= speedScale;
+      newVy *= speedScale;
+      newSpeed = clampedSpeed;
+    } else {
+      newVx = nvx * minSpeedLimit;
+      newVy = nvy * minSpeedLimit;
     }
 
-    if (centerPullStrength > 0) {
-      const desiredCenterVelocity = multiplyVector(normalizeVector(subtractVectors(center, snapshotCurrent.position), snapshotCurrent.velocity), maxSpeed);
-      accel = addVectors(accel, createSteerForce(snapshotCurrent.velocity, desiredCenterVelocity, centerPullStrength));
+    let newWx = wx + newVx * dt;
+    let newWy = wy + newVy * dt;
+
+    // --- Convert back to pixel space ---
+    let newPxVx = newVx * worldScale;
+    let newPxVy = newVy * worldScale;
+    let newPxX = newWx * worldScale + center.x;
+    let newPxY = newWy * worldScale + center.y;
+
+    // === BOUNDS (pixel-space containment, applied after integration) ===
+    const boundsForce = getBoundsForce({ x: newPxX, y: newPxY, z: 0 }, center, params.bounds);
+    if (boundsForce.x !== 0 || boundsForce.y !== 0) {
+      newPxVx += boundsForce.x * dt;
+      newPxVy += boundsForce.y * dt;
+      newPxX += boundsForce.x * dt * dt;
+      newPxY += boundsForce.y * dt * dt;
     }
 
-    accel = addVectors(accel, getBoundsForce(snapshotCurrent.position, center, params.bounds));
-    accel = clampVectorMagnitude(divideVector(accel, current.mass), maxAcceleration);
-
-    const nextVelocity = withSpeedLimits(
-      addVectors(snapshotCurrent.velocity, multiplyVector(accel, dt)),
-      minSpeed,
-      maxSpeed,
-      snapshotCurrent.velocity
-    );
-    const nextPosition = addVectors(snapshotCurrent.position, multiplyVector(nextVelocity, dt));
-
-    current.accel = accel;
-    current.velocity = nextVelocity;
-    current.position = nextPosition;
+    current.accel = { x: ax * worldScale, y: ay * worldScale, z: 0 };
+    current.velocity = { x: newPxVx, y: newPxVy, z: 0 };
+    current.position = { x: newPxX, y: newPxY, z: 0 };
   }
 }
 
@@ -407,7 +610,7 @@ function toBoidRecord(state: MutableBoidState, timeSeconds: number): BoidRecord 
       boid_active: isActive,
       pscale: state.pscale,
       speed_px_per_second: lengthOf(state.velocity),
-      ...(state.color ? { color: state.color } : {}),
+      color: DEFAULT_FUZZY_BOID_COLOR,
       ...(state.prototypeId ? { prototype_id: state.prototypeId } : {})
     }
   };
@@ -465,9 +668,28 @@ function buildOutputs(states: MutableBoidState[], center: Vector3, totalTimeSeco
   };
 }
 
+/**
+ * Structural cache key — only includes params that require a full re-init
+ * (boid count, seed, spawn geometry, initial speed, mass/pscale ranges).
+ * Force-tuning params (separation, alignment, cohesion, speed limits, bounds)
+ * are intentionally excluded so slider drags apply live without replaying
+ * the entire simulation from t=0.
+ */
 function buildCacheKey(params: FuzzyBoidsParams, centerInput?: Partial<Vector3> | null): string {
-  const { timeSeconds: _t, ...rest } = params;
-  return JSON.stringify({ p: rest, c: centerInput ?? null });
+  return JSON.stringify({
+    n: params.numBoids,
+    s: params.seed,
+    r: params.spawnRadiusPx,
+    st: params.staggerStartSeconds,
+    is: params.initialSpeed,
+    ij: params.initialSpeedJitter,
+    ws: params.worldScale,
+    mMin: params.massMin,
+    mMax: params.massMax,
+    pMin: params.pscaleMin,
+    pMax: params.pscaleMax,
+    c: centerInput ?? null
+  });
 }
 
 /**
@@ -495,25 +717,46 @@ export class FuzzyBoidsSimulation {
     const dt = Math.max(0.001, toNumber(params.deltaTimeSeconds, 1 / 30));
     const key = buildCacheKey(params, centerInput);
 
+    let justReset = false;
     if (key !== this.cacheKey || !this.states || totalTimeSeconds < this.currentTimeSeconds - 0.0001) {
       this.states = initializeBoids(params, center, seedField);
       this.currentTimeSeconds = 0;
       this.totalSteps = 0;
       this.cacheKey = key;
       this.center = center;
+      justReset = true;
     }
 
-    const stepsNeeded = Math.floor((totalTimeSeconds - this.currentTimeSeconds) / dt);
+    // subSteps: subdivide each render-frame dt (mirrors Houdini Solver SOP SubSteps)
+    const subSteps = Math.max(1, Math.round(toNumber(params.subSteps, 1)));
+    const subDt = dt / subSteps;
+    const subParams = subSteps > 1 ? { ...params, deltaTimeSeconds: subDt } : params;
+
+    // After a structural reset, only step one frame forward instead of
+    // replaying the entire history to the current playback time (which
+    // would freeze the UI for seconds).  The caller's animation loop
+    // will naturally advance from here.
+    const targetTimeSeconds = justReset ? Math.min(totalTimeSeconds, dt) : totalTimeSeconds;
+
+    const stepsNeeded = Math.floor((targetTimeSeconds - this.currentTimeSeconds) / dt);
     for (let i = 0; i < stepsNeeded; i += 1) {
+      for (let sub = 0; sub < subSteps; sub += 1) {
+        const subTime = this.currentTimeSeconds + (sub + 1) * subDt;
+        stepBoids(this.states, subParams, this.center, subTime);
+      }
       this.currentTimeSeconds += dt;
       this.totalSteps += 1;
-      stepBoids(this.states, params, this.center, this.currentTimeSeconds);
     }
 
-    const remainderSeconds = totalTimeSeconds - this.currentTimeSeconds;
+    const remainderSeconds = targetTimeSeconds - this.currentTimeSeconds;
     if (remainderSeconds > 0.00001) {
-      stepBoids(this.states, { ...params, deltaTimeSeconds: remainderSeconds }, this.center, totalTimeSeconds);
-      this.currentTimeSeconds = totalTimeSeconds;
+      const remainderSubDt = remainderSeconds / subSteps;
+      const remainderSubParams = subSteps > 1 ? { ...params, deltaTimeSeconds: remainderSubDt } : { ...params, deltaTimeSeconds: remainderSeconds };
+      for (let sub = 0; sub < subSteps; sub += 1) {
+        const subTime = this.currentTimeSeconds + (sub + 1) * remainderSubDt;
+        stepBoids(this.states, remainderSubParams, this.center, subTime);
+      }
+      this.currentTimeSeconds = targetTimeSeconds;
       this.totalSteps += 1;
     }
 
@@ -526,15 +769,26 @@ export function resolveFuzzyBoidOutputs(params: FuzzyBoidsParams, centerInput?: 
   const states = initializeBoids(params, center, seedField);
   const totalTimeSeconds = Math.max(0, toNumber(params.timeSeconds, 0));
   const dt = Math.max(0.001, toNumber(params.deltaTimeSeconds, 1 / 30));
+  const subSteps = Math.max(1, Math.round(toNumber(params.subSteps, 1)));
+  const subDt = dt / subSteps;
+  const subParams = subSteps > 1 ? { ...params, deltaTimeSeconds: subDt } : params;
   const fullSteps = Math.floor(totalTimeSeconds / dt);
   const remainderSeconds = totalTimeSeconds - fullSteps * dt;
 
   for (let stepIndex = 0; stepIndex < fullSteps; stepIndex += 1) {
-    stepBoids(states, params, center, (stepIndex + 1) * dt);
+    for (let sub = 0; sub < subSteps; sub += 1) {
+      const subTime = stepIndex * dt + (sub + 1) * subDt;
+      stepBoids(states, subParams, center, subTime);
+    }
   }
 
   if (remainderSeconds > 0.00001) {
-    stepBoids(states, { ...params, deltaTimeSeconds: remainderSeconds }, center, totalTimeSeconds);
+    const remainderSubDt = remainderSeconds / subSteps;
+    const remainderSubParams = subSteps > 1 ? { ...params, deltaTimeSeconds: remainderSubDt } : { ...params, deltaTimeSeconds: remainderSeconds };
+    for (let sub = 0; sub < subSteps; sub += 1) {
+      const subTime = fullSteps * dt + (sub + 1) * remainderSubDt;
+      stepBoids(states, remainderSubParams, center, subTime);
+    }
   }
 
   return buildOutputs(states, center, totalTimeSeconds, dt, fullSteps + (remainderSeconds > 0.00001 ? 1 : 0), params.bounds?.kind ?? "none");
