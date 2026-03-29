@@ -298,9 +298,9 @@ Each gap is categorized by severity and roughly ordered by dependency priority.
 	The preview now draws the local face SVG, optional halo SVG behind the face, white eye layers, and a reference-leaning fixed-nose plus animated cutout pass on the overlay canvas using the scene-family operator's mascot box plus blink, head-turn, and nose-bob motion state. Remaining gap: this still does not match the full reference texture-loading path or the original Three.js mesh stack exactly, but the visible eye, halo, and nose layering is now closer to parity. Decision: keep mascot-specific composition in the adapter or scene-family layer until reuse becomes concrete.
 	Reference files: `rendering.js` (mascot mesh setup, nose texture, eye rendering), `config-schema.js` (MASCOT_* constants).
 
-15. **Vignette system (MISSING).**
-	Full vignette: inner/outer radius + feather + choke, shape fade (start/end), dither. Disabled by default. Currently not critical for screenshot parity since it's off in most profiles — can defer.
-	Reference files: `default-config-source.js` (vignette config per profile).
+15. **Vignette system (PARTIAL).**
+	A first-pass vignette overlay now exists in `apps/overlay-preview/src/halo-renderer.ts` using the shared `vignette.enabled`, `shape_fade`, `shape_fade_start`, and `shape_fade_end` settings, so the outer scene band no longer ends only at the shape-level radial fade. Remaining gap: the fuller reference vignette controls such as inner or outer radius, feather, choke, dither, and safe-area-aware compositing are still missing.
+	Reference files: `default-config-source.js` (vignette config per profile), `rendering.js` (draw_vignette_overlay).
 
 16. **Safe area fill layering (PARTIAL).**
 	Reference has `safe_area_fill_above_animation` toggle that changes render order — fill can be behind or on top of the Three.js animation layer. Current repo has `safe_area_fill_color` but may not fully replicate the layering behavior.
@@ -627,6 +627,20 @@ These matter, but they are not approved active work until we discuss placement, 
 	Working assumption: landed, now being superseded by EQ-1 (swap to `baseline-foundry`).
 - [ ] Filesystem-backed document/project model instead of browser-local presets.
 	Working assumption: partially landed. EQ-6 addresses the remaining presets question.
+- [ ] Non-halo scene-family preview fidelity and full-frame coverage.
+	Working assumption: `phyllotaxis`, `fuzzy-boids`, and `scatter` should fill the same whole-stage footprint that halo uses unless an operator is intentionally shape-bounded, and point generators should not draw extra preview geometry such as phyllotaxis arm lines or other connective strokes that really belong in downstream operators.
+- [ ] Fuzzy-boids Houdini/VEX parity audit.
+	Working assumption: the current `operator-fuzzy-boids` implementation is still a coarse TypeScript boids pass rather than a verified 1:1 port of the Houdini control surface, so its parameter list and force semantics should be re-audited against the original Houdini/VEX setup before trusting the current separation, alignment, cohesion, and bounds controls as canonical.
+- [ ] Scatter full-frame behavior and Houdini-style relax.
+	Working assumption: scatter should support a better point-relax or repulsion pass so points do not visibly clump, and its default scene-family presentation should not stay confined to a tiny centered shape unless the user explicitly wants a bounded scatter source.
+- [ ] Playback, export, and authored-defaults control-surface cleanup.
+	Working assumption: the pause button is probably redundant if `Space` remains the primary playback toggle, export actions should become a dedicated strip (`PNG`, sequence, `MP4`) separate from playback, and `Reset Default` / `Set Default` should sit together as authored-default actions rather than living inside the same mixed control cluster.
+- [ ] Low-priority arbitrary output-size authoring.
+	Working assumption: the Output Format panel should eventually allow custom sizes in addition to the named presets, but that stays below the current parity-critical renderer and workflow work.
+- [ ] Document vs project naming and file-workflow UX.
+	Working assumption: the saved `.brand-layout-ops.json` file already behaves more like a file-backed project than a single flat document because it carries multiple target sizes plus shared scene-family state; decide later whether the UI should rename the working unit to "project", but in either case `Open`, `Save`, and `Duplicate` should behave like explicit draw.io-style file operations with clear created-file feedback instead of feeling like no-ops.
+- [ ] Content-format abstraction versus saved project variants.
+	Working assumption: if file-backed project variants become the main way to distinguish things like generic social versus speaker highlight, the current content-format switching may shrink or disappear later, but it should not be removed until the project model fully replaces that workflow.
 
 ### Splits to not get bogged down with
 

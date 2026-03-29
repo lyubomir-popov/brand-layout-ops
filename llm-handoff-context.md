@@ -189,6 +189,8 @@ Items EQ-1 through EQ-12 are the user-directed priorities in dependency order:
 
 **Next parity slice** — keep pushing the whole Ubuntu Summit sequence visually now that whole-scene mascot fade and vignette are both in: re-audit the remaining overlay-level renderer gaps in `operator-ubuntu-summit-animation` and `halo-renderer.ts`, with safe-area fill or another missing final scene pass as the current leading candidate, instead of returning to shell cleanup.
 
+**User feedback backlog from 2026-03-29** — keep this unscheduled for now and track it in `docs/rebuild-plan.md` rather than promoting it into the execution queue: non-halo scene families should cover the whole stage, phyllotaxis should render points only, fuzzy-boids needs a Houdini/VEX parity audit, scatter needs better relax plus full-frame behavior, file-backed open/save/duplicate UX needs to feel like real project files, and playback/export/default actions need a cleaner control split.
+
 **After EQ-12** — decide whether the background preview adapter should call further into shared graph evaluation primitives or continue as a thin typed renderer adapter over the persisted chain.
 
 **Do not start a preview-local overlay drawer port right now** — wait for the upstream `baseline-foundry` overlay drawer work to finish there with full resize support, then swap the preview shell onto that implementation instead of duplicating it locally.
