@@ -7,10 +7,12 @@
   <title>Brand Layout Ops Preview</title>
 </head>
 <body class="bf-theme" data-bf-tone="dark">
-  <button class="drawer-backdrop" type="button" data-drawer-backdrop aria-label="Close controls"></button>
-  <div class="bf-application mascot-app" data-bf-tone="dark">
+  <div class="bf-application mascot-app" data-bf-tone="dark" data-aside-resize-storage-key="brand-layout-ops-control-panel-width-v1">
     <main class="bf-main">
       <div class="bf-fixed-width bf-stage-shell">
+        <div class="p-actions is-end preview-stage-actions">
+          <button class="p-panel__toggle" type="button" data-control-panel-toggle data-panel-drawer-toggle aria-controls="control-drawer" aria-expanded="false">Controls</button>
+        </div>
         <section class="stage" data-stage aria-label="Animated halo field">
           <canvas data-stage-canvas aria-hidden="true"></canvas>
           <canvas class="stage__text-overlay" data-text-overlay aria-hidden="true"></canvas>
@@ -20,7 +22,9 @@
       </div>
     </main>
 
-    <aside class="bf-aside" id="control-drawer" data-control-panel aria-label="Animation controls">
+    <div class="bf-application__overlay" data-panel-drawer-close aria-controls="control-drawer" aria-hidden="true"></div>
+
+    <aside class="bf-aside is-overlay is-medium" id="control-drawer" data-control-panel aria-label="Animation controls" aria-hidden="true">
       <div
         class="bf-application__aside-resize-handle"
         data-control-panel-resize-handle
@@ -34,7 +38,7 @@
         <div class="bf-panel__header is-sticky">
           <h1 class="bf-panel__title">Brand Layout Ops</h1>
           <div class="bf-panel__controls">
-            <button class="bf-button--base is-dense" type="button" data-drawer-close>Close</button>
+            <button class="p-panel__toggle" type="button" data-panel-drawer-close data-panel-drawer-autofocus aria-controls="control-drawer">Close</button>
           </div>
         </div>
         <div class="bf-panel__content">

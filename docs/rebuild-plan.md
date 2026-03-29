@@ -164,7 +164,8 @@ Active architectural risks requiring attention during the next work cycle.
 - Document workspace in `document-workspace.ts`, document bridge in `preview-document-bridge.ts`.
 - Halo rendering in `halo-renderer.ts`, scene-family preview in `scene-family-preview.ts`.
 - The real overlay preview now consumes the canonical `baseline-foundry` surface classes for stage shell, fill-height panel shell, choice rows, option cards, tight helper text, compact color input, and nowrap action rows; the local alias layer for those patterns has been removed from `apps/overlay-preview/src/styles.css`.
-- Remaining downstream shell seam is now mostly runtime behavior rather than markup or surface styling: the preview still keeps its own drawer-open/backdrop and dock-resize orchestration instead of using shipped `baseline-foundry` drawer or pinned-aside helpers.
+- The real overlay preview now also uses shipped `baseline-foundry` drawer and pinned-aside runtime: overlay close/backdrop behavior comes from `initPanelDrawers()`, pinned resize behavior comes from `initResizableAsides()`, and the mobile shell now has a real `Controls` toggle instead of relying only on local close-state bookkeeping.
+- Remaining downstream shell seam is now mostly shell policy: the preview still decides when the inspector docks vs overlays, and it still keeps the `Tab` shortcut as a local shell toggle.
 
 ### Remaining extraction targets
 
@@ -251,7 +252,7 @@ Concrete, dependency-ordered steps. Work top-down within each lane. Lanes are in
 
 - EQ-1 through EQ-12 are complete.
 - Key completed milestones: baseline-foundry shell swap, operator selector, operator-owned fuzzy-boids/phyllotaxis/scatter panels, document-owned scene-family configs, persisted background graph, and the list-first network view.
-- The downstream shell cleanup pass is materially complete for surface classes; remaining preview-shell debt is concentrated in runtime controllers rather than local alias CSS.
+- The downstream shell cleanup pass is materially complete for both surface classes and baseline shell runtime; remaining preview-shell debt is concentrated in dock-mode policy and other higher-level controllers rather than local alias CSS.
 - Use git history for audit detail instead of expanding the live plan.
 
 ### Reference re-checks

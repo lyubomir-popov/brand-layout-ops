@@ -11,7 +11,7 @@
 import "baseline-foundry/presets/panel.css";
 import "./styles.css";
 
-import { initRangeControls } from "baseline-foundry";
+import { initPanelDrawers, initRangeControls, initResizableAsides } from "baseline-foundry";
 
 import type {
   LayerScene,
@@ -213,10 +213,8 @@ const INITIAL_PARAMS = createDefaultOverlayParams(_startProfileKey, _startFormat
 const SOURCE_DEFAULT_AUTHORING_ENDPOINT = "/__authoring/source-default-config";
 const SOURCE_DEFAULT_ASSET_PATH = "/assets/source-default-config.json";
 const CSV_AUTHORING_ENDPOINT = "/__authoring/overlay-csv";
-const CONTROL_PANEL_WIDTH_STORAGE_KEY = "brand-layout-ops-control-panel-width-v1";
 const OVERLAY_VISIBLE_STORAGE_KEY = "brand-layout-ops-overlay-visible-v1";
 const GUIDE_MODE_STORAGE_KEY = "brand-layout-ops-guide-mode-v1";
-const CONTROL_PANEL_WIDTH_STEP_PX = 16;
 const previewTextMeasurer = createApproximateTextMeasurer();
 
 function createDebugHaloFieldConfig(baseConfig: HaloFieldConfig = createDefaultHaloFieldConfig()): HaloFieldConfig {
@@ -562,6 +560,7 @@ let authoringSelectedBox: HTMLElement | null = null;
 let authoringSelectedLabel: HTMLElement | null = null;
 let authoringBaselineGuide: HTMLElement | null = null;
 let authoringHandles: Map<ResizeEdge, HTMLElement> = new Map();
+let destroyResizableAsides: (() => void) | null = null;
 
 // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ DOM references ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 
@@ -578,7 +577,8 @@ function getOutputProfileOptions(): HTMLElement | null { return $("[data-output-
 function getPresetTabs(): HTMLElement | null { return $("[data-preset-tabs]"); }
 function getOverlayVisibilityInput(): HTMLInputElement | null { return $("[data-overlay-visibility]"); }
 function getControlPanelEl(): HTMLElement | null { return $("[data-control-panel]"); }
-function getControlPanelResizeHandle(): HTMLElement | null { return $("[data-control-panel-resize-handle]"); }
+function getControlPanelToggleEl(): HTMLElement | null { return $("[data-control-panel-toggle]"); }
+function getControlPanelOverlayEl(): HTMLElement | null { return document.querySelector<HTMLElement>(".bf-application__overlay"); }
 function getDocumentNameInput(): HTMLInputElement | null { return $("[data-document-name-input]"); }
 function getDocumentSummaryEl(): HTMLElement | null { return $("[data-document-summary]"); }
 function getDocumentStatusEl(): HTMLElement | null { return $("[data-document-status]"); }
@@ -586,109 +586,9 @@ function getDocumentRecentListEl(): HTMLElement | null { return $("[data-documen
 
 // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Helper utilities ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
-function resolveCssLengthPx(host: HTMLElement, lengthValue: string, fallbackPx: number): number {
-  const trimmedValue = lengthValue.trim();
-  if (!trimmedValue) {
-    return fallbackPx;
-  }
-
-  const probe = document.createElement("div");
-  probe.style.blockSize = "0";
-  probe.style.inlineSize = trimmedValue;
-  probe.style.pointerEvents = "none";
-  probe.style.position = "absolute";
-  probe.style.visibility = "hidden";
-  host.appendChild(probe);
-  const resolvedPx = probe.getBoundingClientRect().width;
-  probe.remove();
-  return Number.isFinite(resolvedPx) && resolvedPx > 0 ? resolvedPx : fallbackPx;
-}
-
-function getControlPanelWidthBounds(): { minPx: number; maxPx: number } {
-  const appShell = getAppShellEl();
-  if (!appShell) {
-    return { minPx: 288, maxPx: 480 };
-  }
-
-  const computedStyle = getComputedStyle(appShell);
-  const minPx = resolveCssLengthPx(appShell, computedStyle.getPropertyValue("--bf-app-aside-width-narrow"), 288);
-  const maxPx = resolveCssLengthPx(appShell, computedStyle.getPropertyValue("--bf-app-aside-width-max"), 480);
-  return {
-    minPx,
-    maxPx: Math.max(minPx, maxPx)
-  };
-}
-
-function getCurrentControlPanelWidthPx(): number {
-  const controlPanel = getControlPanelEl();
-  if (controlPanel) {
-    const measuredWidth = controlPanel.getBoundingClientRect().width;
-    if (measuredWidth > 0) {
-      return measuredWidth;
-    }
-  }
-
-  const appShell = getAppShellEl();
-  if (!appShell) {
-    return 480;
-  }
-
-  return resolveCssLengthPx(
-    appShell,
-    getComputedStyle(appShell).getPropertyValue("--bf-app-aside-width"),
-    480
-  );
-}
-
-function updateControlPanelResizeHandleA11y(widthPx: number = getCurrentControlPanelWidthPx()): void {
-  const handle = getControlPanelResizeHandle();
-  if (!handle) {
-    return;
-  }
-
-  const { minPx, maxPx } = getControlPanelWidthBounds();
-  handle.setAttribute("aria-valuemin", String(Math.round(minPx)));
-  handle.setAttribute("aria-valuemax", String(Math.round(maxPx)));
-  handle.setAttribute("aria-valuenow", String(Math.round(clamp(widthPx, minPx, maxPx))));
-}
-
-function applyDockedControlPanelWidth(widthPx: number, persist: boolean = true): number {
-  const appShell = getAppShellEl();
-  if (!appShell) {
-    return widthPx;
-  }
-
-  const { minPx, maxPx } = getControlPanelWidthBounds();
-  const nextWidthPx = clamp(widthPx, minPx, maxPx);
-  appShell.style.setProperty("--bf-app-aside-width", `${nextWidthPx}px`);
-  appShell.style.setProperty("--vr-application-aside-width", `${nextWidthPx}px`);
-  updateControlPanelResizeHandleA11y(nextWidthPx);
-
-  if (persist) {
-    localStorage.setItem(CONTROL_PANEL_WIDTH_STORAGE_KEY, String(Math.round(nextWidthPx)));
-  }
-
-  return nextWidthPx;
-}
-
-function restoreDockedControlPanelWidth(): void {
-  const rawWidth = localStorage.getItem(CONTROL_PANEL_WIDTH_STORAGE_KEY);
-  if (!rawWidth) {
-    updateControlPanelResizeHandleA11y();
-    return;
-  }
-
-  const parsedWidth = Number.parseFloat(rawWidth);
-  if (!Number.isFinite(parsedWidth)) {
-    updateControlPanelResizeHandleA11y();
-    return;
-  }
-
-  applyDockedControlPanelWidth(parsedWidth, false);
+function refreshResizableAsidesRuntime(): void {
+  destroyResizableAsides?.();
+  destroyResizableAsides = initResizableAsides();
 }
 
 function getNormalizedDocumentName(rawName: string = documentWorkspaceController.state.name): string {
@@ -3334,13 +3234,50 @@ function cycleGuideMode() {
 }
 
 function isControlPanelOpen(): boolean {
-  return !getControlPanelEl()?.classList.contains("is-collapsed");
+  const aside = getControlPanelEl();
+  if (!aside) {
+    return false;
+  }
+
+  if (document.body.classList.contains("editor-docked")) {
+    return aside.classList.contains("is-pinned") && !aside.classList.contains("is-collapsed");
+  }
+
+  return aside.classList.contains("is-open") && aside.getAttribute("aria-hidden") !== "true";
 }
 
 function setDrawerOpen(isOpen: boolean) {
-  const aside = $<HTMLElement>("[data-control-panel]");
-  aside?.classList.toggle("is-collapsed", !isOpen);
-  document.body.classList.toggle("drawer-open", !document.body.classList.contains("editor-docked") && isOpen);
+  const appShell = getAppShellEl();
+  const aside = getControlPanelEl();
+  const overlay = getControlPanelOverlayEl();
+  const toggle = getControlPanelToggleEl();
+  if (!aside) {
+    return;
+  }
+
+  const isDocked = document.body.classList.contains("editor-docked");
+  toggle?.setAttribute("aria-expanded", String(!isDocked && isOpen));
+
+  if (isDocked) {
+    appShell?.classList.remove("is-drawer-expanded");
+    appShell?.classList.toggle("has-pinned-aside", isOpen);
+    overlay?.setAttribute("aria-hidden", "true");
+    aside.classList.remove("is-overlay", "is-drawer", "is-medium", "is-open");
+    aside.classList.toggle("is-pinned", isOpen);
+    aside.classList.toggle("is-collapsed", !isOpen);
+    aside.setAttribute("aria-hidden", String(!isOpen));
+    refreshResizableAsidesRuntime();
+    return;
+  }
+
+  appShell?.classList.remove("has-pinned-aside");
+  aside.classList.remove("is-collapsed", "is-pinned");
+  aside.classList.add("is-overlay", "is-medium");
+  aside.classList.toggle("is-open", isOpen);
+  aside.setAttribute("aria-hidden", String(!isOpen));
+  appShell?.classList.toggle("is-drawer-expanded", isOpen);
+  overlay?.setAttribute("aria-hidden", String(!isOpen));
+  refreshResizableAsidesRuntime();
 }
 
 // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Keyboard shortcuts ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
@@ -3408,7 +3345,7 @@ function handleKeyDown(e: KeyboardEvent) {
   }
 
   if (e.key === "Escape") {
-    if (document.body.classList.contains("drawer-open")) {
+    if (!document.body.classList.contains("editor-docked") && isControlPanelOpen()) {
       setDrawerOpen(false);
       e.preventDefault();
       return;
@@ -3424,13 +3361,6 @@ function handleKeyDown(e: KeyboardEvent) {
 }
 
 // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Drawer toggle (mobile) ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
-
-function setupControlPanelVisibility() {
-  const closeBtn = $<HTMLElement>("[data-drawer-close]");
-  const backdrop = $<HTMLElement>("[data-drawer-backdrop]");
-  closeBtn?.addEventListener("click", () => setDrawerOpen(false));
-  backdrop?.addEventListener("click", () => setDrawerOpen(false));
-}
 
 // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Button handlers ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 
@@ -3800,103 +3730,25 @@ function setupButtons() {
   configEditor.addEventListener("change", trackDocumentInput);
 }
 
-function setupControlPanelResize() {
-  const appShell = getAppShellEl();
-  const handle = getControlPanelResizeHandle();
-  if (!appShell || !handle) {
-    return;
-  }
-
-  restoreDockedControlPanelWidth();
-
-  const commitWidth = (nextWidthPx: number, persist: boolean = true): void => {
-    applyDockedControlPanelWidth(nextWidthPx, persist);
-  };
-
-  handle.addEventListener("dblclick", () => {
-    localStorage.removeItem(CONTROL_PANEL_WIDTH_STORAGE_KEY);
-    appShell.style.removeProperty("--bf-app-aside-width");
-    appShell.style.removeProperty("--vr-application-aside-width");
-    updateControlPanelResizeHandleA11y();
-  });
-
-  handle.addEventListener("keydown", (event) => {
-    if (!document.body.classList.contains("editor-docked")) {
-      return;
-    }
-
-    const { minPx, maxPx } = getControlPanelWidthBounds();
-    const currentWidthPx = getCurrentControlPanelWidthPx();
-    const stepPx = event.shiftKey ? CONTROL_PANEL_WIDTH_STEP_PX * 3 : CONTROL_PANEL_WIDTH_STEP_PX;
-
-    if (event.key === "ArrowLeft") {
-      commitWidth(currentWidthPx + stepPx);
-      event.preventDefault();
-      return;
-    }
-
-    if (event.key === "ArrowRight") {
-      commitWidth(currentWidthPx - stepPx);
-      event.preventDefault();
-      return;
-    }
-
-    if (event.key === "Home") {
-      commitWidth(minPx);
-      event.preventDefault();
-      return;
-    }
-
-    if (event.key === "End") {
-      commitWidth(maxPx);
-      event.preventDefault();
-    }
-  });
-
-  handle.addEventListener("pointerdown", (event: PointerEvent) => {
-    if (event.button !== 0 || !document.body.classList.contains("editor-docked")) {
-      return;
-    }
-
-    event.preventDefault();
-    const shellRect = appShell.getBoundingClientRect();
-    appShell.classList.add("is-resizing-aside");
-    handle.setPointerCapture(event.pointerId);
-
-    const onPointerMove = (moveEvent: PointerEvent): void => {
-      const nextWidthPx = shellRect.right - moveEvent.clientX;
-      commitWidth(nextWidthPx, false);
-    };
-
-    const finishResize = (): void => {
-      appShell.classList.remove("is-resizing-aside");
-      commitWidth(getCurrentControlPanelWidthPx(), true);
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", finishResize);
-      window.removeEventListener("pointercancel", finishResize);
-    };
-
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", finishResize, { once: true });
-    window.addEventListener("pointercancel", finishResize, { once: true });
-  });
-}
-
 // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Window resize ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 
 function setupResize() {
-  const appShell = getAppShellEl();
-  const aside = getControlPanelEl();
+  let hasInitializedDockMode = false;
+  let lastDockedState: boolean | null = null;
 
   function checkDock() {
     const isDocked = window.innerWidth >= 1200;
-    document.body.classList.toggle("editor-docked", isDocked);
-    appShell?.classList.toggle("has-pinned-aside", isDocked);
-    aside?.classList.toggle("is-pinned", isDocked);
+    if (hasInitializedDockMode && lastDockedState === isDocked) {
+      return;
+    }
 
-    setDrawerOpen(!aside?.classList.contains("is-collapsed"));
-    updateControlPanelResizeHandleA11y();
+    const desiredOpen = hasInitializedDockMode ? isControlPanelOpen() : true;
+    document.body.classList.toggle("editor-docked", isDocked);
+    setDrawerOpen(desiredOpen);
+    lastDockedState = isDocked;
+    hasInitializedDockMode = true;
   }
+
   checkDock();
   window.addEventListener("resize", checkDock);
 }
@@ -3922,9 +3774,8 @@ async function init() {
 
   buildConfigEditor();
 
-  setupControlPanelVisibility();
+  initPanelDrawers();
   setupButtons();
-  setupControlPanelResize();
   setupResize();
   initAuthoringLayer();
 

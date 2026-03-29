@@ -30,6 +30,7 @@ body {
   --vf-color-border-default: #4b4b4b;
   --vf-color-border-high-contrast: #6a6a6a;
   --vf-color-border-low-contrast: #3a3a3a;
+  --bf-app-aside-width-min: 18rem;
   --bf-app-aside-width-narrow: 18rem;
   --bf-app-aside-width: 30rem;
   --bf-app-aside-width-max: 30rem;
@@ -81,26 +82,12 @@ body.editor-docked .mascot-app .bf-application__aside-resize-handle:focus-visibl
   box-shadow: inset 0 0 0 2px rgba(246, 183, 60, 0.55);
 }
 
-.drawer-backdrop {
-  appearance: none;
-  background: rgba(0, 0, 0, 0.32);
-  border: 0;
-  box-shadow: none;
-  inset: 0;
-  opacity: 0;
-  pointer-events: none;
-  position: fixed;
-  transition: opacity 160ms ease;
-  z-index: 100;
+.preview-stage-actions {
+  inline-size: 100%;
 }
 
-body.drawer-open .drawer-backdrop {
-  opacity: 0;
-  pointer-events: auto;
-}
-
-body.editor-docked .drawer-backdrop,
-body.editor-docked [data-drawer-close] {
+body.editor-docked .bf-application__overlay,
+body.editor-docked [data-panel-drawer-close] {
   display: none;
 }
 
@@ -252,6 +239,12 @@ body.editor-docked .bf-stage-shell {
 @media (max-width: 720px) {
   .stage {
     width: min(100%, calc((100dvh - 1.5rem) * var(--stage-aspect-ratio)));
+  }
+}
+
+@media (min-width: 1200px) {
+  .preview-stage-actions {
+    display: none;
   }
 }
 
