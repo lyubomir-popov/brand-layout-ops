@@ -163,6 +163,8 @@ Active architectural risks requiring attention during the next work cycle.
 - 12 section builders extracted (halo-config, grid, playback-export, document, output-format, presets, content-format, overlay, fuzzy-boids, phyllotaxis, scatter, paragraph-styles).
 - Document workspace in `document-workspace.ts`, document bridge in `preview-document-bridge.ts`.
 - Halo rendering in `halo-renderer.ts`, scene-family preview in `scene-family-preview.ts`.
+- The real overlay preview now consumes the canonical `baseline-foundry` surface classes for stage shell, fill-height panel shell, choice rows, option cards, tight helper text, compact color input, and nowrap action rows; the local alias layer for those patterns has been removed from `apps/overlay-preview/src/styles.css`.
+- Remaining downstream shell seam is now mostly runtime behavior rather than markup or surface styling: the preview still keeps its own drawer-open/backdrop and dock-resize orchestration instead of using shipped `baseline-foundry` drawer or pinned-aside helpers.
 
 ### Remaining extraction targets
 
@@ -249,6 +251,7 @@ Concrete, dependency-ordered steps. Work top-down within each lane. Lanes are in
 
 - EQ-1 through EQ-12 are complete.
 - Key completed milestones: baseline-foundry shell swap, operator selector, operator-owned fuzzy-boids/phyllotaxis/scatter panels, document-owned scene-family configs, persisted background graph, and the list-first network view.
+- The downstream shell cleanup pass is materially complete for surface classes; remaining preview-shell debt is concentrated in runtime controllers rather than local alias CSS.
 - Use git history for audit detail instead of expanding the live plan.
 
 ### Reference re-checks

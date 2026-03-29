@@ -2150,7 +2150,7 @@ function buildOutputProfileOptions() {
   container.append(sceneFields);
 
   const help = document.createElement("p");
-  help.className = "bf-form-help control-help";
+  help.className = "p-form-help-text is-tight u-no-margin--bottom";
   container.append(help);
 
   const toolbar = document.createElement("div");
@@ -2190,12 +2190,12 @@ function buildOutputProfileOptions() {
   container.append(toolbar);
 
   const list = document.createElement("div");
-  list.className = "bf-stack preview-stack--compact";
+  list.className = "p-choice-list bf-stack preview-stack--compact";
 
   for (const target of state.documentProject.targets) {
     const profile = OUTPUT_PROFILES[target.outputProfileKey];
     const row = document.createElement("label");
-    row.className = "preset-radio-row";
+    row.className = "p-choice-row";
 
     const radio = document.createElement("input");
     radio.type = "radio";
@@ -2210,11 +2210,11 @@ function buildOutputProfileOptions() {
     });
 
     const nameSpan = document.createElement("span");
-    nameSpan.className = "preset-radio-name";
+    nameSpan.className = "p-choice-row__name";
     nameSpan.textContent = target.label;
 
     const metaSpan = document.createElement("span");
-    metaSpan.className = "preset-radio-status";
+    metaSpan.className = "p-choice-row__meta";
     const profileMeta = profile
       ? `${profile.label} \u2022 ${profile.widthPx}x${profile.heightPx}`
       : target.outputProfileKey;
@@ -2282,11 +2282,11 @@ function buildPresetTabs() {
   }
 
   const list = document.createElement("div");
-  list.className = "bf-stack preview-stack--compact";
+  list.className = "p-choice-list bf-stack preview-stack--compact";
 
   for (const preset of state.presets) {
     const row = document.createElement("label");
-    row.className = "preset-radio-row";
+    row.className = "p-choice-row";
 
     const radio = document.createElement("input");
     radio.type = "radio";
@@ -2304,11 +2304,11 @@ function buildPresetTabs() {
     });
 
     const nameSpan = document.createElement("span");
-    nameSpan.className = "preset-radio-name";
+    nameSpan.className = "p-choice-row__name";
     nameSpan.textContent = preset.name;
 
     const statusSpan = document.createElement("span");
-    statusSpan.className = "preset-radio-status";
+    statusSpan.className = "p-choice-row__meta";
     if (preset.id === state.activePresetId) {
       statusSpan.textContent = isActivePresetDirty() ? "Active \u2022 Dirty" : "Active";
     } else {
@@ -2497,7 +2497,7 @@ function buildOperatorSelectorEl(): HTMLElement {
   heading.append(label);
 
   const help = document.createElement("p");
-  help.className = "bf-form-help bf-u-no-margin--bottom operator-selector__help";
+  help.className = "p-form-help-text is-tight u-no-margin--bottom operator-selector__help";
   help.textContent = "Output selects the rendered family. Saved nodes select which operator pane the inspector edits.";
 
   const outputSection = document.createElement("div");
@@ -2552,12 +2552,12 @@ function buildOperatorSelectorEl(): HTMLElement {
   nodesSection.append(nodesLabel);
 
   const nodeList = document.createElement("div");
-  nodeList.className = "bf-stack preview-stack--compact";
+  nodeList.className = "p-choice-list bf-stack preview-stack--compact";
   const selectedBackgroundNodeId = normalizeSelectedBackgroundNodeId();
 
   for (const node of state.documentProject.backgroundGraph.nodes) {
     const row = document.createElement("label");
-    row.className = "preset-radio-row operator-selector__node";
+    row.className = "p-choice-row operator-selector__node";
 
     const radio = document.createElement("input");
     radio.type = "radio";
@@ -2577,11 +2577,11 @@ function buildOperatorSelectorEl(): HTMLElement {
     copy.className = "operator-selector__node-copy";
 
     const nameSpan = document.createElement("span");
-    nameSpan.className = "preset-radio-name";
+    nameSpan.className = "p-choice-row__name";
     nameSpan.textContent = getBackgroundNodeLabel(node);
 
     const metaSpan = document.createElement("span");
-    metaSpan.className = "preset-radio-status";
+    metaSpan.className = "p-choice-row__meta";
     metaSpan.textContent = getBackgroundNodeStatus(node);
 
     copy.append(nameSpan, metaSpan);

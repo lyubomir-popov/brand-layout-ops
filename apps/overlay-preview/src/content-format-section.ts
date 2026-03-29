@@ -68,7 +68,7 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
     body.append(createFormGroup("CSV Data", textarea));
 
     const actions = document.createElement("div");
-    actions.className = "bf-cluster preview-cluster--tight";
+    actions.className = "p-actions";
 
     const applyBtn = document.createElement("button");
     applyBtn.className = "bf-button is-dense";
@@ -115,7 +115,7 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
     ));
 
     const csvStatus = document.createElement("p");
-    csvStatus.className = "bf-form-help control-help";
+    csvStatus.className = "p-form-help-text is-tight u-no-margin--bottom";
     csvStatus.textContent = csvSummary.selectedRowExists
       ? `${csvSummary.rowCount} row(s) loaded. Editing row ${csvSummary.selectedRowIndex}.`
       : `No CSV row ${csvSummary.selectedRowIndex} exists yet. ${csvSummary.rowCount} row(s) loaded.`;
@@ -123,20 +123,20 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
 
     if (csvSummary.hasUnterminatedQuote) {
       const warning = document.createElement("p");
-      warning.className = "bf-form-help control-help";
+      warning.className = "p-form-help-text is-tight u-no-margin--bottom";
       warning.textContent = "CSV draft has an unterminated quoted field.";
       body.append(warning);
     }
 
     if (ctx.hasStagedCsvDraft()) {
       const pending = document.createElement("p");
-      pending.className = "bf-form-help control-help";
+      pending.className = "p-form-help-text is-tight u-no-margin--bottom";
       pending.textContent = "Staged CSV changes are pending for this profile and format until you apply them.";
       body.append(pending);
     }
 
     const fieldStatusList = document.createElement("div");
-    fieldStatusList.className = "style-palette";
+    fieldStatusList.className = "p-option-grid";
 
     for (const fieldSpec of formatSpec.fields) {
       const field = state.params.textFields.find((candidate) => {
@@ -145,10 +145,10 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
       });
 
       const statusCard = document.createElement("div");
-      statusCard.className = "style-palette__button";
+      statusCard.className = "p-option-card";
 
       const label = document.createElement("span");
-      label.className = "style-palette__label";
+      label.className = "p-option-card__label";
       label.textContent = fieldSpec.label;
 
       const isMapped = !csvSummary.missingFieldKeys.includes(fieldSpec.id);
@@ -157,13 +157,13 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
       const isPending = ctx.hasStagedCsvDraft() && effectiveValue !== appliedValue;
 
       const meta = document.createElement("span");
-      meta.className = "style-palette__meta";
+      meta.className = "p-option-card__meta";
       meta.textContent = isMapped
         ? (isPending ? "Mapped via CSV alias, staged changes pending" : "Mapped via CSV alias")
         : "No matching CSV header found";
 
       const value = document.createElement("span");
-      value.className = "style-palette__meta";
+      value.className = "p-option-card__meta is-quiet";
       value.textContent = isPending
         ? `Pending: ${effectiveValue || "(empty)"} | Applied: ${appliedValue || "(empty)"}`
         : `Value: ${effectiveValue || "(empty)"}`;

@@ -53,7 +53,8 @@ If you want the shortest high-level snapshot, read this file first.
 - Current-stage shell drift is now clearer: section-builder extraction is substantially complete (12 modules), but authoring interaction, export/automation, and source-default orchestration still remain concentrated in `main.ts` (4,147 lines). The next refactor targets are concrete: authoring controller, export controller, then thin composition root.
 - Current-stage non-halo drift is also explicit: `scene-family-preview.ts` still renders phyllotaxis arm lines, scatter shape guides, and fuzzy-boids link or velocity helpers that should be treated as fidelity cleanup rather than canonical output.
 - Current-stage package drift: `operator-overlay-layout/src/index.ts` has grown to 2,187 lines — the largest package file — and needs internal decomposition into sub-modules for document normalization, bucket management, field defaults, and CSV resolution.
-- `baseline-foundry` now owns the preview shell styling, and the preview-shell extraction work is far enough along that the remaining detailed status belongs in `docs/rebuild-plan.md`, not here.
+- `baseline-foundry` now owns most preview-shell surface styling in the real app as well, not just in isolated demos: the overlay preview now uses the shipped stage shell, fill-height panel shell, choice rows, option cards, tight help text, compact color input, and nowrap action row surfaces instead of local aliases.
+- The remaining shell seam is narrower and explicit: drawer visibility/backdrop behavior and control-panel resize or dock runtime are still local preview orchestration rather than shipped `baseline-foundry` drawer or aside runtime.
 - The next product shift is toward a clearer authoring shell with ordered visual layers and dedicated project or export chrome instead of more inspector-local special cases.
 
 Detailed parity gaps, audit history, deviation notes, and preview-shell extraction status live in `docs/rebuild-plan.md`.

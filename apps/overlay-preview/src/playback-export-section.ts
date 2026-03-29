@@ -12,7 +12,7 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
   const { state } = ctx;
 
   const row = document.createElement("div");
-  row.className = "bf-cluster preview-cluster--tight playback-export-actions";
+  row.className = "p-actions is-nowrap";
 
   const playBtn = document.createElement("button");
   playBtn.className = "bf-button is-dense";

@@ -24,17 +24,17 @@ export function buildParagraphStylesSection(ctx: PreviewAppContext): HTMLElement
   }
 
   const helper = document.createElement("p");
-  helper.className = "bf-form-help control-help";
+  helper.className = "p-form-help-text is-tight u-no-margin--bottom";
   helper.textContent = `Apply a paragraph style to ${getOverlayFieldDisplayLabel(state.params, selectedField.id)}.`;
   body.append(helper);
 
   const palette = document.createElement("div");
-  palette.className = "style-palette";
+  palette.className = "p-option-grid";
 
   for (const style of state.params.textStyles) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "style-palette__button";
+    button.className = "p-option-card";
     button.disabled = selectedField.styleKey === style.key;
     if (selectedField.styleKey === style.key) {
       button.classList.add("is-active");
@@ -44,11 +44,11 @@ export function buildParagraphStylesSection(ctx: PreviewAppContext): HTMLElement
     });
 
     const label = document.createElement("span");
-    label.className = "style-palette__label";
+    label.className = "p-option-card__label";
     label.textContent = getOverlayStyleDisplayLabel(style.key);
 
     const meta = document.createElement("span");
-    meta.className = "style-palette__meta";
+    meta.className = "p-option-card__meta";
     meta.textContent = `${style.fontSizePx}px / ${style.lineHeightPx}px / ${style.fontWeight ?? 400}`;
 
     button.append(label, meta);

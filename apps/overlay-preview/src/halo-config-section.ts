@@ -155,7 +155,7 @@ export function buildHaloConfigSection(ctx: PreviewAppContext): HTMLElement {
   ] as const) {
     const colorInput = document.createElement("input");
     colorInput.type = "color";
-    colorInput.className = "control-color";
+    colorInput.className = "p-color-input";
     colorInput.value = (getValue as () => string)();
     colorInput.addEventListener("input", () => {
       (setValue as (v: string) => void)(colorInput.value);
