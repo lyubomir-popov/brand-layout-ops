@@ -15,6 +15,7 @@ The key product shape is not "Figma for brand design." It is a structured operat
 
 - a document can target one or more output sizes
 - documents should be real local project files, not only browser-local state
+- source defaults can seed new documents, but authored operator settings and graph wiring belong to the document itself
 - layout stays rigorous and document-driven rather than freeform first
 - scene families can be swapped behind the same layout and export stack
 - halo, boids, phyllotaxis, and future generators should be peers at the scene layer rather than bespoke app branches
@@ -78,11 +79,13 @@ Deliverables:
 - SVG instancing operator
 - compositing or layer-stack operator family
 - background and layout composition in one graph
+- typed point or field handoff between operators so generators can seed downstream solvers without preview-local glue
 - swappable scene-family operators that can drive the same document through different motion systems
 
 Success criteria:
 
 - one campaign document can mix structured layout with procedural motion without bespoke glue code, and can swap one scene family for another without rewriting the layout or export path
+- operator outputs can be passed forward as first-order graph payloads rather than being collapsed into preview-only state
 
 ### Stage 3. Local document model
 
@@ -95,7 +98,8 @@ Deliverables:
 - local filesystem-backed document format for overlay and scene state
 - open, save, save-as, and recent-document workflow
 - persistence for in-editor text placement, added or removed text fields, logo asset changes, and per-document output settings
-- document-owned scene-family selection so the same document model can point at halo today and boids, phyllotaxis, or other background operator stacks later
+- document-owned scene-family selection plus saved background or operator graph state so the same document model can point at halo today and boids, phyllotaxis, or other background operator stacks later
+- document-owned per-node parameter state and connection data for swappable background or scene-family stacks
 - document-owned target-size groups so one document can carry multiple output destinations instead of being trapped in a single preview session
 - clearer separation between authored document state and imported content sources like CSV
 
@@ -103,6 +107,7 @@ Success criteria:
 
 - a user can treat the app like a real local project editor: open a document, edit text and placement, add or remove fields, change the logo, save, duplicate as a new document, and reopen later without relying on browser localStorage
 - the document model is broad enough that scene-family swaps, target-size additions, and PNG or image-sequence or MP4 export all remain document-driven instead of becoming preview-only glue
+- the saved document, not browser-local UI state, is authoritative for scene-family choice, operator settings, and graph wiring
 
 ### Stage 4. Stakeholder and operator surfaces
 
@@ -114,7 +119,8 @@ Deliverables:
 
 - operator mode for graph and parameter tuning
 - contextual parameter panels driven by the selected operator or graph node instead of one monolithic document accordion
-- a network-view or operator-selection workflow that lets the layout operator, scene operator, and future generators expose their own scoped controls
+- a list-first network-view or operator-selection workflow that lets the layout operator, scene operator, and future generators expose their own scoped controls, with a graphical node editor later if needed
+- the network view reads the persisted operator graph from the document model instead of introducing a second source of truth
 - dedicated shell navigation for project and export actions so file operations do not stay mixed into the operator parameter stack
 - stakeholder mode for template, row, and format selection
 - document-size and template management without exposing low-level operator tuning

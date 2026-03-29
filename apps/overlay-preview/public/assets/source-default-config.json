@@ -3,11 +3,11 @@
   "version": 1,
   "metadata": {
     "name": "Untitled document",
-    "createdAt": "2026-03-29T12:40:25.912Z",
-    "updatedAt": "2026-03-29T12:40:25.912Z"
+    "createdAt": "2026-03-29T21:08:51.007Z",
+    "updatedAt": "2026-03-29T21:08:51.007Z"
   },
   "project": {
-    "sceneFamilyKey": "halo",
+    "sceneFamilyKey": "fuzzy-boids",
     "activeTargetId": "screen_3840x2160",
     "targets": [
       {
@@ -34,38 +34,44 @@
     "sceneFamilyConfigs": {
       "phyllotaxis": {
         "numPoints": 720,
-        "radiusPx": 367,
+        "radiusPx": 2203,
         "radiusFalloff": 0.68,
         "angleOffsetDeg": -168.8,
         "animationEnabled": false,
         "animationSpeedDegPerSecond": 14
       },
       "fuzzyBoids": {
-        "numBoids": 2200,
+        "numBoids": 500,
         "seed": 1,
-        "spawnRadiusPx": 353,
-        "staggerStartSeconds": 0,
-        "initialSpeedPxPerSecond": 70,
-        "initialSpeedJitter": 0.35,
-        "minSpeedPxPerSecond": 19,
-        "maxSpeedPxPerSecond": 299,
-        "maxAccelerationPxPerSecond2": 97,
-        "massMin": 0.85,
-        "massMax": 1.15,
-        "pscaleMin": 1.2,
-        "pscaleMax": 1.1,
-        "separationRadiusPx": 132,
-        "separationStrength": 3,
-        "alignmentRadiusPx": 62,
-        "alignmentStrength": 0.17,
-        "cohesionRadiusPx": 106,
-        "cohesionStrength": 0.08,
-        "centerPullStrength": 0.06,
-        "maxNeighbors": 3,
-        "boundsKind": "radial",
-        "boundsRadiusPx": 302,
-        "boundsMarginPx": 86,
-        "boundsForcePxPerSecond2": 346
+        "subSteps": 2,
+        "spawnRadiusPx": 78,
+        "staggerStartSeconds": 9,
+        "initialSpeed": 1,
+        "initialSpeedJitter": 0.001,
+        "massMin": 2,
+        "massMax": 0.66,
+        "pscaleMin": 0.1,
+        "pscaleMax": 0.2,
+        "maxNeighbors": 14,
+        "separationMinDist": 0,
+        "separationMaxDist": 0.9,
+        "separationMaxStrength": 0.24,
+        "alignNearThreshold": 0.1,
+        "alignFarThreshold": 50,
+        "alignSpeedThreshold": 165,
+        "cohesionMinDist": 1.5,
+        "cohesionMaxDist": 75,
+        "cohesionMaxAccel": 2.8,
+        "attractToOrigin": false,
+        "minSpeedLimit": 0.1,
+        "maxSpeedLimit": 3,
+        "minAccelLimit": 0.01,
+        "maxAccelLimit": 3,
+        "dotSizePx": 3.5,
+        "boundsKind": "box",
+        "boundsRadiusPx": 353,
+        "boundsMarginPx": 69,
+        "boundsForcePxPerSecond2": 1000
       },
       "scatter": {
         "pointCount": 420,
@@ -73,22 +79,73 @@
         "distributionMode": "uniform",
         "marginPx": 16,
         "shapeKind": "rounded-rect",
-        "widthPx": 620,
-        "heightPx": 420,
+        "widthPx": 3840,
+        "heightPx": 2160,
         "cornerRadiusPx": 64,
         "svgPath": "M -220 0 L -120 -150 L 120 -150 L 220 0 L 120 150 L -120 150 Z"
       }
     },
     "backgroundGraph": {
-      "activeNodeId": "background-halo",
+      "activeNodeId": "background-fuzzy-boids",
       "nodes": [
         {
-          "id": "background-halo",
-          "operatorKey": "background.halo",
-          "params": {}
+          "id": "background-fuzzy-seed",
+          "operatorKey": "operator.phyllotaxis",
+          "params": {
+            "numPoints": 50,
+            "radiusPx": 735,
+            "radiusFalloff": 0.68,
+            "angleOffsetDeg": 0,
+            "animationEnabled": true,
+            "animationSpeedDegPerSecond": 8
+          }
+        },
+        {
+          "id": "background-fuzzy-boids",
+          "operatorKey": "operator.fuzzy-boids",
+          "params": {
+            "numBoids": 500,
+            "seed": 1,
+            "subSteps": 2,
+            "spawnRadiusPx": 78,
+            "staggerStartSeconds": 9,
+            "initialSpeed": 1,
+            "initialSpeedJitter": 0.001,
+            "massMin": 2,
+            "massMax": 0.66,
+            "pscaleMin": 0.1,
+            "pscaleMax": 0.2,
+            "maxNeighbors": 14,
+            "separationMinDist": 0,
+            "separationMaxDist": 0.9,
+            "separationMaxStrength": 0.24,
+            "alignNearThreshold": 0.1,
+            "alignFarThreshold": 50,
+            "alignSpeedThreshold": 165,
+            "cohesionMinDist": 1.5,
+            "cohesionMaxDist": 75,
+            "cohesionMaxAccel": 2.8,
+            "attractToOrigin": false,
+            "minSpeedLimit": 0.1,
+            "maxSpeedLimit": 3,
+            "minAccelLimit": 0.01,
+            "maxAccelLimit": 3,
+            "dotSizePx": 3.5,
+            "boundsKind": "box",
+            "boundsRadiusPx": 353,
+            "boundsMarginPx": 69,
+            "boundsForcePxPerSecond2": 1000
+          }
         }
       ],
-      "edges": []
+      "edges": [
+        {
+          "fromNodeId": "background-fuzzy-seed",
+          "fromPortKey": "pointField",
+          "toNodeId": "background-fuzzy-boids",
+          "toPortKey": "seedField"
+        }
+      ]
     }
   },
   "state": {
@@ -825,7 +882,7 @@
           ],
           "logo": {
             "id": "brand-mark",
-            "xPx": 41,
+            "xPx": 96,
             "yPx": 0,
             "widthPx": 110,
             "heightPx": 189,
@@ -931,7 +988,7 @@
           ],
           "logo": {
             "id": "brand-mark",
-            "xPx": 41,
+            "xPx": 96,
             "yPx": 0,
             "widthPx": 110,
             "heightPx": 189,
