@@ -551,9 +551,10 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     haloOuterR: number,
     fullFrameR: number,
     config: HaloFieldConfig,
+    baseAlpha: number,
     reveal: RevealState | null = null
   ) {
-    if (!box) return;
+    if (!box || baseAlpha <= 0) return;
 
     const cx = config.composition.center_x_px;
     const cy = config.composition.center_y_px;
@@ -591,7 +592,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
 
     for (const spoke of spokes) {
       const foldSeam = getFoldSeamAlpha(spoke.angle, config);
-      const spokeAlpha = clamp(spoke.alpha ?? 1, 0, 1) * foldSeam;
+      const spokeAlpha = baseAlpha * clamp(spoke.alpha ?? 1, 0, 1) * foldSeam;
       if (spokeAlpha <= 0) continue;
 
       // thin spoke line: from start_radius to halo outer
@@ -832,9 +833,10 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     haloOuterR: number,
     fullFrameR: number,
     config: HaloFieldConfig,
+    baseAlpha: number,
     reveal: RevealState | null
   ) {
-    if (!box || !config.spoke_text?.enabled) return;
+    if (!box || baseAlpha <= 0 || !config.spoke_text?.enabled) return;
     const cx = config.composition.center_x_px;
     const cy = config.composition.center_y_px;
     const fontSize = Math.max(
@@ -868,7 +870,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
       if (!label) continue;
 
       const foldSeam = getFoldSeamAlpha(spoke.angle, config);
-      const spokeAlpha = clamp(spoke.alpha ?? 1, 0, 1) * foldSeam;
+      const spokeAlpha = baseAlpha * clamp(spoke.alpha ?? 1, 0, 1) * foldSeam;
       if (spokeAlpha <= 0) continue;
 
       const textMetrics = getTextLabelRadiusMetrics(
@@ -991,6 +993,10 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     textCtx.restore();
   }
 
+  function getSceneBaseAlpha(sceneDescriptor: UbuntuSummitAnimationSceneDescriptor): number {
+    return clamp(sceneDescriptor.frameState.mascotMotion.mascotFadeU, 0, 1);
+  }
+
   // ── main render ─────────────────────────────────────────────────────
 
   function renderFrame(sceneDescriptor: UbuntuSummitAnimationSceneDescriptor) {
@@ -1026,6 +1032,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     const visibleSpokeCount = screensaverFieldState?.visible_spoke_count
       ?? introField?.visible_spoke_count ?? 0;
     const reveal = frameState.reveal;
+    const sceneBaseAlpha = getSceneBaseAlpha(sceneDescriptor);
 
     // ── Render ────────────────────────────────────────────────────────
 
@@ -1047,6 +1054,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
       haloOuterR,
       fullFrameR,
       config,
+      sceneBaseAlpha,
       reveal
     );
 
@@ -1058,7 +1066,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
     if (textOverlayCanvas.height !== stageH) textOverlayCanvas.height = stageH;
     textCtx.clearRect(0, 0, stageW, stageH);
     drawMascotOverlay(sceneDescriptor);
-    drawReleaseLabelOverlay(spokes, mascotBox, haloOuterR, fullFrameR, config, reveal);
+    drawReleaseLabelOverlay(spokes, mascotBox, haloOuterR, fullFrameR, config, sceneBaseAlpha, reveal);
   }
 
   function clearFrame() {

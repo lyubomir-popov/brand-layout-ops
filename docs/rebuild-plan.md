@@ -152,6 +152,7 @@ Decision so far:
 - updated 2026-03-27: the next parity pass should port the entire Ubuntu Summit animation wholesale into one coarse scene-family operator before attempting finer decomposition. Reuse can be evaluated after parity.
 - clarified 2026-03-28: the long-term target is a Houdini-like operator app with rigorous document layout plus backend-driven exports, where halo, boids, phyllotaxis, and later scene families can be swapped under the same document and template model.
 - updated 2026-03-28: mascot fade, head turn, blink, sneeze, and finale timing now read from shared `HaloFieldConfig` state and are exposed in the Halo Field panel instead of being hardcoded inside `operator-ubuntu-summit-animation`, so the next remaining motion parity work should focus on missing scene visuals and renderer fidelity rather than more baked timing constants.
+- updated 2026-03-29: `apps/overlay-preview/src/halo-renderer.ts` now multiplies the shared mascot fade through halo spokes, echo markers, and Ubuntu release labels instead of only the face overlay, closing the renderer-level whole-scene fade mismatch with the reference pass while leaving the next motion work focused on any remaining missing visuals or fidelity gaps.
 
 ### Phase 6. Verify parity here
 
