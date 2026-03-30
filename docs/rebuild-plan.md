@@ -221,7 +221,7 @@ Concrete, dependency-ordered steps. Work top-down within each lane. Lanes are in
 - EQ-1 through EQ-12 are complete.
 - Halo parity is intentionally closed for the current rebuild scope; the separate vignette overlay pass was removed after it caused export banding.
 - Scatter now runs a deterministic operator-side relax/repulsion pass, so the full-frame point field no longer clumps like a simple random fill.
-- An experimental fuzzy-boids GPU spike landed behind `?gpuBoids=1` or `localStorage["brand-layout-ops-gpu-boids-spike"] = "1"`; it uses WebGL2 all-active-neighbor simulation and CPU `PointField` readback so SVG/single-frame export can consume the same snapshot seam.
+- An experimental fuzzy-boids GPU spike landed behind `?gpuBoids=1` or `localStorage["brand-layout-ops-gpu-boids-spike"] = "1"`; it uses WebGL2 simulation plus CPU `PointField` readback so SVG/single-frame export can consume the same snapshot seam. Follow-up validation aligned its cache/reset policy with the CPU preview, stopped animated upstream seed fields from causing per-frame structural resets, and limited per-step neighbor scans to the active staggered prefix. The spike still does not implement the CPU solver's `maxNeighbors` top-k selection directly, so it now falls back to the CPU solver whenever that mode is requested instead of silently diverging.
 - Key completed milestones: baseline-foundry shell swap, operator selector, operator-owned fuzzy-boids/phyllotaxis/scatter panels, document-owned scene-family configs, persisted background graph, and the list-first network view.
 - Pre-B cleanup landed: `scene-family-preview.ts` now renders non-halo families as point-field-only layers without preview guide or connective geometry, and the follow-up source cleanup removed palette-driven boid phasing while moving non-halo defaults toward full-frame white-point output.
 - The downstream shell cleanup pass is materially complete for both surface classes and baseline shell runtime; remaining preview-shell debt is concentrated in dock-mode policy and other higher-level controllers rather than local alias CSS.
@@ -260,3 +260,52 @@ Deferred until explicitly promoted. Each carries a working assumption.
 - operator packages expose typed inputs and outputs
 - parameter UI reads operator manifests and schemas instead of hardcoding control panels indefinitely
 - background generation and layout remain separable so a later live Three scene can sit behind the same layout engine
+
+
+## test baseline-foundry's latest release
+Task:
+Pressure-test the overlay-preview inspector/panel against baseline-foundry’s current panel preset and fix the regressions that are blocking a real downstream swap test. I suspect the panel is broken because the preview still mixes old p-* selectors with newer bf-* selectors after the rename sweep.
+
+Context:
+- baseline-foundry is the upstream shell/component source of truth for this panel pass.
+- Metrics-derived nudges remain the default baseline engine; cap is opt-in only and is not the issue here.
+- The likely problem is rename fallout and stale downstream markup/class usage, not baseline math.
+
+Compare against:
+- c:\Users\lyubo\work\repos\baseline-foundry\dist\presets\panel\styles.css
+- c:\Users\lyubo\work\repos\baseline-foundry\demo\components\panel-pressure.html
+- c:\Users\lyubo\work\repos\baseline-foundry\demo\components\brand-layout-ops-sample.html
+
+Start in:
+- apps/overlay-preview/src/main.ts
+- apps/overlay-preview/src/styles.css
+- apps/overlay-preview/src/content-format-section.ts
+- apps/overlay-preview/src/document-section.ts
+- any other section builder or preview shell file touched by the panel path
+
+Known suspicion:
+- overlay-preview still contains mixed selector generations. For example, content-format-section.ts still uses old p-* classes such as p-actions, p-form-help-text, p-option-grid, p-option-card__label, and related descendants while other preview sections already use bf-* classes. Treat that as the first likely source of breakage.
+
+What to do:
+1. Reproduce the broken panel in overlay-preview.
+2. Audit the real panel path for rename fallout:
+   - old p-* / p-*__* / p-*--* selectors
+   - missing bf-* replacements
+   - broken helper/state class names
+   - stale local aliases that baseline-foundry no longer ships
+3. Compare the broken surface against the baseline-foundry panel preset and sample demos.
+4. Fix only the real blockers needed to make the panel credible as a downstream pressure test.
+5. Prefer canonical baseline-foundry primitives over local preview-only CSS. If a local policy/helper class is still necessary, keep it local and explain why.
+6. Do not reintroduce removed aliases unless they are genuinely required and justified.
+7. Verify with:
+   - npm run dev or npm run preview:dev
+   - npm run typecheck
+   - a concrete manual or scripted inspection of the repaired panel surface
+8. Update llm-handoff-context.md and docs/rebuild-plan.md if the pressure test changes current state or reveals new blockers.
+
+Deliver back:
+- the root cause(s)
+- the exact files changed
+- verification run
+- any remaining blockers versus baseline-foundry panel parity
+- whether the breakage was mostly rename fallout, local policy drift, or missing upstream primitives

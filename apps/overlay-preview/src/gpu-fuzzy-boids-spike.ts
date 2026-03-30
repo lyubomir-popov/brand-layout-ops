@@ -12,6 +12,7 @@ interface GpuProgramInfo {
   uStateTex: WebGLUniformLocation;
   uStaticTex: WebGLUniformLocation;
   uCount: WebGLUniformLocation;
+  uActiveCount: WebGLUniformLocation;
   uTimeSeconds: WebGLUniformLocation;
   uDeltaTimeSeconds: WebGLUniformLocation;
   uWorldScale: WebGLUniformLocation;
@@ -144,6 +145,7 @@ precision highp sampler2D;
 uniform sampler2D uStateTex;
 uniform sampler2D uStaticTex;
 uniform int uCount;
+uniform int uActiveCount;
 uniform float uTimeSeconds;
 uniform float uDeltaTimeSeconds;
 uniform float uWorldScale;
@@ -251,20 +253,16 @@ void main() {
   float sepDistRange = max(0.001, uSeparationMaxDist - uSeparationMinDist);
   float alignDistRange = max(0.001, uAlignFarThreshold - uAlignNearThreshold);
   float cohesionDistRange = max(0.001, uCohesionMaxDist - uCohesionMinDist);
+  int activeCount = min(uActiveCount, uCount);
 
   vec2 accelWorld = vec2(0.0);
 
   for (int neighborIndex = 0; neighborIndex < MAX_GPU_SPIKE_BOIDS; neighborIndex += 1) {
-    if (neighborIndex >= uCount) {
+    if (neighborIndex >= activeCount) {
       break;
     }
 
     if (neighborIndex == index) {
-      continue;
-    }
-
-    vec4 neighborStatic = texelFetch(uStaticTex, ivec2(neighborIndex, 0), 0);
-    if (uTimeSeconds < neighborStatic.x) {
       continue;
     }
 
@@ -353,6 +351,7 @@ void main() {
     uStateTex: getUniform(gl, program, "uStateTex"),
     uStaticTex: getUniform(gl, program, "uStaticTex"),
     uCount: getUniform(gl, program, "uCount"),
+    uActiveCount: getUniform(gl, program, "uActiveCount"),
     uTimeSeconds: getUniform(gl, program, "uTimeSeconds"),
     uDeltaTimeSeconds: getUniform(gl, program, "uDeltaTimeSeconds"),
     uWorldScale: getUniform(gl, program, "uWorldScale"),
@@ -495,20 +494,23 @@ export class GpuFuzzyBoidsSpike {
     return Boolean(this.framebuffer);
   }
 
-  private buildCacheKey(params: FuzzyBoidsParams, center: Vector3, seedField?: PointField | null): string {
+  private supportsParams(params: FuzzyBoidsParams, seedField?: PointField | null): boolean {
+    const requestedBoidCount = Math.max(0, Math.round(toNumber(params.numBoids, seedField?.points.length ?? 0)));
+    if (requestedBoidCount === 0 || requestedBoidCount > MAX_GPU_SPIKE_BOIDS) {
+      return false;
+    }
+
+    const requestedMaxNeighbors = Math.max(0, Math.round(toNumber(params.maxNeighbors, 0)));
+    return requestedMaxNeighbors === 0 || requestedMaxNeighbors >= requestedBoidCount;
+  }
+
+  private buildCacheKey(params: FuzzyBoidsParams, center: Vector3): string {
     return JSON.stringify({
       center,
-      seedField: seedField?.points.map((point) => ({
-        id: point.id,
-        x: point.position.x,
-        y: point.position.y,
-        z: point.position.z
-      })) ?? null,
       params: {
         worldScale: params.worldScale,
         numBoids: params.numBoids,
         seed: params.seed,
-        subSteps: params.subSteps,
         spawnRadiusPx: params.spawnRadiusPx,
         staggerStartSeconds: params.staggerStartSeconds,
         initialSpeed: params.initialSpeed,
@@ -516,23 +518,7 @@ export class GpuFuzzyBoidsSpike {
         massMin: params.massMin,
         massMax: params.massMax,
         pscaleMin: params.pscaleMin,
-        pscaleMax: params.pscaleMax,
-        separationMinDist: params.separationMinDist,
-        separationMaxDist: params.separationMaxDist,
-        separationMaxStrength: params.separationMaxStrength,
-        alignNearThreshold: params.alignNearThreshold,
-        alignFarThreshold: params.alignFarThreshold,
-        alignSpeedThreshold: params.alignSpeedThreshold,
-        cohesionMinDist: params.cohesionMinDist,
-        cohesionMaxDist: params.cohesionMaxDist,
-        cohesionMaxAccel: params.cohesionMaxAccel,
-        attractToOrigin: params.attractToOrigin,
-        attractOrigin: params.attractOrigin,
-        minSpeedLimit: params.minSpeedLimit,
-        maxSpeedLimit: params.maxSpeedLimit,
-        minAccelLimit: params.minAccelLimit,
-        maxAccelLimit: params.maxAccelLimit,
-        bounds: params.bounds
+        pscaleMax: params.pscaleMax
       }
     });
   }
@@ -611,7 +597,23 @@ export class GpuFuzzyBoidsSpike {
     return true;
   }
 
-  private computeCohesionTargetWorld(params: FuzzyBoidsParams, center: Vector3): { x: number; y: number } {
+  private getActiveBoidCountAtTime(timeSeconds: number): number {
+    let low = 0;
+    let high = this.count;
+
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (timeSeconds >= this.staticBuffer[mid * 4]) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+
+    return low;
+  }
+
+  private computeCohesionTargetWorld(params: FuzzyBoidsParams, center: Vector3, timeSeconds: number): { x: number; y: number } {
     const worldScale = Math.max(1, toNumber(params.worldScale, 180));
     if (params.attractToOrigin) {
       const origin = toVector3(params.attractOrigin, center);
@@ -621,26 +623,21 @@ export class GpuFuzzyBoidsSpike {
       };
     }
 
-    let centerX = 0;
-    let centerY = 0;
-    let count = 0;
-    for (let index = 0; index < this.count; index += 1) {
-      if (this.currentTimeSeconds < this.staticBuffer[index * 4]) {
-        continue;
-      }
-
-      centerX += this.stateBuffer[index * 4];
-      centerY += this.stateBuffer[index * 4 + 1];
-      count += 1;
-    }
-
-    if (count <= 0) {
+    const activeCount = this.getActiveBoidCountAtTime(timeSeconds);
+    if (activeCount <= 0) {
       return { x: 0, y: 0 };
     }
 
+    let centerX = 0;
+    let centerY = 0;
+    for (let index = 0; index < activeCount; index += 1) {
+      centerX += this.stateBuffer[index * 4];
+      centerY += this.stateBuffer[index * 4 + 1];
+    }
+
     return {
-      x: centerX / count,
-      y: centerY / count
+      x: centerX / activeCount,
+      y: centerY / activeCount
     };
   }
 
@@ -650,6 +647,7 @@ export class GpuFuzzyBoidsSpike {
     }
 
     const gl = this.gl;
+    const activeCount = this.getActiveBoidCountAtTime(stepTimeSeconds);
     const boundsKind = params.bounds?.kind === "radial"
       ? 1
       : params.bounds?.kind === "box"
@@ -671,6 +669,7 @@ export class GpuFuzzyBoidsSpike {
     gl.uniform1i(this.programInfo.uStaticTex, 1);
 
     gl.uniform1i(this.programInfo.uCount, this.count);
+    gl.uniform1i(this.programInfo.uActiveCount, activeCount);
     gl.uniform1f(this.programInfo.uTimeSeconds, stepTimeSeconds);
     gl.uniform1f(this.programInfo.uDeltaTimeSeconds, deltaTimeSeconds);
     gl.uniform1f(this.programInfo.uWorldScale, Math.max(1, toNumber(params.worldScale, 180)));
@@ -815,33 +814,38 @@ export class GpuFuzzyBoidsSpike {
       return null;
     }
 
+    if (!this.supportsParams(params, seedField)) {
+      this.reset();
+      return null;
+    }
+
     if (!this.ensureContext()) {
       return null;
     }
 
     const center = toVector3(params.center, toVector3(centerInput));
-    const key = this.buildCacheKey(params, center, seedField);
-    const targetTimeSeconds = Math.max(0, toNumber(params.timeSeconds, 0));
-    if (Math.max(0, Math.round(toNumber(params.numBoids, 0))) > MAX_GPU_SPIKE_BOIDS) {
-      return null;
-    }
+    const key = this.buildCacheKey(params, center);
+    const totalTimeSeconds = Math.max(0, toNumber(params.timeSeconds, 0));
 
-    if (key !== this.cacheKey || targetTimeSeconds < this.currentTimeSeconds - 0.0001) {
+    let justReset = false;
+    if (key !== this.cacheKey || totalTimeSeconds < this.currentTimeSeconds - 0.0001) {
       if (!this.initializeState(params, center, seedField)) {
         return null;
       }
       this.cacheKey = key;
+      justReset = true;
     }
 
     const dt = Math.max(0.001, toNumber(params.deltaTimeSeconds, 1 / 30));
     const subSteps = Math.max(1, Math.round(toNumber(params.subSteps, 1)));
     const subDt = dt / subSteps;
-    const cohesionTargetWorld = this.computeCohesionTargetWorld(params, center);
+    const targetTimeSeconds = justReset ? Math.min(totalTimeSeconds, dt) : totalTimeSeconds;
 
     const stepsNeeded = Math.floor((targetTimeSeconds - this.currentTimeSeconds) / dt);
     for (let step = 0; step < stepsNeeded; step += 1) {
       for (let sub = 0; sub < subSteps; sub += 1) {
         const subTime = this.currentTimeSeconds + (sub + 1) * subDt;
+        const cohesionTargetWorld = this.computeCohesionTargetWorld(params, center, subTime);
         this.stepGpu(params, subTime, subDt, cohesionTargetWorld);
       }
       this.currentTimeSeconds += dt;
@@ -853,6 +857,7 @@ export class GpuFuzzyBoidsSpike {
       const remainderSubDt = remainderSeconds / subSteps;
       for (let sub = 0; sub < subSteps; sub += 1) {
         const subTime = this.currentTimeSeconds + (sub + 1) * remainderSubDt;
+        const cohesionTargetWorld = this.computeCohesionTargetWorld(params, center, subTime);
         this.stepGpu(params, subTime, remainderSubDt, cohesionTargetWorld);
       }
       this.currentTimeSeconds = targetTimeSeconds;
