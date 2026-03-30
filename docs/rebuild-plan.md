@@ -280,6 +280,7 @@ Changes landed:
 - `packages/parameter-ui/src/accordion-form-helpers.ts` now emits canonical label, checkbox, slider, and accordion classes.
 - The live panel builders in `apps/overlay-preview/src/main.ts`, `content-format-section.ts`, `overlay-section.ts`, `playback-export-section.ts`, `document-section.ts`, `document-workspace.ts`, `presets-section.ts`, and `halo-config-section.ts` now use canonical Foundry base-button, form-help, choice-row, option-card, color-input, and modal classes.
 - `apps/overlay-preview/src/styles.css` now targets the current canonical panel-content, checkbox, and choice-row selectors. The custom `operator-selector` strip remains local policy/layout CSS rather than an upstream primitive gap.
+- `apps/overlay-preview/vite.config.ts` now allow-lists the sibling `baseline-foundry` repo so dev-time pressure tests can load the shipped IBM Plex font assets instead of tripping Vite's fs guard.
 
 Verification:
 
