@@ -25,10 +25,10 @@ export function buildPresetsSection(ctx: PreviewAppContext): HTMLElement {
 
   const btnSpec: Array<{ label: string; attr: string; className: string }> = [
     { label: "Save", attr: "data-preset-save", className: "bf-button is-dense" },
-    { label: "Update", attr: "data-preset-update", className: "bf-button--base is-dense" },
-    { label: "Import", attr: "data-preset-import", className: "bf-button--base is-dense" },
-    { label: "Export", attr: "data-preset-export", className: "bf-button--base is-dense" },
-    { label: "Delete", attr: "data-preset-delete", className: "bf-button--base is-dense" }
+    { label: "Update", attr: "data-preset-update", className: "bf-button is-base is-dense" },
+    { label: "Import", attr: "data-preset-import", className: "bf-button is-base is-dense" },
+    { label: "Export", attr: "data-preset-export", className: "bf-button is-base is-dense" },
+    { label: "Delete", attr: "data-preset-delete", className: "bf-button is-base is-dense" }
   ];
   for (const spec of btnSpec) {
     const btn = document.createElement("button");

@@ -12,7 +12,7 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
   const { state } = ctx;
 
   const row = document.createElement("div");
-  row.className = "p-actions is-nowrap";
+  row.className = "bf-actions is-nowrap";
 
   const playBtn = document.createElement("button");
   playBtn.className = "bf-button is-dense";
@@ -23,21 +23,21 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
   row.append(playBtn);
 
   const exportBtn = document.createElement("button");
-  exportBtn.className = "bf-button--base is-dense";
+  exportBtn.className = "bf-button is-base is-dense";
   exportBtn.type = "button";
   exportBtn.textContent = "Export PNG";
   exportBtn.addEventListener("click", () => { void ctx.exportComposedFramePng(); });
   row.append(exportBtn);
 
   const seqBtn = document.createElement("button");
-  seqBtn.className = "bf-button--base is-dense";
+  seqBtn.className = "bf-button is-base is-dense";
   seqBtn.type = "button";
   seqBtn.textContent = "Export Sequence";
   seqBtn.addEventListener("click", () => { void ctx.exportPngSequence(); });
   row.append(seqBtn);
 
   const resetBtn = document.createElement("button");
-  resetBtn.className = "bf-button--base is-dense";
+  resetBtn.className = "bf-button is-base is-dense";
   resetBtn.type = "button";
   resetBtn.textContent = "Reset to Default";
   resetBtn.addEventListener("click", () => {
@@ -54,7 +54,7 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
   row.append(resetBtn);
 
   const writeBtn = document.createElement("button");
-  writeBtn.className = "bf-button--base is-dense";
+  writeBtn.className = "bf-button is-base is-dense";
   writeBtn.type = "button";
   writeBtn.textContent = "Save as Default";
   writeBtn.addEventListener("click", () => {

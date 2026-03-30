@@ -19,7 +19,7 @@ export function createFormGroup(label: string, control: HTMLElement): HTMLElemen
   group.className = "bf-field";
 
   const lbl = document.createElement("label");
-  lbl.className = "bf-form__label bf-u-no-margin--bottom";
+  lbl.className = "bf-form-label bf-u-no-margin--bottom";
   lbl.textContent = label;
 
   const ctrl = document.createElement("div");
@@ -37,7 +37,7 @@ export function createCheckboxFormGroup(
   configureInput?: (input: HTMLInputElement) => void
 ): HTMLElement {
   const group = document.createElement("div");
-  group.className = "bf-field bf-field--checkbox";
+  group.className = "bf-field is-checkbox";
 
   const ctrl = document.createElement("div");
   ctrl.className = "bf-control";
@@ -48,11 +48,11 @@ export function createCheckboxFormGroup(
   const inputId = `preview-checkbox-${++checkboxFieldIdCounter}`;
   const input = createCheckboxInput(checked, onChange);
   input.id = inputId;
-  input.className = "bf-checkbox__input";
+  input.className = "bf-checkbox-input";
   configureInput?.(input);
 
   const inputLabel = document.createElement("label");
-  inputLabel.className = "bf-checkbox__label";
+  inputLabel.className = "bf-checkbox-label";
   inputLabel.htmlFor = inputId;
   inputLabel.textContent = label;
 
@@ -100,7 +100,7 @@ export function createSliderInput(
 
   const num = document.createElement("input");
   num.type = "number";
-  num.className = "bf-input bf-slider__input is-dense";
+  num.className = "bf-input bf-slider-input is-dense";
   num.min = String(opts.min);
   num.max = String(opts.max);
   num.step = String(opts.step);
@@ -152,16 +152,16 @@ export function buildAccordionSectionEl(title: string): { root: HTMLElement; bod
   const sectionId = `${id}-section`;
 
   const root = document.createElement("li");
-  root.className = "bf-accordion__group";
+  root.className = "bf-accordion-group";
 
   const heading = document.createElement("div");
   heading.setAttribute("role", "heading");
   heading.setAttribute("aria-level", "3");
-  heading.className = "bf-accordion__heading";
+  heading.className = "bf-accordion-heading";
 
   const tab = document.createElement("button");
   tab.type = "button";
-  tab.className = "bf-accordion__tab";
+  tab.className = "bf-accordion-tab";
   tab.id = id;
   tab.setAttribute("aria-controls", sectionId);
   tab.setAttribute("aria-expanded", "false");
@@ -169,7 +169,7 @@ export function buildAccordionSectionEl(title: string): { root: HTMLElement; bod
   heading.append(tab);
 
   const body = document.createElement("section");
-  body.className = "bf-accordion__panel bf-grid-scope";
+  body.className = "bf-accordion-panel bf-grid-scope";
   body.id = sectionId;
   body.setAttribute("aria-hidden", "true");
   body.setAttribute("aria-labelledby", id);
@@ -180,7 +180,7 @@ export function buildAccordionSectionEl(title: string): { root: HTMLElement; bod
 
 export function setupAccordion(accordionContainer: HTMLElement): void {
   accordionContainer.addEventListener("click", (event) => {
-    const target = (event.target as HTMLElement).closest<HTMLElement>(".bf-accordion__tab");
+    const target = (event.target as HTMLElement).closest<HTMLElement>(".bf-accordion-tab");
     if (!target) return;
 
     const panelId = target.getAttribute("aria-controls");
@@ -191,7 +191,7 @@ export function setupAccordion(accordionContainer: HTMLElement): void {
 
     // Mutual exclusion: close all other sections when opening one
     if (!isOpen) {
-      accordionContainer.querySelectorAll<HTMLElement>(".bf-accordion__tab").forEach((tab) => {
+      accordionContainer.querySelectorAll<HTMLElement>(".bf-accordion-tab").forEach((tab) => {
         if (tab !== target) {
           const otherPanelId = tab.getAttribute("aria-controls");
           const otherPanel = otherPanelId ? document.getElementById(otherPanelId) : null;

@@ -144,7 +144,7 @@ Active architectural risks requiring attention during the next work cycle.
 - Halo rendering in `halo-renderer.ts`, scene-family preview in `scene-family-preview.ts`.
 - The real overlay preview now consumes the canonical `baseline-foundry` surface classes for stage shell, fill-height panel shell, choice rows, option cards, tight helper text, compact color input, and nowrap action rows; the local alias layer for those patterns has been removed from `apps/overlay-preview/src/styles.css`.
 - The real overlay preview now also uses shipped `baseline-foundry` drawer and pinned-aside runtime: overlay close/backdrop behavior comes from `initPanelDrawers()`, pinned resize behavior comes from `initResizableAsides()`, and the mobile shell now has a real `Controls` toggle instead of relying only on local close-state bookkeeping.
-- Inspector rows in the live preview now resolve through the canonical `bf-grid` surface, with `bf-grid-scope` applied at `bf-panel__content` and `bf-accordion__panel` so local parameter sections keep the same keyline contract as the surrounding shell instead of using a separate dense control-grid abstraction.
+- Inspector rows in the live preview now resolve through the canonical `bf-grid` surface, with `bf-grid-scope` applied at `bf-panel-content` and `bf-accordion-panel` so local parameter sections keep the same keyline contract as the surrounding shell instead of using a separate dense control-grid abstraction.
 - The inspector overlay panel now has a working internal scroll chain (`.bf-panel.is-fill` constrained inside the aside), and the local shell toggle moved off `Tab` to `P` so normal keyboard form navigation works again.
 
 ### Remaining extraction targets
@@ -222,7 +222,7 @@ Concrete, dependency-ordered steps. Work top-down within each lane. Lanes are in
 - Halo parity is intentionally closed for the current rebuild scope; the separate vignette overlay pass was removed after it caused export banding.
 - Scatter now runs a deterministic operator-side relax/repulsion pass, so the full-frame point field no longer clumps like a simple random fill.
 - An experimental fuzzy-boids GPU spike landed behind `?gpuBoids=1` or `localStorage["brand-layout-ops-gpu-boids-spike"] = "1"`; it uses WebGL2 simulation plus CPU `PointField` readback so SVG/single-frame export can consume the same snapshot seam. Follow-up validation aligned its cache/reset policy with the CPU preview, stopped animated upstream seed fields from causing per-frame structural resets, and limited per-step neighbor scans to the active staggered prefix. The spike still does not implement the CPU solver's `maxNeighbors` top-k selection directly, so it now falls back to the CPU solver whenever that mode is requested instead of silently diverging.
-- Key completed milestones: baseline-foundry shell swap, operator selector, operator-owned fuzzy-boids/phyllotaxis/scatter panels, document-owned scene-family configs, persisted background graph, and the list-first network view.
+- Key completed milestones: baseline-foundry shell swap, operator selector, operator-owned fuzzy-boids/phyllotaxis/scatter panels, document-owned scene-family configs, persisted background graph, the list-first network view, and the latest-release panel pressure test that removed downstream hybrid class drift from the live inspector shell.
 - Pre-B cleanup landed: `scene-family-preview.ts` now renders non-halo families as point-field-only layers without preview guide or connective geometry, and the follow-up source cleanup removed palette-driven boid phasing while moving non-halo defaults toward full-frame white-point output.
 - The downstream shell cleanup pass is materially complete for both surface classes and baseline shell runtime; remaining preview-shell debt is concentrated in dock-mode policy and other higher-level controllers rather than local alias CSS.
 - Use git history for audit detail instead of expanding the live plan.
@@ -262,50 +262,38 @@ Deferred until explicitly promoted. Each carries a working assumption.
 - background generation and layout remain separable so a later live Three scene can sit behind the same layout engine
 
 
-## test baseline-foundry's latest release
-Task:
-Pressure-test the overlay-preview inspector/panel against baseline-foundry’s current panel preset and fix the regressions that are blocking a real downstream swap test. I suspect the panel is broken because the preview still mixes old p-* selectors with newer bf-* selectors after the rename sweep.
+## Baseline-Foundry Latest Release Pressure Test (2026-03-30)
 
-Context:
-- baseline-foundry is the upstream shell/component source of truth for this panel pass.
-- Metrics-derived nudges remain the default baseline engine; cap is opt-in only and is not the issue here.
-- The likely problem is rename fallout and stale downstream markup/class usage, not baseline math.
+Status:
 
-Compare against:
-- c:\Users\lyubo\work\repos\baseline-foundry\dist\presets\panel\styles.css
-- c:\Users\lyubo\work\repos\baseline-foundry\demo\components\panel-pressure.html
-- c:\Users\lyubo\work\repos\baseline-foundry\demo\components\brand-layout-ops-sample.html
+- Complete. The live overlay-preview inspector now renders credibly against the current `baseline-foundry` panel preset.
 
-Start in:
-- apps/overlay-preview/src/main.ts
-- apps/overlay-preview/src/styles.css
-- apps/overlay-preview/src/content-format-section.ts
-- apps/overlay-preview/src/document-section.ts
-- any other section builder or preview shell file touched by the panel path
+Root cause:
 
-Known suspicion:
-- overlay-preview still contains mixed selector generations. For example, content-format-section.ts still uses old p-* classes such as p-actions, p-form-help-text, p-option-grid, p-option-card__label, and related descendants while other preview sections already use bf-* classes. Treat that as the first likely source of breakage.
+- The breakage was mostly downstream rename fallout, not baseline math and not a missing upstream primitive.
+- The real blockers were hybrid class names that current `baseline-foundry` no longer styles, including `bf-panel__header`/`bf-panel__title`/`bf-panel__content`, `bf-accordion__*`, `bf-form__label`, `bf-button--base`, `bf-field--checkbox`, `bf-checkbox__*`, `bf-slider__input`, and `bf-modal__*`.
+- Old `p-*` selectors were not the primary failure mode because the current upstream preset still ships compatibility selectors for them; the larger issue was mixing old structure with new `bf-*` prefixes.
 
-What to do:
-1. Reproduce the broken panel in overlay-preview.
-2. Audit the real panel path for rename fallout:
-   - old p-* / p-*__* / p-*--* selectors
-   - missing bf-* replacements
-   - broken helper/state class names
-   - stale local aliases that baseline-foundry no longer ships
-3. Compare the broken surface against the baseline-foundry panel preset and sample demos.
-4. Fix only the real blockers needed to make the panel credible as a downstream pressure test.
-5. Prefer canonical baseline-foundry primitives over local preview-only CSS. If a local policy/helper class is still necessary, keep it local and explain why.
-6. Do not reintroduce removed aliases unless they are genuinely required and justified.
-7. Verify with:
-   - npm run dev or npm run preview:dev
-   - npm run typecheck
-   - a concrete manual or scripted inspection of the repaired panel surface
-8. Update llm-handoff-context.md and docs/rebuild-plan.md if the pressure test changes current state or reveals new blockers.
+Changes landed:
 
-Deliver back:
-- the root cause(s)
-- the exact files changed
-- verification run
-- any remaining blockers versus baseline-foundry panel parity
-- whether the breakage was mostly rename fallout, local policy drift, or missing upstream primitives
+- `apps/overlay-preview/index.html` now uses the canonical panel header, title, content, actions, and toggle classes from the current preset.
+- `packages/parameter-ui/src/accordion-form-helpers.ts` now emits canonical label, checkbox, slider, and accordion classes.
+- The live panel builders in `apps/overlay-preview/src/main.ts`, `content-format-section.ts`, `overlay-section.ts`, `playback-export-section.ts`, `document-section.ts`, `document-workspace.ts`, `presets-section.ts`, and `halo-config-section.ts` now use canonical Foundry base-button, form-help, choice-row, option-card, color-input, and modal classes.
+- `apps/overlay-preview/src/styles.css` now targets the current canonical panel-content, checkbox, and choice-row selectors. The custom `operator-selector` strip remains local policy/layout CSS rather than an upstream primitive gap.
+
+Verification:
+
+- `npm run typecheck`
+- `npm run preview:dev`
+- Headless Playwright inspection against the live preview after opening `Content Format` in CSV mode:
+  - `hybridSelectorCount: 0`
+  - `choiceRowCount: 6`
+  - `optionCardCount: 3`
+  - `baseButtonCount: 15`
+  - computed styles confirmed `bf-panel-header` as sticky flex, `bf-panel-content` as padded scroll container, and `bf-accordion-tab` as styled flex control
+- Local screenshot captured during verification for visual sanity-checking
+
+Remaining blockers versus panel parity:
+
+- No missing upstream primitive blocker was found in this slice.
+- Remaining variance is mostly local shell policy/layout, especially the custom operator-selector strip, rather than a baseline-foundry component gap.

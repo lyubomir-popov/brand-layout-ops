@@ -206,7 +206,7 @@ export function renderDocumentWorkspaceUi(args: {
     reopenButton.type = "button";
     reopenButton.className = summary.id === workspace.recentDocumentId
       ? "bf-button is-dense"
-      : "bf-button--base is-dense";
+      : "bf-button is-base is-dense";
     reopenButton.textContent = summary.name;
     reopenButton.addEventListener("click", () => {
       void actions.reopenRecentDocument(summary.id);
@@ -214,7 +214,7 @@ export function renderDocumentWorkspaceUi(args: {
 
     const forgetButton = document.createElement("button");
     forgetButton.type = "button";
-    forgetButton.className = "bf-button--base is-dense";
+    forgetButton.className = "bf-button is-base is-dense";
     forgetButton.textContent = "Forget";
     forgetButton.addEventListener("click", () => {
       void actions.forgetRecentDocument(summary.id);

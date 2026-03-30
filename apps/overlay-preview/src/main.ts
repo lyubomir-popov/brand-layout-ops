@@ -1017,7 +1017,7 @@ function createOverlayItemActionRow(): HTMLElement {
   for (const field of state.params.textFields) {
     const selectButton = document.createElement("button");
     const isActive = state.selected?.kind === "text" && state.selected.id === field.id;
-    selectButton.className = isActive ? "bf-button is-dense" : "bf-button--base is-dense";
+    selectButton.className = isActive ? "bf-button is-dense" : "bf-button is-base is-dense";
     selectButton.type = "button";
     selectButton.textContent = getOverlayFieldDisplayLabel(state.params, field.id);
     selectButton.disabled = isActive;
@@ -1038,7 +1038,7 @@ function createOverlayItemActionRow(): HTMLElement {
   });
 
   const deleteButton = document.createElement("button");
-  deleteButton.className = "bf-button--base is-dense";
+  deleteButton.className = "bf-button is-base is-dense";
   deleteButton.type = "button";
   deleteButton.textContent = "Delete Text";
   deleteButton.disabled = !canDeleteSelectedText();
@@ -2050,7 +2050,7 @@ function buildOutputProfileOptions() {
   container.append(sceneFields);
 
   const help = document.createElement("p");
-  help.className = "p-form-help-text is-tight u-no-margin--bottom";
+  help.className = "bf-form-help is-tight bf-u-no-margin--bottom";
   container.append(help);
 
   const toolbar = document.createElement("div");
@@ -2073,7 +2073,7 @@ function buildOutputProfileOptions() {
 
   const removeButton = document.createElement("button");
   removeButton.type = "button";
-  removeButton.className = "bf-button--base is-dense";
+  removeButton.className = "bf-button is-base is-dense";
   removeButton.textContent = "Remove Size";
   removeButton.disabled = state.documentProject.targets.length <= 1;
   removeButton.addEventListener("click", () => {
@@ -2090,12 +2090,12 @@ function buildOutputProfileOptions() {
   container.append(toolbar);
 
   const list = document.createElement("div");
-  list.className = "p-choice-list bf-stack preview-stack--compact";
+  list.className = "bf-choice-list bf-stack preview-stack--compact";
 
   for (const target of state.documentProject.targets) {
     const profile = OUTPUT_PROFILES[target.outputProfileKey];
     const row = document.createElement("label");
-    row.className = "p-choice-row";
+    row.className = "bf-choice-row";
 
     const radio = document.createElement("input");
     radio.type = "radio";
@@ -2110,11 +2110,11 @@ function buildOutputProfileOptions() {
     });
 
     const nameSpan = document.createElement("span");
-    nameSpan.className = "p-choice-row__name";
+    nameSpan.className = "bf-choice-row-name";
     nameSpan.textContent = target.label;
 
     const metaSpan = document.createElement("span");
-    metaSpan.className = "p-choice-row__meta";
+    metaSpan.className = "bf-choice-row-meta";
     const profileMeta = profile
       ? `${profile.label} \u2022 ${profile.widthPx}x${profile.heightPx}`
       : target.outputProfileKey;
@@ -2182,11 +2182,11 @@ function buildPresetTabs() {
   }
 
   const list = document.createElement("div");
-  list.className = "p-choice-list bf-stack preview-stack--compact";
+  list.className = "bf-choice-list bf-stack preview-stack--compact";
 
   for (const preset of state.presets) {
     const row = document.createElement("label");
-    row.className = "p-choice-row";
+    row.className = "bf-choice-row";
 
     const radio = document.createElement("input");
     radio.type = "radio";
@@ -2204,11 +2204,11 @@ function buildPresetTabs() {
     });
 
     const nameSpan = document.createElement("span");
-    nameSpan.className = "p-choice-row__name";
+    nameSpan.className = "bf-choice-row-name";
     nameSpan.textContent = preset.name;
 
     const statusSpan = document.createElement("span");
-    statusSpan.className = "p-choice-row__meta";
+    statusSpan.className = "bf-choice-row-meta";
     if (preset.id === state.activePresetId) {
       statusSpan.textContent = isActivePresetDirty() ? "Active \u2022 Dirty" : "Active";
     } else {
@@ -2386,18 +2386,18 @@ function getBackgroundNodeStatus(node: OverlayBackgroundNode): string {
 
 function buildOperatorSelectorEl(): HTMLElement {
   const section = document.createElement("li");
-  section.className = "bf-accordion__group operator-selector";
+  section.className = "bf-accordion-group operator-selector";
 
   const heading = document.createElement("div");
   heading.className = "operator-selector__heading";
 
   const label = document.createElement("span");
-  label.className = "bf-form__label";
+  label.className = "bf-form-label";
   label.textContent = "Background Graph";
   heading.append(label);
 
   const help = document.createElement("p");
-  help.className = "p-form-help-text is-tight u-no-margin--bottom operator-selector__help";
+  help.className = "bf-form-help is-tight bf-u-no-margin--bottom operator-selector__help";
   help.textContent = "Output selects the rendered family. Saved nodes select which operator pane the inspector edits.";
 
   const outputSection = document.createElement("div");
@@ -2452,12 +2452,12 @@ function buildOperatorSelectorEl(): HTMLElement {
   nodesSection.append(nodesLabel);
 
   const nodeList = document.createElement("div");
-  nodeList.className = "p-choice-list bf-stack preview-stack--compact";
+  nodeList.className = "bf-choice-list bf-stack preview-stack--compact";
   const selectedBackgroundNodeId = normalizeSelectedBackgroundNodeId();
 
   for (const node of state.documentProject.backgroundGraph.nodes) {
     const row = document.createElement("label");
-    row.className = "p-choice-row operator-selector__node";
+    row.className = "bf-choice-row operator-selector__node";
 
     const radio = document.createElement("input");
     radio.type = "radio";
@@ -2477,11 +2477,11 @@ function buildOperatorSelectorEl(): HTMLElement {
     copy.className = "operator-selector__node-copy";
 
     const nameSpan = document.createElement("span");
-    nameSpan.className = "p-choice-row__name";
+  nameSpan.className = "bf-choice-row-name";
     nameSpan.textContent = getBackgroundNodeLabel(node);
 
     const metaSpan = document.createElement("span");
-    metaSpan.className = "p-choice-row__meta";
+  metaSpan.className = "bf-choice-row-meta";
     metaSpan.textContent = getBackgroundNodeStatus(node);
 
     copy.append(nameSpan, metaSpan);
@@ -2495,7 +2495,7 @@ function buildOperatorSelectorEl(): HTMLElement {
 }
 
 function openAccordionSection(group: HTMLElement | null): boolean {
-  const tab = group?.querySelector<HTMLElement>(".bf-accordion__tab");
+  const tab = group?.querySelector<HTMLElement>(".bf-accordion-tab");
   const panelId = tab?.getAttribute("aria-controls");
   const panel = panelId ? document.getElementById(panelId) : null;
   if (!tab || !panel) {
@@ -2512,7 +2512,7 @@ function buildConfigEditor() {
   if (!container) return;
 
   // Preserve which accordion section is open across rebuilds
-  const expandedTab = container.querySelector<HTMLElement>('.bf-accordion__tab[aria-expanded="true"]');
+  const expandedTab = container.querySelector<HTMLElement>('.bf-accordion-tab[aria-expanded="true"]');
   const expandedGroup = expandedTab?.closest<HTMLElement>("[data-section-key]");
   const previouslyOpenKey = expandedGroup?.dataset.sectionKey ?? null;
 
@@ -2522,7 +2522,7 @@ function buildConfigEditor() {
   accordion.className = "bf-accordion";
 
   const list = document.createElement("ul");
-  list.className = "bf-accordion__list";
+  list.className = "bf-accordion-list";
 
   const sections = getConfigSections();
   const activeGroup = getSelectedBackgroundNodeGroup();
@@ -3522,28 +3522,28 @@ function buildExportModal(): HTMLDialogElement {
   dialog.className = "bf-modal";
 
   dialog.innerHTML = `
-    <div class="bf-modal__dialog" role="dialog" aria-labelledby="export-modal-title">
-      <header class="bf-modal__header">
-        <h2 class="bf-modal__title" id="export-modal-title">Export PNG Sequence</h2>
-        <button class="bf-modal__close" data-export-cancel type="button">Close</button>
+    <div class="bf-modal-dialog" role="dialog" aria-labelledby="export-modal-title">
+      <header class="bf-modal-header">
+        <h2 class="bf-modal-title" id="export-modal-title">Export PNG Sequence</h2>
+        <button class="bf-modal-close" data-export-cancel type="button">Close</button>
       </header>
-      <div class="bf-modal__body">
+      <div class="bf-modal-body">
         <div class="bf-field">
-          <label class="bf-form__label">Start Frame</label>
+          <label class="bf-form-label">Start Frame</label>
           <div class="bf-control">
             <input type="number" class="bf-input" data-export-start-frame min="1" step="1" value="1">
           </div>
         </div>
         <div class="bf-field">
-          <label class="bf-form__label">End Frame</label>
+          <label class="bf-form-label">End Frame</label>
           <div class="bf-control">
             <input type="number" class="bf-input" data-export-end-frame min="1" step="1" value="240">
           </div>
         </div>
         <p class="bf-form-help" data-export-summary></p>
       </div>
-      <footer class="bf-modal__footer">
-        <button class="bf-button--base" type="button" data-export-cancel>Cancel</button>
+      <footer class="bf-modal-footer">
+        <button class="bf-button is-base" type="button" data-export-cancel>Cancel</button>
         <button class="bf-button" type="button" data-export-submit>Export</button>
       </footer>
     </div>

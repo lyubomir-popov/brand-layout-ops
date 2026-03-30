@@ -24,11 +24,11 @@ export function buildDocumentSection(ctx: PreviewAppContext): HTMLElement {
 
   const dw = ctx.documentWorkspace;
   const buttonSpecs: Array<{ label: string; className: string; onClick: () => void | Promise<void> }> = [
-    { label: "New", className: "bf-button--base is-dense", onClick: () => void dw.createNewDocument() },
-    { label: "Open", className: "bf-button--base is-dense", onClick: () => void dw.openDocumentFromDisk() },
+    { label: "New", className: "bf-button is-base is-dense", onClick: () => void dw.createNewDocument() },
+    { label: "Open", className: "bf-button is-base is-dense", onClick: () => void dw.openDocumentFromDisk() },
     { label: "Save", className: "bf-button is-dense", onClick: () => void dw.saveCurrentDocument(false) },
-    { label: "Save As", className: "bf-button--base is-dense", onClick: () => void dw.saveCurrentDocument(true) },
-    { label: "Duplicate", className: "bf-button--base is-dense", onClick: () => void dw.duplicateCurrentDocument() }
+    { label: "Save As", className: "bf-button is-base is-dense", onClick: () => void dw.saveCurrentDocument(true) },
+    { label: "Duplicate", className: "bf-button is-base is-dense", onClick: () => void dw.duplicateCurrentDocument() }
   ];
 
   for (const buttonSpec of buttonSpecs) {

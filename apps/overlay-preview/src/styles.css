@@ -58,13 +58,13 @@ body {
 
 /* Override baseline-foundry .bf-panel.is-fill { min-block-size: 100% }
    which makes the panel grow unbounded inside the fixed-height aside,
-   preventing .bf-panel__content overflow: auto from ever triggering. */
+   preventing .bf-panel-content overflow: auto from ever triggering. */
 .mascot-app .bf-panel.is-fill {
   block-size: 100%;
   min-block-size: 0;
 }
 
-.mascot-app .bf-panel__content {
+.mascot-app .bf-panel-content {
   min-block-size: 0;
   overflow: auto;
   overscroll-behavior: contain;
@@ -219,15 +219,15 @@ body.editor-docked .bf-stage-shell {
   margin-top: 0;
 }
 
-.mascot-app .bf-field--checkbox {
+.mascot-app .bf-field.is-checkbox {
   gap: 0;
 }
 
-.mascot-app .bf-field--checkbox .bf-control {
+.mascot-app .bf-field.is-checkbox .bf-control {
   gap: 0;
 }
 
-.mascot-app .bf-field--checkbox .bf-checkbox {
+.mascot-app .bf-field.is-checkbox .bf-checkbox {
   align-items: center;
   min-block-size: var(--bf-control-block-size-dense);
 }
@@ -266,8 +266,7 @@ body.editor-docked .bf-stage-shell {
   margin-bottom: 0.375rem;
 }
 
-.operator-selector__heading .p-form__label,
-.operator-selector__heading .bf-form__label,
+.operator-selector__heading .bf-form-label,
 .operator-selector__subheading {
   color: var(--bf-color-muted);
   font-size: 0.6875rem;
@@ -314,7 +313,7 @@ body.editor-docked .bf-stage-shell {
   min-width: 0;
 }
 
-.operator-selector__node .p-choice-row__meta {
+.operator-selector__node .bf-choice-row-meta {
   font-size: 0.72rem;
   line-height: 1.25;
 }

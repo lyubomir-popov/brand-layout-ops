@@ -54,7 +54,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
       body.append(createFormGroup(`${getOverlayFieldDisplayLabel(state.params, field.id)} Text`, textarea));
     } else {
       const csvNote = document.createElement("p");
-      csvNote.className = "p-form-help-text is-tight u-no-margin--bottom";
+      csvNote.className = "bf-form-help is-tight bf-u-no-margin--bottom";
       csvNote.textContent = ctx.hasStagedCsvDraft()
         ? "CSV-backed field. Staged CSV edits are pending for the active row; apply them from Content Format to update this field."
         : "CSV-backed field. Text comes from the active CSV row; use Content Format to stage CSV changes for this field.";
@@ -62,17 +62,17 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
     }
 
     const styleHelper = document.createElement("p");
-    styleHelper.className = "p-form-help-text is-tight u-no-margin--bottom";
+    styleHelper.className = "bf-form-help is-tight bf-u-no-margin--bottom";
     styleHelper.textContent = `Apply a paragraph style to ${getOverlayFieldDisplayLabel(state.params, field.id)}.`;
     body.append(styleHelper);
 
     const stylePalette = document.createElement("div");
-    stylePalette.className = "p-option-grid";
+    stylePalette.className = "bf-option-grid";
 
     for (const style of state.params.textStyles) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "p-option-card";
+      button.className = "bf-option-card";
       button.disabled = field.styleKey === style.key;
       if (field.styleKey === style.key) {
         button.classList.add("is-active");
@@ -82,11 +82,11 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
       });
 
       const label = document.createElement("span");
-      label.className = "p-option-card__label";
+      label.className = "bf-option-card-label";
       label.textContent = getOverlayStyleDisplayLabel(style.key);
 
       const meta = document.createElement("span");
-      meta.className = "p-option-card__meta";
+      meta.className = "bf-option-card-meta";
       meta.textContent = `${style.fontSizePx}px / ${style.lineHeightPx}px / ${style.fontWeight ?? 400}`;
 
       button.append(label, meta);
