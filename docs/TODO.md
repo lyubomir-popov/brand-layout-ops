@@ -230,8 +230,7 @@ These regressions were introduced during the document-model and shell extraction
 
 ### Non-blocking follow-ups
 
-- [ ] Halo scale zoom coverage
-- [ ] Release label fold-seam overlap
+No non-blocking follow-ups are currently open. The carried halo scale and release-label seam spot checks were re-verified on 2026-04-01 and moved to `docs/history.md`.
 
 These are optional spot checks, not Stage 1 parity gates and not part of the active execution lane.
 

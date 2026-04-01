@@ -81,12 +81,11 @@ All earlier EQ-1 through EQ-12 items are complete. The parity queue is closed.
 
 ### Active queue
 
-No approved execution lane is currently open. The remaining items are optional follow-ups unless the user promotes a new queue item.
+No approved execution lane is currently open. Unless the user promotes a new queue item, treat the repo as caught up through the selected-operator lane, the shell-compliance lane, and the carried halo verification pass.
 
 ### Non-blocking follow-ups
 
-1. Halo scale zoom coverage.
-2. Release-label fold-seam overlap.
+No non-blocking follow-ups are currently carried. The halo scale and release-label seam spot checks were re-verified against automation exports on 2026-04-01.
 
 ### Drift signals to watch
 

@@ -59,6 +59,13 @@ All initial first splits complete: grid, text, overlay composition, overlay inte
 - Finished the F3 runtime seam: desktop now starts pinned open, mobile now starts with the drawer closed, and a Playwright smoke pass confirmed the canonical `bf-application-overlay` open/close path plus the pinned-aside desktop path both behave correctly.
 - Validation: `npm run typecheck` and `npm run preview:build`.
 
+## Halo follow-up verification (2026-04-01)
+
+- Re-ran the carried halo spot checks from commit `5b927dd` against the current preview after the later selected-operator and shell refactors.
+- An automation-driven export probe rendered halo frames at `composition.scale` `0.35`, `1.0`, and `1.35` and confirmed both the halo geometry bounds and the text-overlay bounds grow with scale, so the old "dots only" zoom regression is not present in the current app.
+- Re-checked the release-label seam behavior in exported frames and confirmed the left-side fold seam still fades the oldest labels behind the newest spoke instead of drawing them on top.
+- Validation: temporary `window.__layoutOpsAutomation` probe plus exported frame inspection.
+
 ## Completed Execution Queue
 
 - EQ-1 through EQ-12 are complete.
