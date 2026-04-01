@@ -3,8 +3,8 @@
   "version": 1,
   "metadata": {
     "name": "Untitled document",
-    "createdAt": "2026-03-31T09:55:47.366Z",
-    "updatedAt": "2026-03-31T09:55:47.366Z"
+    "createdAt": "2026-04-01T21:16:45.120Z",
+    "updatedAt": "2026-04-01T21:16:45.120Z"
   },
   "project": {
     "sceneFamilyKey": "fuzzy-boids",
@@ -130,7 +130,7 @@
             "maxSpeedLimit": 3,
             "minAccelLimit": 0.01,
             "maxAccelLimit": 3,
-            "dotSizePx": 9.75,
+            "dotSizePx": 5.25,
             "boundsKind": "box",
             "boundsRadiusPx": 353,
             "boundsMarginPx": 69,
@@ -1694,6 +1694,6 @@
         }
       }
     },
-    "guideMode": "off"
+    "guideMode": "composition"
   }
 }

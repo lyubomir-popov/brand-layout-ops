@@ -151,7 +151,7 @@ Active architectural risks requiring attention during the next work cycle.
 1. [x] **Authoring interaction** → dedicated controller module. Landed in `authoring-controller.ts`; selection, drag, resize, hit testing, and inline editing now route through the controller.
 2. [x] **Export + automation** → dedicated controller module. Landed in `export-controller.ts`; export modal, composed-frame helpers, PNG sequence, and automation API now route through the controller.
 3. [x] **Source-default orchestration** → extracted to `apps/overlay-preview/src/source-default-controller.ts`.
-4. [x] **Dead panel cleanup** → `paragraph-styles-section.ts` removed (never imported); `presets-section.ts` confirmed still live and in use.
+4. [x] **Dead panel cleanup** → `paragraph-styles-section.ts` removed (never imported); `presets-section.ts` removed from config-editor registration (preset/localStorage persistence replaced by document save/open).
 5. [x] **Halo config merge helpers** → extracted `getHaloConfigForProfile` and `mergeHaloConfigWithBaseConfig` from `main.ts` to `operator-halo-field`.
 6. [x] Goal: `main.ts` is now a thin composition root wiring state and controllers. Current: ~833 lines after moving background-node selection and graph sync to `background-graph-controller.ts`; remaining DOM-query and overlay-visibility cleanup is optional follow-up, not an active extraction lane.
 

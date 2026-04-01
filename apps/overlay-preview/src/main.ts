@@ -109,7 +109,7 @@ import { buildOutputFormatSection } from "./output-format-section.js";
 import { buildOverlaySection } from "./overlay-section.js";
 import { buildPhyllotaxisSection } from "./phyllotaxis-section.js";
 import { buildPlaybackSection } from "./playback-section.js";
-import { buildPresetsSection } from "./presets-section.js";
+// Presets section removed — document save/open replaces preset persistence.
 import { buildScatterSection } from "./scatter-section.js";
 import { buildSourceDefaultSection } from "./source-default-section.js";
 
@@ -190,7 +190,7 @@ let previewShellController: PreviewShellController | null = null;
 
 const documentWorkspaceController = createDocumentWorkspaceController<OverlayPreviewDocument>({
   untitledName: UNTITLED_DOCUMENT_NAME,
-  initialStatusMessage: "Open or save a local document file. Presets are stored in the document when you save it.",
+  initialStatusMessage: "Open or save a local document file.",
   parseDocument: sanitizePreviewDocument,
   getDocumentMetadata: (previewDocument) => previewDocument.document.metadata,
   buildPersistedDocument: buildCurrentDocumentPersistence,
@@ -902,7 +902,6 @@ const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
   { key: "source-default", scope: "shell", order: 110, factory: () => buildSourceDefaultSection(ctx) },
   { key: "output-format", scope: "shell", order: 200, factory: () => buildOutputFormatSection(), afterRender: buildOutputProfileOptions },
   { key: "document", scope: "shell", order: 250, factory: () => buildDocumentSection(ctx), afterRender: updateDocumentUi },
-  { key: "presets", scope: "shell", order: 300, factory: () => buildPresetsSection(ctx), afterRender: buildPresetTabs },
   { key: "content-format", scope: "operator", order: 400, factory: () => buildContentFormatSection(ctx) },
   { key: "selected-overlay", scope: "operator", order: 500, factory: () => buildOverlaySection(ctx) },
   { key: "layout-grid", scope: "operator", order: 700, factory: () => buildGridSection(ctx), afterRender: syncOverlayVisibilityUi },

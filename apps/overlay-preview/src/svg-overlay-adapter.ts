@@ -144,7 +144,7 @@ export function createGuideMarkup(
   // Baseline grid
   if (guideMode === "baseline" && grid.baselineStepPx > 0) {
     for (let y = grid.contentTopPx; y < grid.contentBottomPx; y += grid.baselineStepPx) {
-      lines.push(`<line x1="${grid.contentLeftPx}" y1="${y}" x2="${grid.contentRightPx}" y2="${y}" stroke="rgba(255,79,79,0.15)" stroke-width="0.5"/>`);
+      lines.push(`<line x1="${grid.contentLeftPx}" y1="${y}" x2="${grid.contentRightPx}" y2="${y}" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>`);
     }
   }
 

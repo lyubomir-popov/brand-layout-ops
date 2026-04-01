@@ -22,6 +22,14 @@ All deviations are resolved and justified. Key patterns: motion preview was pull
 
 All initial first splits complete: grid, text, overlay composition, overlay interaction, parameter surface, orbits, spokes. Mask operators remain deferred.
 
+## Post-extraction bug fixes (2026-04-01)
+
+- Fixed missing `data-document-summary` and `data-document-status` attributes in `document-section.ts` (dropped during EQ-1 class migration at `fc35f96`). This made document workspace status/summary invisible, causing save/open feedback to be silently discarded.
+- Added error handling to file-toolbar button click handlers in `preview-shell-controller.ts` so failures are logged to console and shown in the document status line instead of being silently swallowed.
+- Removed presets accordion section from config-editor registration. Document save/open replaces preset localStorage persistence.
+- Killed localStorage persistence for presets (`brand-layout-ops-presets-v1`, `brand-layout-ops-active-preset-v1`) and output format (`brand-layout-ops-output-format-v1`). All functions now return empty defaults / no-op.
+- Changed baseline grid overlay stroke from red at 15% to white at 15% so it's visible on the dark stage background.
+
 ## Completed Execution Queue
 
 - EQ-1 through EQ-12 are complete.

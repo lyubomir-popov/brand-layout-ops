@@ -242,63 +242,34 @@ export function denormalizePresetFromPersistence(rawPreset: unknown): Preset | n
 }
 
 
-const PRESET_STORAGE_KEY = "brand-layout-ops-presets-v1";
-const ACTIVE_PRESET_STORAGE_KEY = "brand-layout-ops-active-preset-v1";
-const OUTPUT_FORMAT_STORAGE_KEY = "brand-layout-ops-output-format-v1";
+// localStorage persistence removed — document save/open is the sole persistence mechanism.
 
 export function loadPresets(): Preset[] {
-  try {
-    const raw = localStorage.getItem(PRESET_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((entry) => denormalizePresetFromPersistence(entry))
-      .filter((entry): entry is Preset => entry !== null);
-  } catch {
-    return [];
-  }
+  return [];
 }
 
-export function savePresets(presets: Preset[]): void {
-  localStorage.setItem(
-    PRESET_STORAGE_KEY,
-    JSON.stringify(presets.map((preset) => normalizePresetForPersistence(preset)))
-  );
+export function savePresets(_presets: Preset[]): void {
+  // No-op: preset localStorage persistence removed.
 }
 
 export function loadActivePresetId(): string | null {
-  return localStorage.getItem(ACTIVE_PRESET_STORAGE_KEY);
+  return null;
 }
 
-export function saveActivePresetId(id: string | null): void {
-  if (id === null) {
-    localStorage.removeItem(ACTIVE_PRESET_STORAGE_KEY);
-  } else {
-    localStorage.setItem(ACTIVE_PRESET_STORAGE_KEY, id);
-  }
+export function saveActivePresetId(_id: string | null): void {
+  // No-op: preset localStorage persistence removed.
 }
 
 export function loadOutputFormatKey(): string | null {
-  return localStorage.getItem(OUTPUT_FORMAT_STORAGE_KEY);
+  return null;
 }
 
-export function saveOutputFormatKey(profileKey: string, formatKey: string): void {
-  localStorage.setItem(OUTPUT_FORMAT_STORAGE_KEY, JSON.stringify({ profileKey, formatKey }));
+export function saveOutputFormatKey(_profileKey: string, _formatKey: string): void {
+  // No-op: output format localStorage persistence removed.
 }
 
 export function loadOutputFormatKeys(): { profileKey: string; formatKey: string } | null {
-  try {
-    const raw = localStorage.getItem(OUTPUT_FORMAT_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (typeof parsed?.profileKey === "string" && typeof parsed?.formatKey === "string") {
-      return parsed;
-    }
-    return null;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 export function createPresetId(): string {

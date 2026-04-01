@@ -130,7 +130,13 @@ export function createPreviewShellController(
       button.className = spec.primary ? "bf-button is-dense" : "bf-button is-base is-dense";
       button.textContent = spec.label;
       button.addEventListener("click", () => {
-        void spec.onClick();
+        Promise.resolve(spec.onClick()).catch((error: unknown) => {
+          console.error(`[file-toolbar] ${spec.label} failed:`, error);
+          deps.documentWorkspace.setStatus(
+            `${spec.label} failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+            "error"
+          );
+        });
       });
       toolbar.append(button);
     }

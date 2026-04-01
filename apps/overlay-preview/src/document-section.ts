@@ -21,10 +21,12 @@ export function buildDocumentSection(ctx: PreviewAppContext): HTMLElement {
 
   const summary = document.createElement("p");
   summary.className = "bf-form-help bf-u-no-margin--bottom";
+  summary.setAttribute("data-document-summary", "");
   body.append(summary);
 
   const status = document.createElement("p");
   status.className = "bf-form-help bf-u-no-margin--bottom";
+  status.setAttribute("data-document-status", "");
   body.append(status);
 
   const recentHeading = document.createElement("p");
