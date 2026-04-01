@@ -44,9 +44,13 @@ import type {
   OverlayPreviewDocument,
   PreviewAppContext,
   PreviewState,
+  SelectedOperatorId,
   Selection
 } from "./preview-app-context.js";
-import { UNTITLED_DOCUMENT_NAME } from "./preview-app-context.js";
+import {
+  OVERLAY_LAYOUT_OPERATOR_SELECTION_ID,
+  UNTITLED_DOCUMENT_NAME
+} from "./preview-app-context.js";
 import {
   createBackgroundGraphController
 } from "./background-graph-controller.js";
@@ -170,6 +174,7 @@ const state: PreviewState = {
   sourceDefaultProject: cloneOverlayDocumentProject(INITIAL_SOURCE_DEFAULT_PROJECT),
   documentProject: cloneOverlayDocumentProject(INITIAL_SOURCE_DEFAULT_PROJECT),
   selectedBackgroundNodeId: INITIAL_SOURCE_DEFAULT_PROJECT.backgroundGraph.activeNodeId,
+  selectedOperatorId: OVERLAY_LAYOUT_OPERATOR_SELECTION_ID,
   isPlaying: true,
   playbackTimeSec: 0
 };
@@ -378,6 +383,20 @@ function normalizeSelectedBackgroundNodeId(
   return backgroundGraphController.normalizeSelectedBackgroundNodeId(preferredNodeId);
 }
 
+function normalizeSelectedOperatorId(
+  preferredOperatorId: string | null = state.selectedOperatorId
+): SelectedOperatorId {
+  return backgroundGraphController.normalizeSelectedOperatorId(preferredOperatorId);
+}
+
+function setSelectedOperator(operatorId: string | null): boolean {
+  return backgroundGraphController.setSelectedOperator(operatorId);
+}
+
+function getSelectedOperatorId(): SelectedOperatorId {
+  return backgroundGraphController.getSelectedOperatorId();
+}
+
 function setSelectedBackgroundNode(nodeId: string | null): boolean {
   return backgroundGraphController.setSelectedBackgroundNode(nodeId);
 }
@@ -386,8 +405,8 @@ function getSelectedBackgroundNode(): OverlayBackgroundNode | null {
   return backgroundGraphController.getSelectedBackgroundNode();
 }
 
-function getSelectedBackgroundNodeGroup(): OverlaySceneFamilyKey {
-  return backgroundGraphController.getSelectedBackgroundNodeGroup();
+function getSelectedOperatorGroup(): string {
+  return backgroundGraphController.getSelectedOperatorGroup();
 }
 
 function updateSelectedBackgroundNode(
@@ -811,7 +830,8 @@ documentStateController = createPreviewDocumentStateController({
     authoringController?.resetInteractionState();
   },
   normalizeSelection,
-  normalizeSelectedBackgroundNodeId
+  normalizeSelectedBackgroundNodeId,
+  normalizeSelectedOperatorId
 });
 
 exportAutomationController = createExportAutomationController({
@@ -866,6 +886,7 @@ sourceDefaultController = createSourceDefaultController({
   buildConfigEditor,
   syncDocumentProjectToCurrentOutputProfile,
   normalizeSelectedBackgroundNodeId,
+  normalizeSelectedOperatorId,
   normalizeSelection
 });
 
@@ -901,8 +922,8 @@ const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
   { key: "source-default", scope: "shell", order: 110, factory: () => buildSourceDefaultSection(ctx) },
   { key: "output-format", scope: "shell", order: 200, factory: () => buildOutputFormatSection(), afterRender: buildOutputProfileOptions },
   { key: "document", scope: "shell", order: 250, factory: () => buildDocumentSection(ctx), afterRender: updateDocumentUi },
-  { key: "selected-overlay", scope: "operator", order: 500, factory: () => buildOverlaySection(ctx) },
-  { key: "layout-grid", scope: "operator", order: 700, factory: () => buildGridSection(ctx), afterRender: syncOverlayVisibilityUi },
+  { key: "selected-overlay", scope: "operator", group: OVERLAY_LAYOUT_OPERATOR_SELECTION_ID, order: 500, factory: () => buildOverlaySection(ctx) },
+  { key: "layout-grid", scope: "operator", group: OVERLAY_LAYOUT_OPERATOR_SELECTION_ID, order: 700, factory: () => buildGridSection(ctx), afterRender: syncOverlayVisibilityUi },
   { key: "halo-config", scope: "operator", order: 800, group: "halo", factory: () => buildHaloConfigSection(ctx) },
   { key: "fuzzy-boids", scope: "operator", order: 810, group: "fuzzy-boids", factory: () => buildFuzzyBoidsSection(ctx) },
   { key: "phyllotaxis", scope: "operator", order: 820, group: "phyllotaxis", factory: () => buildPhyllotaxisSection(ctx) },
@@ -913,10 +934,10 @@ configEditorController = createConfigEditorController({
   state,
   sectionDefinitions: CORE_CONFIG_SECTION_DEFINITIONS,
   getConfigEditor,
-  getSelectedBackgroundNodeGroup,
+  getSelectedOperatorId,
+  getSelectedOperatorGroup,
   getSceneFamilyLabel,
-  normalizeSelectedBackgroundNodeId,
-  setSelectedBackgroundNode,
+  setSelectedOperator,
   syncDocumentBackgroundGraph,
   markDocumentDirty,
   syncBackgroundRendererVisibility,

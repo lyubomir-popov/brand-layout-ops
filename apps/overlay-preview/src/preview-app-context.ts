@@ -32,8 +32,11 @@ import type { SceneFamilyPreviewMode } from "./scene-family-preview.js";
 // ——— Constants shared between main.ts and extracted panel modules ———
 
 export const UNTITLED_DOCUMENT_NAME = "Untitled document";
+export const OVERLAY_LAYOUT_OPERATOR_SELECTION_ID = "operator-overlay-layout";
 
 // ——— Types shared between main.ts and extracted panel modules ———
+
+export type SelectedOperatorId = typeof OVERLAY_LAYOUT_OPERATOR_SELECTION_ID | string;
 
 export type Selection =
   | { kind: "text"; id: string }
@@ -71,6 +74,7 @@ export interface PreviewState {
   sourceDefaultProject: OverlayDocumentProject;
   documentProject: OverlayDocumentProject;
   selectedBackgroundNodeId: string | null;
+  selectedOperatorId: SelectedOperatorId;
   isPlaying: boolean;
   playbackTimeSec: number;
 }

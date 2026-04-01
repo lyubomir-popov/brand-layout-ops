@@ -1,8 +1,8 @@
 /**
  * config-editor-controller.ts — Inspector pane registration and rebuild.
  *
- * Owns the accordion section registry, the background-graph selector UI, and
- * the policy for rebuilding the split workspace/parameter rails.
+ * Owns the accordion section registry, the operator selector UI, and the
+ * policy for rebuilding the split workspace/parameter rails.
  */
 
 import { initRangeControls } from "baseline-foundry";
@@ -22,16 +22,19 @@ import {
   type ParameterSectionDefinition
 } from "@brand-layout-ops/parameter-ui";
 
-import type { PreviewState } from "./preview-app-context.js";
+import {
+  OVERLAY_LAYOUT_OPERATOR_SELECTION_ID,
+  type PreviewState
+} from "./preview-app-context.js";
 
 export interface ConfigEditorControllerDeps {
   readonly state: PreviewState;
   readonly sectionDefinitions: ParameterSectionDefinition[];
   getConfigEditor(): HTMLElement | null;
-  getSelectedBackgroundNodeGroup(): OverlaySceneFamilyKey;
+  getSelectedOperatorId(): string;
+  getSelectedOperatorGroup(): string;
   getSceneFamilyLabel(key: OverlaySceneFamilyKey): string;
-  normalizeSelectedBackgroundNodeId(): string | null;
-  setSelectedBackgroundNode(nodeId: string | null): boolean;
+  setSelectedOperator(operatorId: string | null): boolean;
   syncDocumentBackgroundGraph(): void;
   markDocumentDirty(): void;
   syncBackgroundRendererVisibility(): void;
@@ -117,12 +120,12 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
 
     const label = document.createElement("span");
     label.className = "bf-form-label";
-    label.textContent = "Background Graph";
+    label.textContent = "Operators";
     heading.append(label);
 
     const help = document.createElement("p");
     help.className = "bf-form-help is-tight bf-u-no-margin--bottom operator-selector__help";
-  help.textContent = "Output selects the rendered family. Saved nodes select which operator pane the inspector edits.";
+    help.textContent = "Select one operator surface to edit. Rendered output chooses which saved background node feeds the preview.";
 
     const outputSection = document.createElement("div");
     outputSection.className = "operator-selector__section";
@@ -155,6 +158,7 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
         };
         shouldAutoOpenNextOperatorSection = true;
         deps.syncDocumentBackgroundGraph();
+        deps.setSelectedOperator(state.documentProject.backgroundGraph.activeNodeId);
         deps.markDocumentDirty();
         buildConfigEditor();
         deps.syncBackgroundRendererVisibility();
@@ -175,12 +179,44 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
 
     const nodesLabel = document.createElement("div");
     nodesLabel.className = "operator-selector__subheading";
-    nodesLabel.textContent = "Saved Nodes";
+    nodesLabel.textContent = "Parameter Surface";
     nodesSection.append(nodesLabel);
 
     const nodeList = document.createElement("div");
     nodeList.className = "bf-choice-list bf-stack preview-stack--compact";
-    const selectedBackgroundNodeId = deps.normalizeSelectedBackgroundNodeId();
+    const selectedOperatorId = deps.getSelectedOperatorId();
+
+    const overlayRow = document.createElement("label");
+    overlayRow.className = "bf-choice-row operator-selector__node";
+
+    const overlayRadio = document.createElement("input");
+    overlayRadio.type = "radio";
+    overlayRadio.name = "parameter-operator-selector";
+    overlayRadio.value = OVERLAY_LAYOUT_OPERATOR_SELECTION_ID;
+    overlayRadio.checked = selectedOperatorId === OVERLAY_LAYOUT_OPERATOR_SELECTION_ID;
+    overlayRadio.addEventListener("change", () => {
+      if (!overlayRadio.checked || !deps.setSelectedOperator(OVERLAY_LAYOUT_OPERATOR_SELECTION_ID)) {
+        return;
+      }
+
+      shouldAutoOpenNextOperatorSection = true;
+      buildConfigEditor();
+    });
+
+    const overlayCopy = document.createElement("span");
+    overlayCopy.className = "operator-selector__node-copy";
+
+    const overlayName = document.createElement("span");
+    overlayName.className = "bf-choice-row-name";
+    overlayName.textContent = "Overlay Layout";
+
+    const overlayMeta = document.createElement("span");
+    overlayMeta.className = "bf-choice-row-meta";
+    overlayMeta.textContent = "Text, logo, guides, and selected element controls.";
+
+    overlayCopy.append(overlayName, overlayMeta);
+    overlayRow.append(overlayRadio, overlayCopy);
+    nodeList.append(overlayRow);
 
     for (const node of state.documentProject.backgroundGraph.nodes) {
       const row = document.createElement("label");
@@ -188,11 +224,11 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
 
       const radio = document.createElement("input");
       radio.type = "radio";
-      radio.name = "background-node-selector";
+      radio.name = "parameter-operator-selector";
       radio.value = node.id;
-      radio.checked = node.id === selectedBackgroundNodeId;
+      radio.checked = node.id === selectedOperatorId;
       radio.addEventListener("change", () => {
-        if (!radio.checked || !deps.setSelectedBackgroundNode(node.id)) {
+        if (!radio.checked || !deps.setSelectedOperator(node.id)) {
           return;
         }
 
@@ -288,12 +324,11 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
     container.innerHTML = "";
 
     const sections = getConfigSections();
-    const activeGroup = deps.getSelectedBackgroundNodeGroup();
+    const activeGroup = deps.getSelectedOperatorGroup();
 
     const shellSections = sections.filter((section) => section.scope === "shell");
     const operatorSections = sections.filter((section) => section.scope !== "shell");
-    const overlayLayoutSections = operatorSections.filter((section) => !section.group);
-    const backgroundSections = operatorSections.filter((section) => section.group === activeGroup);
+    const selectedOperatorSections = operatorSections.filter((section) => section.group === activeGroup);
     const renderedSections: RenderedSection[] = [];
 
     if (shellSections.length > 0) {
@@ -308,19 +343,12 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
       setupAccordion(shellAccordion);
     }
 
-    if (overlayLayoutSections.length > 0 || backgroundSections.length > 0) {
+    if (operatorSections.length > 0) {
       const operatorAccordion = buildSectionAccordion([], renderedSections);
       const operatorList = operatorAccordion.querySelector(".bf-accordion-list");
       operatorList?.append(buildOperatorSelectorEl());
 
-      for (const section of overlayLayoutSections) {
-        const element = section.factory();
-        element.dataset.sectionKey = section.key;
-        operatorList?.append(element);
-        renderedSections.push({ section, element });
-      }
-
-      for (const section of backgroundSections) {
+      for (const section of selectedOperatorSections) {
         const element = section.factory();
         element.dataset.sectionKey = section.key;
         operatorList?.append(element);
@@ -330,7 +358,9 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
       container.append(
         buildInspectorRail(
           "Parameters",
-          "Overlay layout and the currently selected saved background operator own the parameter pane.",
+          activeGroup === OVERLAY_LAYOUT_OPERATOR_SELECTION_ID
+            ? "Overlay Layout is selected. Only the overlay-layout parameter surface is shown here."
+            : "Only the selected saved background operator surface is shown here.",
           operatorAccordion
         )
       );
@@ -341,13 +371,13 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
 
     let restoredSection = false;
     if (shouldAutoOpenNextOperatorSection) {
-      if (previouslyOpenKey && backgroundSections.some((section) => section.key === previouslyOpenKey)) {
+      if (previouslyOpenKey && selectedOperatorSections.some((section) => section.key === previouslyOpenKey)) {
         const targetGroup = findRenderedSection(renderedSections, previouslyOpenKey);
         restoredSection = openAccordionSection(targetGroup);
       }
 
       if (!restoredSection) {
-        const firstOperatorSection = findRenderedSection(renderedSections, backgroundSections[0]?.key ?? null);
+        const firstOperatorSection = findRenderedSection(renderedSections, selectedOperatorSections[0]?.key ?? null);
         restoredSection = openAccordionSection(firstOperatorSection);
       }
     } else if (previouslyOpenKey) {
@@ -357,7 +387,7 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
 
     shouldAutoOpenNextOperatorSection = false;
 
-    const activeSections = [...shellSections, ...overlayLayoutSections, ...backgroundSections];
+    const activeSections = [...shellSections, ...selectedOperatorSections];
     for (const section of activeSections) {
       section.afterRender?.();
     }

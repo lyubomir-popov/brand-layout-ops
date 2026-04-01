@@ -6,7 +6,11 @@ import {
   type OverlaySceneFamilyKey
 } from "@brand-layout-ops/operator-overlay-layout";
 
-import type { PreviewState } from "./preview-app-context.js";
+import {
+  OVERLAY_LAYOUT_OPERATOR_SELECTION_ID,
+  type PreviewState,
+  type SelectedOperatorId
+} from "./preview-app-context.js";
 
 export interface BackgroundGraphControllerOptions {
   readonly state: PreviewState;
@@ -14,9 +18,12 @@ export interface BackgroundGraphControllerOptions {
 
 export interface BackgroundGraphController {
   normalizeSelectedBackgroundNodeId(preferredNodeId?: string | null): string | null;
+  normalizeSelectedOperatorId(preferredOperatorId?: string | null): SelectedOperatorId;
+  setSelectedOperator(operatorId: string | null): boolean;
+  getSelectedOperatorId(): SelectedOperatorId;
   setSelectedBackgroundNode(nodeId: string | null): boolean;
   getSelectedBackgroundNode(): OverlayBackgroundNode | null;
-  getSelectedBackgroundNodeGroup(): OverlaySceneFamilyKey;
+  getSelectedOperatorGroup(): string;
   updateSelectedBackgroundNode(updater: (node: OverlayBackgroundNode) => OverlayBackgroundNode): boolean;
   syncDocumentBackgroundGraph(): void;
   getSceneFamilyLabel(sceneFamilyKey: OverlaySceneFamilyKey): string;
@@ -41,10 +48,35 @@ export function createBackgroundGraphController(
     return nextSelectedNodeId;
   }
 
+  function normalizeSelectedOperatorId(
+    preferredOperatorId: string | null = state.selectedOperatorId
+  ): SelectedOperatorId {
+    if (preferredOperatorId === OVERLAY_LAYOUT_OPERATOR_SELECTION_ID) {
+      normalizeSelectedBackgroundNodeId();
+      state.selectedOperatorId = OVERLAY_LAYOUT_OPERATOR_SELECTION_ID;
+      return state.selectedOperatorId;
+    }
+
+    const nextSelectedNodeId = normalizeSelectedBackgroundNodeId(preferredOperatorId);
+    state.selectedOperatorId = nextSelectedNodeId ?? OVERLAY_LAYOUT_OPERATOR_SELECTION_ID;
+    return state.selectedOperatorId;
+  }
+
+  function setSelectedOperator(operatorId: string | null): boolean {
+    const previousOperatorId = normalizeSelectedOperatorId();
+    normalizeSelectedOperatorId(operatorId);
+    return state.selectedOperatorId !== previousOperatorId;
+  }
+
+  function getSelectedOperatorId(): SelectedOperatorId {
+    return normalizeSelectedOperatorId();
+  }
+
   function setSelectedBackgroundNode(nodeId: string | null): boolean {
-    const previousNodeId = state.selectedBackgroundNodeId;
-    normalizeSelectedBackgroundNodeId(nodeId);
-    return state.selectedBackgroundNodeId !== previousNodeId;
+    const previousOperatorId = normalizeSelectedOperatorId();
+    const nextSelectedNodeId = normalizeSelectedBackgroundNodeId(nodeId);
+    state.selectedOperatorId = nextSelectedNodeId ?? OVERLAY_LAYOUT_OPERATOR_SELECTION_ID;
+    return state.selectedOperatorId !== previousOperatorId;
   }
 
   function getSelectedBackgroundNode(): OverlayBackgroundNode | null {
@@ -56,11 +88,16 @@ export function createBackgroundGraphController(
     return state.documentProject.backgroundGraph.nodes.find((node) => node.id === selectedNodeId) ?? null;
   }
 
-  function getSelectedBackgroundNodeGroup(): OverlaySceneFamilyKey {
+  function getSelectedOperatorGroup(): string {
+    const selectedOperatorId = normalizeSelectedOperatorId();
+    if (selectedOperatorId === OVERLAY_LAYOUT_OPERATOR_SELECTION_ID) {
+      return OVERLAY_LAYOUT_OPERATOR_SELECTION_ID;
+    }
+
     const selectedNode = getSelectedBackgroundNode();
     return selectedNode
       ? getOverlaySceneFamilyKeyForBackgroundOperator(selectedNode.operatorKey)
-      : state.documentProject.sceneFamilyKey;
+      : OVERLAY_LAYOUT_OPERATOR_SELECTION_ID;
   }
 
   function updateSelectedBackgroundNode(
@@ -111,6 +148,7 @@ export function createBackgroundGraphController(
       )
     };
     normalizeSelectedBackgroundNodeId(state.selectedBackgroundNodeId);
+    normalizeSelectedOperatorId(state.selectedOperatorId);
   }
 
   function getSceneFamilyLabel(sceneFamilyKey: OverlaySceneFamilyKey): string {
@@ -122,9 +160,12 @@ export function createBackgroundGraphController(
 
   return {
     normalizeSelectedBackgroundNodeId,
+    normalizeSelectedOperatorId,
+    setSelectedOperator,
+    getSelectedOperatorId,
     setSelectedBackgroundNode,
     getSelectedBackgroundNode,
-    getSelectedBackgroundNodeGroup,
+    getSelectedOperatorGroup,
     updateSelectedBackgroundNode,
     syncDocumentBackgroundGraph,
     getSceneFamilyLabel

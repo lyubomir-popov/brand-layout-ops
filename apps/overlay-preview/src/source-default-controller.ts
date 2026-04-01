@@ -42,6 +42,8 @@ export interface SourceDefaultControllerOptions {
   syncDocumentProjectToCurrentOutputProfile: () => void;
   /** Normalize the selected background node to a valid ID. */
   normalizeSelectedBackgroundNodeId: (preferredNodeId?: string | null) => string | null;
+  /** Normalize the selected operator to a valid ID. */
+  normalizeSelectedOperatorId: (preferredOperatorId?: string | null) => string;
   /** Normalize the current element selection. */
   normalizeSelection: () => void;
 }
@@ -67,6 +69,7 @@ export function createSourceDefaultController(opts: SourceDefaultControllerOptio
     buildConfigEditor,
     syncDocumentProjectToCurrentOutputProfile,
     normalizeSelectedBackgroundNodeId,
+    normalizeSelectedOperatorId,
     normalizeSelection
   } = opts;
 
@@ -124,6 +127,7 @@ export function createSourceDefaultController(opts: SourceDefaultControllerOptio
     state.documentProject = cloneOverlayDocumentProject(normalizedProject);
     syncDocumentProjectToCurrentOutputProfile();
     normalizeSelectedBackgroundNodeId(state.documentProject.backgroundGraph.activeNodeId);
+    normalizeSelectedOperatorId(state.selectedOperatorId);
     normalizeSelection();
   }
 

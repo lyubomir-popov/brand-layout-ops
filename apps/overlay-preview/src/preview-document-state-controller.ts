@@ -43,6 +43,7 @@ export interface PreviewDocumentStateControllerOptions {
   resetAuthoringInteractionState(): void;
   normalizeSelection(): void;
   normalizeSelectedBackgroundNodeId(preferredNodeId?: string | null): string | null;
+  normalizeSelectedOperatorId(preferredOperatorId?: string | null): string;
 }
 
 export interface PreviewDocumentStateController {
@@ -100,6 +101,7 @@ export function createPreviewDocumentStateController(
     options.resetAuthoringInteractionState();
     options.normalizeSelection();
     options.normalizeSelectedBackgroundNodeId();
+    options.normalizeSelectedOperatorId();
     options.resizeRenderer();
     options.buildConfigEditor();
     await options.loadLogoIntrinsicDimensions(state.params.logo?.assetPath ?? "");

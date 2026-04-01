@@ -196,14 +196,14 @@ Lanes A-D are complete. See `docs/history.md` for the closed parity, shell-reduc
 
 ### Lane E — Selected-operator pane
 
-E1 is complete: workspace-level controls now render in a dedicated shell rail above a separate operator pane, so the inspector no longer treats one mixed accordion stack as the long-term model.
+Lane E is complete: workspace-level controls now render in a dedicated shell rail, the inspector uses one selected-operator model for overlay-layout plus saved background nodes, and the parameter pane now renders only the selected operator surface instead of the earlier mixed multi-accordion stack.
 
 | Step | Task | Depends on | Exit criteria |
 |------|------|------------|---------------|
-| E2 | Introduce a unified selected-operator model for `operator-overlay-layout` plus saved background nodes | E1 | The inspector can switch between overlay-layout and saved background operators through one selected-operator state model rather than background-only selection |
-| E3 | Render only the selected operator surface in the parameter pane | E2 | The config editor stops rendering the full multi-accordion stack by default; overlay-layout and scene-family operators each expose a scoped selected-operator pane |
+| E2 | Introduce a unified selected-operator model for `operator-overlay-layout` plus saved background nodes | E1 | **DONE** — the inspector now switches between overlay-layout and saved background operators through one selected-operator state model rather than the earlier background-only selector |
+| E3 | Render only the selected operator surface in the parameter pane | E2 | **DONE** — the config editor now renders only the selected operator surface in the parameter rail instead of the earlier mixed overlay-plus-background stack |
 
-### Lane F — Baseline-Foundry shell compliance (queued after Lane E)
+### Lane F — Baseline-Foundry shell compliance (active)
 
 | Step | Task | Depends on | Exit criteria |
 |------|------|------------|---------------|
@@ -213,7 +213,7 @@ E1 is complete: workspace-level controls now render in a dedicated shell rail ab
 
 ### Lane G — Document-model regression fixes (closed 2026-04-01)
 
-These regressions were introduced during the document-model and shell extraction work. They are now closed, so feature work can continue on Lane E.
+These regressions were introduced during the document-model and shell extraction work. They are now closed, so feature work can continue on Lane F.
 
 | Step | Task | Status | Detail |
 |------|------|--------|--------|

@@ -42,6 +42,14 @@ All initial first splits complete: grid, text, overlay composition, overlay inte
 - Split the live inspector into two explicit rails inside `config-editor-controller.ts`: a shell-level `Workspace` rail for document, export, playback, and source-default controls, and a separate `Parameters` rail for overlay-layout plus the selected saved background operator.
 - This closes Lane E1 by making the shell/operator boundary visible in the UI before the later selected-operator model and single-surface pane work.
 
+## Lane E2/E3 — unified selected-operator pane (2026-04-01)
+
+- Added an explicit selected-operator state to the preview app so the inspector can switch between `operator-overlay-layout` and saved background nodes through one model instead of the earlier background-only selector.
+- Updated the parameter rail selector to include `Overlay Layout` alongside saved background nodes while keeping rendered-output family selection separate from parameter-surface selection.
+- The parameter rail now renders only the selected operator surface instead of stacking overlay-layout sections and the active background panel together. Overlay-layout selection shows only its scoped sections, and background-node selection shows only that operator-family surface.
+- Document/state refresh paths now normalize both the saved background-node focus and the higher-level selected-operator choice after load, reset, and source-default apply.
+- Validation: `npm run typecheck` and `npm run preview:build`.
+
 ## Completed Execution Queue
 
 - EQ-1 through EQ-12 are complete.
