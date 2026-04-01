@@ -5,6 +5,9 @@
  * All numeric constants match the reference defaults for landscape_1280x720.
  */
 
+import type { OperatorParameterSchema } from "@brand-layout-ops/core-types";
+import { getOutputProfileMetrics } from "@brand-layout-ops/core-types";
+
 // ─── Math helpers (ported from config-schema.js) ──────────────────────
 export const TAU = Math.PI * 2;
 export const COMPOSITION_SIZE_PX = 600;
@@ -183,6 +186,140 @@ export interface HaloFieldConfig {
     shape_fade_end: number;
   };
 }
+
+/**
+ * Schema-driven parameter definition for the halo-field config panel.
+ * Maps 1:1 to the controls in the previous handcoded halo-config-section.
+ */
+export const HALO_FIELD_CONFIG_SCHEMA: OperatorParameterSchema = {
+  sections: [
+    { key: "composition", title: "Composition" },
+    { key: "generator", title: "Generator" },
+    { key: "angles", title: "Angles & Spoke Geometry" },
+    { key: "colors", title: "Colors" },
+    { key: "spokeDetails", title: "Spoke Details" },
+    { key: "echoDetails", title: "Echo Shape Details" },
+    { key: "echoPattern", title: "Echo Pattern" },
+    { key: "screensaver", title: "Screensaver / Breath" },
+    { key: "motionToggles", title: "Motion Toggles" },
+    { key: "motionTiming", title: "Motion Timing" },
+    { key: "finaleMotion", title: "Finale & Nose" },
+    { key: "headTurn", title: "Head Turn" },
+    { key: "motionCurve", title: "Motion Curve" },
+    { key: "blinkCurve", title: "Blink Curve" },
+    { key: "toggles", title: "Screensaver Toggles" },
+    { key: "labels", title: "Release Labels" },
+    { key: "debug", title: "Debug" }
+  ],
+  fields: [
+    // ── Composition ─────────────────────────────────────────────
+    { path: "composition.scale", label: "Scale", kind: "slider", sectionKey: "composition", min: 0.1, max: 2, step: 0.01 },
+    { path: "composition.radial_scale", label: "Radial Scale", kind: "slider", sectionKey: "composition", min: 0.1, max: 2, step: 0.01 },
+    { path: "composition.center_offset_y_px", label: "Center Y Offset", kind: "slider", sectionKey: "composition", min: -500, max: 500, step: 1 },
+    { path: "generator_wrangle.inner_radius", label: "Inner Radius", kind: "slider", sectionKey: "composition", min: 0, max: 1, step: 0.001 },
+    { path: "generator_wrangle.outer_radius", label: "Outer Radius", kind: "slider", sectionKey: "composition", min: 0, max: 1, step: 0.001 },
+
+    // ── Generator ───────────────────────────────────────────────
+    { path: "generator_wrangle.spoke_count", label: "Spokes", kind: "number", sectionKey: "generator", min: 4, max: 120, step: 1 },
+    { path: "generator_wrangle.num_orbits", label: "Orbits", kind: "number", sectionKey: "generator", min: 1, max: 16, step: 1 },
+    { path: "generator_wrangle.min_active_orbits", label: "Min Active Orbits", kind: "number", sectionKey: "generator", min: 1, max: 16, step: 1 },
+    { path: "generator_wrangle.phase_count", label: "Phase Count", kind: "number", sectionKey: "generator", min: 1, max: 6, step: 1 },
+
+    // ── Angles & Spoke Geometry ─────────────────────────────────
+    { path: "generator_wrangle.base_angle_deg", label: "Base Angle", kind: "slider", sectionKey: "angles", min: -180, max: 180, step: 0.1 },
+    { path: "generator_wrangle.pattern_offset_spokes", label: "Pattern Offset", kind: "number", sectionKey: "angles", min: -120, max: 120, step: 1 },
+    { path: "spoke_lines.start_radius_px", label: "Start Radius", kind: "slider", sectionKey: "angles", min: 0, max: 400, step: 1 },
+    { path: "spoke_lines.end_radius_extra_px", label: "End Radius Extra", kind: "slider", sectionKey: "angles", min: 0, max: 400, step: 1 },
+
+    // ── Colors ──────────────────────────────────────────────────
+    { path: "composition.background_color", label: "Background", kind: "color", sectionKey: "colors" },
+    { path: "point_style.color", label: "Dot Color", kind: "color", sectionKey: "colors" },
+    { path: "spoke_lines.construction_color", label: "Construction", kind: "color", sectionKey: "colors" },
+    { path: "spoke_lines.reference_color", label: "Reference", kind: "color", sectionKey: "colors" },
+    { path: "spoke_lines.color", label: "Spoke Color", kind: "color", sectionKey: "colors" },
+    { path: "spoke_lines.echo_color", label: "Echo Color", kind: "color", sectionKey: "colors" },
+
+    // ── Spoke Details ───────────────────────────────────────────
+    { path: "spoke_lines.width_px", label: "Spoke Width", kind: "slider", sectionKey: "spokeDetails", min: 0, max: 16, step: 0.5 },
+    { path: "spoke_lines.echo_count", label: "Echo Count", kind: "number", sectionKey: "spokeDetails", min: 0, max: 32, step: 1 },
+    { path: "spoke_lines.echo_style", label: "Echo Style", kind: "select", sectionKey: "spokeDetails", options: [
+      { label: "Mixed", value: "mixed" },
+      { label: "Dots", value: "dots" },
+      { label: "Plus", value: "plus" },
+      { label: "Triangles", value: "triangles" },
+      { label: "Diamond", value: "diamond" },
+      { label: "Star", value: "star" },
+      { label: "Hexagon", value: "hexagon" },
+      { label: "Radial Dash", value: "radial_dash" }
+    ] },
+    { path: "spoke_lines.phase_start_width_px", label: "Phase Width", kind: "slider", sectionKey: "spokeDetails", min: 0, max: 32, step: 1 },
+
+    // ── Echo Shape Details ──────────────────────────────────────
+    { path: "spoke_lines.phase_end_width_px", label: "Phase End Width", kind: "slider", sectionKey: "echoDetails", min: 0, max: 32, step: 1 },
+    { path: "spoke_lines.echo_marker_stroke_px", label: "Echo Stroke", kind: "slider", sectionKey: "echoDetails", min: 0, max: 12, step: 0.5 },
+    { path: "spoke_lines.echo_marker_scale_mult", label: "Echo Scale", kind: "slider", sectionKey: "echoDetails", min: 0.1, max: 6, step: 0.1 },
+    { path: "spoke_lines.echo_sparse_scale_boost", label: "Sparse Boost", kind: "slider", sectionKey: "echoDetails", min: 0, max: 6, step: 0.1 },
+
+    // ── Echo Pattern ────────────────────────────────────────────
+    { path: "spoke_lines.echo_shape_seed", label: "Shape Seed", kind: "number", sectionKey: "echoPattern", min: 0, max: 9999, step: 1 },
+    { path: "spoke_lines.echo_mix_shape_pct", label: "Mix Shape %", kind: "slider", sectionKey: "echoPattern", min: 0, max: 1, step: 0.01 },
+    { path: "spoke_lines.echo_wave_count", label: "Ripple Count", kind: "slider", sectionKey: "echoPattern", min: 0, max: 12, step: 1 },
+    { path: "spoke_lines.echo_opacity_mult", label: "Echo Fade", kind: "slider", sectionKey: "echoPattern", min: 0, max: 1, step: 0.01 },
+
+    // ── Screensaver / Breath ────────────────────────────────────
+    { path: "screensaver.cycle_sec", label: "Breath Cycle", kind: "slider", sectionKey: "screensaver", min: 0, max: 60, step: 0.1 },
+    { path: "screensaver.ramp_in_sec", label: "Breath Ramp In", kind: "slider", sectionKey: "screensaver", min: 0, max: 60, step: 0.1 },
+    { path: "screensaver.min_spoke_count", label: "Min Spokes", kind: "slider", sectionKey: "screensaver", min: 1, max: 180, step: 1 },
+    { path: "screensaver.phase_boundary_transition_sec", label: "Boundary Ease", kind: "slider", sectionKey: "screensaver", min: 0, max: 1.5, step: 0.01 },
+
+    // ── Motion Toggles ──────────────────────────────────────────
+    { path: "mascot_fade.enabled", label: "Mascot Fade", kind: "boolean", sectionKey: "motionToggles" },
+    { path: "head_turn.enabled", label: "Head Turn", kind: "boolean", sectionKey: "motionToggles" },
+    { path: "blink.enabled", label: "Closing Blink", kind: "boolean", sectionKey: "motionToggles" },
+    { path: "finale.enabled", label: "Finale Sweep", kind: "boolean", sectionKey: "motionToggles" },
+
+    // ── Motion Timing ───────────────────────────────────────────
+    { path: "mascot_fade.duration_sec", label: "Fade Duration", kind: "slider", sectionKey: "motionTiming", min: 0, max: 3, step: 0.01 },
+    { path: "head_turn.duration_sec", label: "Head Turn Duration", kind: "slider", sectionKey: "motionTiming", min: 0, max: 1, step: 0.01 },
+    { path: "head_turn.dot_overlap_sec", label: "Dot Overlap", kind: "slider", sectionKey: "motionTiming", min: 0, max: 1, step: 0.01 },
+    { path: "blink.start_delay_sec", label: "Blink Delay", kind: "slider", sectionKey: "motionTiming", min: 0, max: 1, step: 0.01 },
+
+    // ── Finale & Nose ───────────────────────────────────────────
+    { path: "finale.delay_after_dots_sec", label: "Finale Delay", kind: "slider", sectionKey: "finaleMotion", min: 0, max: 4, step: 0.01 },
+    { path: "finale.duration_sec", label: "Finale Duration", kind: "slider", sectionKey: "finaleMotion", min: 0, max: 6, step: 0.01 },
+    { path: "blink.duration_sec", label: "Blink Duration", kind: "slider", sectionKey: "finaleMotion", min: 0, max: 1, step: 0.01 },
+    { path: "sneeze.nose_bob_up_px", label: "Nose Bob", kind: "slider", sectionKey: "finaleMotion", min: 0, max: 20, step: 0.1 },
+
+    // ── Head Turn ───────────────────────────────────────────────
+    { path: "head_turn.peak_angle_deg", label: "Peak Angle", kind: "slider", sectionKey: "headTurn", min: -90, max: 90, step: 0.1 },
+    { path: "head_turn.reverse_angle_deg", label: "Reverse Angle", kind: "slider", sectionKey: "headTurn", min: -90, max: 90, step: 0.1 },
+    { path: "head_turn.overshoot_angle_deg", label: "Overshoot Angle", kind: "slider", sectionKey: "headTurn", min: -90, max: 90, step: 0.1 },
+    { path: "sneeze.enabled", label: "Loop Sneeze", kind: "boolean", sectionKey: "headTurn" },
+
+    // ── Motion Curve ────────────────────────────────────────────
+    { path: "head_turn.peak_frac", label: "Peak Timing", kind: "slider", sectionKey: "motionCurve", min: 0, max: 1, step: 0.01 },
+    { path: "head_turn.reverse_frac", label: "Reverse Timing", kind: "slider", sectionKey: "motionCurve", min: 0, max: 1, step: 0.01 },
+    { path: "head_turn.overshoot_frac", label: "Overshoot Timing", kind: "slider", sectionKey: "motionCurve", min: 0, max: 1, step: 0.01 },
+    { path: "blink.eye_scale_y_closed", label: "Closed Eye Scale", kind: "slider", sectionKey: "motionCurve", min: 0, max: 1, step: 0.01 },
+
+    // ── Blink Curve ─────────────────────────────────────────────
+    { path: "blink.close_frac", label: "Blink Close", kind: "slider", sectionKey: "blinkCurve", min: 0, max: 1, step: 0.01 },
+    { path: "blink.hold_closed_frac", label: "Hold Closed", kind: "slider", sectionKey: "blinkCurve", min: 0, max: 1, step: 0.01 },
+
+    // ── Screensaver Toggles ─────────────────────────────────────
+    { path: "screensaver.pulse_orbits", label: "Pulse Orbits", kind: "boolean", sectionKey: "toggles" },
+    { path: "screensaver.pulse_spokes", label: "Pulse Spokes", kind: "boolean", sectionKey: "toggles" },
+    { path: "spoke_text.enabled", label: "Release Labels", kind: "boolean", sectionKey: "toggles" },
+
+    // ── Release Labels (conditional) ────────────────────────────
+    { path: "spoke_text.font_size_px", label: "Label Size", kind: "slider", sectionKey: "labels", min: 3, max: 24, step: 0.5, visibleWhen: { path: "spoke_text.enabled", operator: "eq", value: true } },
+    { path: "spoke_text.radial_u", label: "Label Position", kind: "slider", sectionKey: "labels", min: 0, max: 1, step: 0.01, visibleWhen: { path: "spoke_text.enabled", operator: "eq", value: true } },
+
+    // ── Debug ───────────────────────────────────────────────────
+    { path: "spoke_lines.show_reference_halo", label: "Reference Halo", kind: "boolean", sectionKey: "debug" },
+    { path: "spoke_lines.show_debug_masks", label: "Debug Masks", kind: "boolean", sectionKey: "debug" }
+  ]
+};
 
 export interface MascotBox {
   center_x_px: number;
@@ -1074,6 +1211,63 @@ export function createHaloFieldConfigForProfile(profileKey: string): HaloFieldCo
   const overrides = HALO_PROFILE_OVERRIDES[profileKey];
   if (!overrides || Object.keys(overrides).length === 0) return base;
   return deepMerge(base, overrides) as HaloFieldConfig;
+}
+
+// ─── Halo config merge helpers ────────────────────────────────────────
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value);
+}
+
+function mergeHaloConfigWithBaseConfig(baseConfig: HaloFieldConfig, rawHaloConfig: unknown): HaloFieldConfig {
+  const defaults = { ...baseConfig };
+  if (!isRecord(rawHaloConfig)) {
+    return defaults;
+  }
+
+  const mascotFade = isRecord(rawHaloConfig.mascot_fade) ? rawHaloConfig.mascot_fade : {};
+  const headTurn = isRecord(rawHaloConfig.head_turn) ? rawHaloConfig.head_turn : {};
+  const blink = isRecord(rawHaloConfig.blink) ? rawHaloConfig.blink : {};
+  const sneeze = isRecord(rawHaloConfig.sneeze) ? rawHaloConfig.sneeze : {};
+  const composition = isRecord(rawHaloConfig.composition) ? rawHaloConfig.composition : {};
+  const generatorWrangle = isRecord(rawHaloConfig.generator_wrangle) ? rawHaloConfig.generator_wrangle : {};
+  const transitionWrangle = isRecord(rawHaloConfig.transition_wrangle) ? rawHaloConfig.transition_wrangle : {};
+  const pointStyle = isRecord(rawHaloConfig.point_style) ? rawHaloConfig.point_style : {};
+  const spokeLines = isRecord(rawHaloConfig.spoke_lines) ? rawHaloConfig.spoke_lines : {};
+  const spokeText = isRecord(rawHaloConfig.spoke_text) ? rawHaloConfig.spoke_text : {};
+  const screensaver = isRecord(rawHaloConfig.screensaver) ? rawHaloConfig.screensaver : {};
+  const finale = isRecord(rawHaloConfig.finale) ? rawHaloConfig.finale : {};
+  const vignette = isRecord(rawHaloConfig.vignette) ? rawHaloConfig.vignette : {};
+
+  return {
+    ...defaults,
+    ...rawHaloConfig,
+    mascot_fade: { ...defaults.mascot_fade, ...mascotFade },
+    head_turn: { ...defaults.head_turn, ...headTurn },
+    blink: { ...defaults.blink, ...blink },
+    sneeze: { ...defaults.sneeze, ...sneeze },
+    composition: { ...defaults.composition, ...composition },
+    generator_wrangle: { ...defaults.generator_wrangle, ...generatorWrangle },
+    transition_wrangle: { ...defaults.transition_wrangle, ...transitionWrangle },
+    point_style: { ...defaults.point_style, ...pointStyle },
+    spoke_lines: { ...defaults.spoke_lines, ...spokeLines },
+    spoke_text: { ...defaults.spoke_text!, ...spokeText },
+    screensaver: { ...defaults.screensaver!, ...screensaver },
+    finale: { ...defaults.finale!, ...finale },
+    vignette: { ...defaults.vignette!, ...vignette }
+  } as HaloFieldConfig;
+}
+
+/**
+ * Merge a raw (possibly partial) halo config with profile-tuned defaults,
+ * then resolve center_y_px from profile metrics + center_offset_y_px.
+ */
+export function getHaloConfigForProfile(profileKey: string, rawHaloConfig?: unknown): HaloFieldConfig {
+  const config = mergeHaloConfigWithBaseConfig(createHaloFieldConfigForProfile(profileKey), rawHaloConfig);
+  const metrics = getOutputProfileMetrics(profileKey);
+  config.composition.center_x_px = metrics.centerXPx;
+  config.composition.center_y_px = metrics.centerYPx + (config.composition.center_offset_y_px ?? 0);
+  return config;
 }
 
 // ─── Ubuntu release labels ────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import type {
   ColorRgba,
   OperatorDefinition,
+  OperatorParameterSchema,
   PointField,
   PointRecord,
   Vector3
@@ -740,9 +741,34 @@ export function resolveScatterOutputs(params: ScatterParams, centroidInput?: Par
   };
 }
 
+export const SCATTER_PARAMETER_SCHEMA: OperatorParameterSchema = {
+  sections: [
+    { key: "scatter", title: "Scatter" },
+    { key: "shape", title: "Shape" }
+  ],
+  fields: [
+    { kind: "number", sectionKey: "scatter", path: "pointCount", label: "Points", min: 1, max: 4000, step: 1 },
+    { kind: "number", sectionKey: "scatter", path: "seed", label: "Seed", min: 0, max: 9999, step: 1 },
+    { kind: "select", sectionKey: "scatter", path: "distributionMode", label: "Distribution", options: [
+      { label: "Uniform", value: "uniform" },
+      { label: "Density-weighted", value: "density-weighted" }
+    ] },
+    { kind: "slider", sectionKey: "scatter", path: "marginPx", label: "Margin", min: 0, max: 120, step: 1 },
+    { kind: "select", sectionKey: "shape", path: "shape.kind", label: "Shape", options: [
+      { label: "Ellipse", value: "ellipse" },
+      { label: "Rectangle", value: "rect" },
+      { label: "Rounded rect", value: "rounded-rect" }
+    ] },
+    { kind: "slider", sectionKey: "shape", path: "shape.widthPx", label: "Width", min: 40, max: 1200, step: 1 },
+    { kind: "slider", sectionKey: "shape", path: "shape.heightPx", label: "Height", min: 40, max: 1200, step: 1 },
+    { kind: "slider", sectionKey: "shape", path: "shape.cornerRadiusPx", label: "Corner radius", min: 0, max: 240, step: 1 }
+  ]
+};
+
 export const scatterOperator: OperatorDefinition<ScatterParams> = {
   key: SCATTER_OPERATOR_KEY,
   version: "0.1.0",
+  parameterSchema: SCATTER_PARAMETER_SCHEMA,
   inputs: [
     {
       key: "centroid",

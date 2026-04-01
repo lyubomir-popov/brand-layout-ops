@@ -1,40 +1,15 @@
 /**
- * playback-export-section.ts — Playback & Export accordion section builder.
+ * source-default-section.ts — Source-default authoring controls.
  */
-import {
-  buildAccordionSectionEl,
-  createCheckboxFormGroup
-} from "@brand-layout-ops/parameter-ui";
+import { buildAccordionSectionEl } from "@brand-layout-ops/parameter-ui";
 import type { PreviewAppContext } from "./preview-app-context.js";
 
-export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement {
-  const { root, body } = buildAccordionSectionEl("Playback & Export");
+export function buildSourceDefaultSection(ctx: PreviewAppContext): HTMLElement {
+  const { root, body } = buildAccordionSectionEl("Source Defaults");
   const { state } = ctx;
 
   const row = document.createElement("div");
   row.className = "bf-actions is-nowrap";
-
-  const playBtn = document.createElement("button");
-  playBtn.className = "bf-button is-dense";
-  playBtn.type = "button";
-  playBtn.setAttribute("data-playback-toggle", "");
-  playBtn.textContent = state.isPlaying ? "Pause Motion" : "Play Motion";
-  playBtn.addEventListener("click", () => { ctx.togglePlayback(); });
-  row.append(playBtn);
-
-  const exportBtn = document.createElement("button");
-  exportBtn.className = "bf-button is-base is-dense";
-  exportBtn.type = "button";
-  exportBtn.textContent = "Export PNG";
-  exportBtn.addEventListener("click", () => { void ctx.exportComposedFramePng(); });
-  row.append(exportBtn);
-
-  const seqBtn = document.createElement("button");
-  seqBtn.className = "bf-button is-base is-dense";
-  seqBtn.type = "button";
-  seqBtn.textContent = "Export Sequence";
-  seqBtn.addEventListener("click", () => { void ctx.exportPngSequence(); });
-  row.append(seqBtn);
 
   const resetBtn = document.createElement("button");
   resetBtn.className = "bf-button is-base is-dense";
@@ -81,17 +56,6 @@ export function buildPlaybackExportSection(ctx: PreviewAppContext): HTMLElement 
   status.setAttribute("data-source-default-status", "");
   status.textContent = "Source defaults are using the built-in preview snapshot.";
   body.append(status);
-
-  body.append(createCheckboxFormGroup(
-    "Transparent PNG background",
-    state.exportSettings.transparentBackground,
-    (checked) => {
-      ctx.updateExportSettings((settings) => ({ ...settings, transparentBackground: checked }));
-    },
-    (input) => {
-      input.setAttribute("data-export-transparent-background", "");
-    }
-  ));
 
   return root;
 }

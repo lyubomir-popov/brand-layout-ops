@@ -1,32 +1,61 @@
 # Workspace Instructions
 
-## Canonical documentation — 3 files, no overlap
+## Documentation structure — 5 files, strict roles
 
-| File | Role | Update frequency |
-|------|------|-----------------|
-| `llm-handoff-context.md` | **Cold-start handoff + current sprint TODO.** New chat reads this first. Contains repo orientation, current state summary, actionable TODO checklist, and reference file map. | Every session — update "Current state" and "Current sprint TODO" sections when work lands or priorities change. |
-| `docs/rebuild-plan.md` | **Architecture + parity audit.** Phase checklist, gap audit, deviation log, working rules. The "why" and "what". | When phases complete, gaps close, or architectural decisions change. |
-| `docs/product-roadmap.md` | **Long-term vision.** 5-stage roadmap. Stable. | Rarely — only when the product direction shifts. |
+| File | Role | Who writes |
+|------|------|-----------|
+| `docs/AGENT-INBOX.md` | **Inbox.** User drops notes to avoid interrupting agent. | User writes, agent drains |
+| `llm-handoff-context.md` | **Cold start.** Repo orientation, current state, key files, critical invariants. | Agent updates when state changes |
+| `docs/TODO.md` | **Active plan.** Architecture, parity audit, short-term tasks. | Agent updates every session |
+| `docs/product-roadmap.md` | **Long-term.** Stages, parity inventory, future directions. | Agent updates rarely |
+| `docs/history.md` | **Archive.** Completed work log. | Agent appends when tasks complete |
 
-**No other files should carry TODO lists or duplicated status.**
-Session-scoped scratch (Copilot `/memories/session/`) is fine for in-progress notes but must not become a parallel tracking system.
+**No other files should carry TODO lists or duplicated status.** Session-scoped scratch (Copilot `/memories/session/`) is fine for in-progress notes but must not become a parallel tracking system.
 
-## Documentation discipline — follow on every task
+### The inbox pattern
 
-### Before starting work
+`docs/AGENT-INBOX.md` is the user's write-only channel. At session start, the agent must:
 
-1. Read `llm-handoff-context.md` to understand current state and priorities.
-2. If the task touches a parity gap, also read `docs/rebuild-plan.md`.
+1. Read the inbox.
+2. Triage each item into `docs/TODO.md` (near-term) or `docs/product-roadmap.md` (longer-term).
+3. Empty the file back to its header template.
 
-### After completing work
+This lets the user drop thoughts asynchronously without derailing agent work.
 
-1. **Update `llm-handoff-context.md`:**
-   - If a TODO item was completed, check it off or remove it.
-   - If the "Current state" paragraph is now stale, update it.
-   - If new TODO items emerged, add them in the right section.
-2. **Update `docs/rebuild-plan.md`** if a phase checkbox, gap item, or deviation log entry changed.
-3. **Do not** create new markdown files to document changes unless the user explicitly requests one.
-4. **Commit message discipline:** prefix with the area touched (`halo:`, `ui:`, `grid:`, `docs:`, `types:`) and keep the first line under 72 chars.
+### What goes where
+
+| Information | Goes in |
+|-------------|---------|
+| "What should the next chat do?" | `docs/TODO.md` → Active TODO |
+| "Why did we make this architectural decision?" | `docs/TODO.md` → Deviation Log or Architecture notes |
+| "What does the product become long-term?" | `docs/product-roadmap.md` |
+| "What's been done?" | `docs/history.md` |
+| "Quick scratch notes for this session only" | `/memories/session/` (Copilot memory) |
+| "Key file paths and resume pointers" | `/memories/repo/` (Copilot memory) |
+
+## Agent workflow
+
+### Session start
+
+1. Read `llm-handoff-context.md` for orientation.
+2. Check `docs/AGENT-INBOX.md` — triage items into plan or roadmap, then empty it.
+3. Read `docs/TODO.md` for current tasks.
+
+### During work
+
+- Mark tasks done in `docs/TODO.md` as you complete them.
+- Move completed items to `docs/history.md`.
+
+### Session end
+
+1. Update `llm-handoff-context.md` if the current-state paragraph is stale.
+2. Update `docs/TODO.md` with any new tasks that emerged.
+3. Ensure `docs/AGENT-INBOX.md` is empty.
+4. **Do not** create new markdown files to document changes unless explicitly requested.
+
+## Commit message discipline
+
+Prefix with the area touched: `halo:`, `ui:`, `grid:`, `docs:`, `types:`, `build:`, `test:`. First line under 72 chars.
 
 ## Autonomous continuation rule
 
@@ -36,19 +65,14 @@ In that mode:
 
 1. Work through the current plan until you hit a real blocker, not a minor ambiguity.
 2. Make small validated checkpoint commits after substantive chunks instead of piling unrelated work into one large diff.
-3. Re-read `llm-handoff-context.md` and `docs/rebuild-plan.md` after major chunks or when priorities shift, and periodically re-audit whether the work is still aligned with the rebuild purpose.
+3. Re-read `docs/TODO.md` after major chunks and periodically re-audit alignment.
 4. Update the canonical docs as work lands so the next chat can continue cold.
 5. Do not stop just to ask whether to continue unless the next best move is genuinely unclear or risky.
 
-### What goes where
+## Repo boundary
 
-| Information | Goes in |
-|-------------|---------|
-| "What should the next chat do?" | `llm-handoff-context.md` → Current sprint TODO |
-| "Why did we make this architectural decision?" | `docs/rebuild-plan.md` → Deviation Log or Phase notes |
-| "What does the product become long-term?" | `docs/product-roadmap.md` |
-| "Quick scratch notes for this session only" | `/memories/session/` (Copilot memory) |
-| "Key file paths and resume pointers" | `/memories/repo/` (Copilot memory) |
+- Work in this repo only unless the user explicitly redirects elsewhere.
+- Sibling repos (`racoon-anim`, `baseline-foundry`, `canonical-specs`, `docs-typescale`, `portable-vertical-rhythm`) are read-only references.
 
 ## Non-negotiable architecture rules
 
@@ -58,20 +82,14 @@ In that mode:
 - SVG, PDF, EPS, and CMYK are export-backend concerns only.
 - If a canonical rule must survive renderer or preview changes, move it toward shared types, layout kernels, operator outputs, or backend contracts rather than leaving it in `apps/overlay-preview`.
 
-## How to port this workflow to another project
+## How to port this convention to another project
 
-This file (`AGENTS.md`) is picked up automatically by GitHub Copilot agents in VS Code.
-To adopt the same discipline in a different repo:
+1. Copy this file as `AGENTS.md` (or `.github/copilot-instructions.md`) in the new repo.
+2. Create `llm-handoff-context.md` at root with: orientation, current state, key files, invariants.
+3. Create `docs/TODO.md` with: principles, architecture, active TODO.
+4. Create `docs/product-roadmap.md` with: stages, inventory.
+5. Create `docs/history.md` with a completed-work log.
+6. Create `docs/AGENT-INBOX.md` as an empty inbox.
+7. Delete any other TODO/status/handoff files. One inbox + one cold-start + one plan + one roadmap + one archive is the maximum.
 
-1. **Copy this file** into the new repo root as `AGENTS.md`.
-2. **Create `llm-handoff-context.md`** at the repo root with these sections:
-   - Repo orientation (paths, how to run)
-   - Current state (1 paragraph)
-   - Current sprint TODO (actionable checklist)
-   - Key file map (table of important files)
-3. **Keep a `docs/` folder** with at most:
-   - A plan or architecture file (equivalent to `rebuild-plan.md`)
-   - A roadmap file (equivalent to `product-roadmap.md`)
-4. **Delete or don't create** any other TODO/status/handoff files. One cold-start doc + one plan + one roadmap is the maximum.
-
-The key insight: every piece of status information should live in exactly one place. If you find yourself writing the same fact in two files, delete one.
+The key insight: every piece of status information lives in exactly one place. If you find yourself writing the same fact in two files, delete one.

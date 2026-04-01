@@ -15,6 +15,8 @@
         </div>
         <section class="stage" data-stage aria-label="Animated halo field">
           <canvas data-stage-canvas aria-hidden="true"></canvas>
+          <canvas class="stage__scene-preview" data-scene-preview aria-hidden="true"></canvas>
+          <canvas class="stage__scene-preview-gpu" data-scene-preview-gpu aria-hidden="true"></canvas>
           <canvas class="stage__text-overlay" data-text-overlay aria-hidden="true"></canvas>
           <svg class="stage__svg-overlay" data-svg-overlay aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></svg>
           <div class="stage__authoring-layer" data-authoring-layer></div>
@@ -35,8 +37,9 @@
         aria-orientation="vertical"
       ></div>
       <div class="bf-panel is-fill">
-        <div class="bf-panel-header is-sticky">
+        <div class="bf-panel-header is-sticky">    
           <h1 class="bf-panel-title">Brand Layout Ops</h1>
+          <nav class="bf-actions is-nowrap" aria-label="File actions" data-file-toolbar></nav>
           <div class="bf-panel-controls">
             <button class="bf-panel-toggle" type="button" data-panel-drawer-close data-panel-drawer-autofocus aria-controls="control-drawer">Close</button>
           </div>

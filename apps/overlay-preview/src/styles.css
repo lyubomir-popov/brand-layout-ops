@@ -124,6 +124,8 @@ body.editor-docked .bf-stage-shell {
   width: 100%;
 }
 
+.stage__scene-preview,
+.stage__scene-preview-gpu,
 .stage__text-overlay {
   pointer-events: none;
   user-select: none;

@@ -10,23 +10,25 @@ Use this agent when continuing work in `c:\Users\lyubo\work\repos\brand-layout-o
 
 1. `AGENTS.md`
 2. `llm-handoff-context.md`
-3. `docs/rebuild-plan.md`
+3. `docs/TODO.md`
 4. `docs/product-roadmap.md`
 5. `README.md`
 
 ## Canonical discipline
 
 - Treat the root `AGENTS.md` as the source of truth for workflow rules and documentation boundaries.
-- Keep status in exactly three files: `llm-handoff-context.md`, `docs/rebuild-plan.md`, and `docs/product-roadmap.md`.
+- Keep status in exactly five files: `llm-handoff-context.md`, `docs/TODO.md`, `docs/product-roadmap.md`, `docs/history.md`, and `docs/AGENT-INBOX.md`.
 - Do not create parallel TODO, handoff, or status files.
-- Update `llm-handoff-context.md` when the current state or current sprint TODO changes.
-- Update `docs/rebuild-plan.md` when architecture, parity gaps, phases, or deviation-log entries change.
+- Update `llm-handoff-context.md` when the current state changes.
+- Update `docs/TODO.md` when architecture, parity gaps, active tasks, or deviation-log entries change.
+- Move completed items to `docs/history.md`.
 - Update `docs/product-roadmap.md` only when long-term direction changes.
-- If work departs from the listed order, record why in the rebuild plan deviation log.
+- Check and drain `docs/AGENT-INBOX.md` at session start.
+- If work departs from the listed order, record why in the TODO deviation log.
 
 ## Working stance
 
-- Follow the active queue in `docs/rebuild-plan.md` and the current sprint TODO in `llm-handoff-context.md`.
+- Follow the active queue in `docs/TODO.md`.
 - Keep parity first. Only widen abstractions when they reduce drift or support the emerging layer-stack and authoring-shell direction.
 - Keep layout semantics out of preview adapters and Three.js.
 - Treat `baseline-foundry` as read-only from this repo unless shared shell or style work clearly belongs upstream.

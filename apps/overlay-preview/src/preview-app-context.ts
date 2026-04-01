@@ -27,6 +27,7 @@ import type { HaloFieldConfig } from "@brand-layout-ops/operator-halo-field";
 import type { ExportSettings, Preset } from "./sample-document.js";
 import type { OverlayPreviewDocument as OverlayPreviewDocumentModel } from "./preview-document.js";
 import type { DocumentWorkspaceController } from "./document-workspace.js";
+import type { SceneFamilyPreviewMode } from "./scene-family-preview.js";
 
 // ——— Constants shared between main.ts and extracted panel modules ———
 
@@ -79,7 +80,8 @@ export interface PreviewState {
  */
 export interface SceneFamilyPreviewSnapshot {
   sceneFamilyKey: string;
-  pointField: { points: unknown[] };
+  pointField?: { points: unknown[] };
+  simulationBackend?: string;
 }
 
 // ——— Context interface ———
@@ -96,7 +98,7 @@ export interface PreviewAppContext {
   // — Render / UI rebuild cycle —
 
   /** Trigger a full async render (operator graph evaluation + SVG + authoring UI). */
-  renderStage(): Promise<void>;
+  renderStage(mode?: SceneFamilyPreviewMode): Promise<void>;
   /** Rebuild all accordion sections from the section registry. */
   buildConfigEditor(): void;
   /** Rebuild the output-profile options sub-panel. */

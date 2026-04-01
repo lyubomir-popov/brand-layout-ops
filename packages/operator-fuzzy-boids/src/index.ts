@@ -1,4 +1,4 @@
-import type { BoidField, BoidRecord, ColorRgba, OperatorDefinition, PointField, PointRecord, Vector3 } from "@brand-layout-ops/core-types";
+import type { BoidField, BoidRecord, ColorRgba, OperatorDefinition, OperatorParameterSchema, PointField, PointRecord, Vector3 } from "@brand-layout-ops/core-types";
 
 export const FUZZY_BOIDS_OPERATOR_KEY = "operator.fuzzy-boids";
 
@@ -86,6 +86,11 @@ const DEFAULT_FUZZY_BOID_COLOR: ColorRgba = {
   a: 1
 };
 
+const NEIGHBOR_DISTANCE_EPSILON_SQ = 1e-10;
+const MIN_PAPER_NEIGHBORS = 6;
+const MAX_PAPER_NEIGHBORS = 24;
+const DEFAULT_PAPER_NEIGHBORS = 12;
+
 interface MutableBoidState {
   id: string;
   position: Vector3;
@@ -146,6 +151,11 @@ function normalizeVector(vector: Vector3, fallback: Vector3 = { x: 1, y: 0, z: 0
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+
+function getSpatialCellKey(cellX: number, cellY: number): string {
+  return `${cellX},${cellY}`;
 }
 
 
@@ -319,9 +329,11 @@ function stepBoids(states: MutableBoidState[], params: FuzzyBoidsParams, center:
   const worldScale = Math.max(1, toNumber(params.worldScale, 180));
   const invScale = 1 / worldScale;
   const dt = Math.max(0.001, toNumber(params.deltaTimeSeconds, 1 / 30));
-  const maxNeighborsParam = Math.round(toNumber(params.maxNeighbors, 0));
-  const maxNeighbors = maxNeighborsParam > 0 ? maxNeighborsParam : n;
-  const needSort = maxNeighbors < n;
+  const requestedMaxNeighbors = clamp(
+    Math.round(toNumber(params.maxNeighbors, DEFAULT_PAPER_NEIGHBORS)),
+    MIN_PAPER_NEIGHBORS,
+    MAX_PAPER_NEIGHBORS
+  );
 
   // Separation params (VEX: separation by n) — all in world units
   const sepMinDist = Math.max(0, toNumber(params.separationMinDist, 0));
@@ -352,8 +364,10 @@ function stepBoids(states: MutableBoidState[], params: FuzzyBoidsParams, center:
   // force from both separation and alignment, so skip them entirely.
   const effectiveRadius = Math.max(sepMaxDist, alignFar);
   const effectiveRadiusSq = effectiveRadius * effectiveRadius;
+  const spatialCellSize = effectiveRadius > 0.00001 ? Math.max(0.25, effectiveRadius / 3) : 0;
+  const maxSearchRing = spatialCellSize > 0 ? Math.max(1, Math.ceil(effectiveRadius / spatialCellSize)) : 0;
 
-  // --- Flat snapshot arrays (no per-step heap allocation) ---
+  // --- Flat snapshot arrays ---
   const wxArr = new Float64Array(n);
   const wyArr = new Float64Array(n);
   const wvxArr = new Float64Array(n);
@@ -384,6 +398,39 @@ function stepBoids(states: MutableBoidState[], params: FuzzyBoidsParams, center:
     fcy /= activeCount;
   }
 
+  const boundedNeighborCount = Math.min(requestedMaxNeighbors, Math.max(0, activeCount - 1));
+  const needSort = boundedNeighborCount > 0 && boundedNeighborCount < activeCount - 1;
+  const topKCapacity = needSort ? boundedNeighborCount : 0;
+  const hasLocalNeighborForces = effectiveRadius > 0.00001 && activeCount > 1;
+
+  const cellXArr = hasLocalNeighborForces ? new Int32Array(n) : null;
+  const cellYArr = hasLocalNeighborForces ? new Int32Array(n) : null;
+  const nextInCellArr = hasLocalNeighborForces ? new Int32Array(n) : null;
+  const cellHeads = hasLocalNeighborForces ? new Map<string, number>() : null;
+
+  if (hasLocalNeighborForces) {
+    const invCellSize = 1 / spatialCellSize;
+    nextInCellArr!.fill(-1);
+
+    // Use smaller cells than the interaction radius so top-k neighbor queries
+    // can stop after a few rings instead of scanning a single coarse bucket
+    // that covers most of the flock.
+    for (let index = 0; index < n; index += 1) {
+      if (!activeArr[index]) {
+        continue;
+      }
+
+      const cellX = Math.floor(wxArr[index] * invCellSize);
+      const cellY = Math.floor(wyArr[index] * invCellSize);
+      cellXArr![index] = cellX;
+      cellYArr![index] = cellY;
+
+      const key = getSpatialCellKey(cellX, cellY);
+      nextInCellArr![index] = cellHeads!.get(key) ?? -1;
+      cellHeads!.set(key, index);
+    }
+  }
+
   // Cohesion target in world space
   let ctX: number;
   let ctY: number;
@@ -396,10 +443,9 @@ function stepBoids(states: MutableBoidState[], params: FuzzyBoidsParams, center:
     ctY = fcy;
   }
 
-  // Pre-allocated typed-array buffers for top-k neighbor selection (zero per-frame allocations).
-  // Sized to maxNeighbors; reused across all boids within a step.
-  const topKIdx = needSort ? new Int32Array(maxNeighbors) : null;
-  const topKDistSq = needSort ? new Float64Array(maxNeighbors) : null;
+  // Reuse typed-array buffers while scanning only the adjacent spatial cells.
+  const topKIdx = topKCapacity > 0 ? new Int32Array(topKCapacity) : null;
+  const topKDistSq = topKCapacity > 0 ? new Float64Array(topKCapacity) : null;
 
   for (let index = 0; index < n; index += 1) {
     const current = states[index];
@@ -427,59 +473,92 @@ function stepBoids(states: MutableBoidState[], params: FuzzyBoidsParams, center:
     const ncrtx = crtLen > 0.00001 ? crtx / crtLen : 0;
     const ncrty = crtLen > 0.00001 ? crty / crtLen : 1;
 
-    if (needSort) {
-      // Zero-allocation top-k nearest neighbor selection.
-      // Uses pre-allocated typed arrays; defers sqrt to the final k neighbors.
-      const tkIdx = topKIdx!;
-      const tkDSq = topKDistSq!;
-      let nbrCount = 0;
-      let worstSlot = 0;
-      let worstDSq = 0;
+    if (hasLocalNeighborForces) {
+      const baseCellX = cellXArr![index];
+      const baseCellY = cellYArr![index];
 
-      for (let ni = 0; ni < n; ni += 1) {
-        if (ni === index || !activeArr[ni]) { continue; }
-        const dx = wxArr[ni] - wx;
-        const dy = wyArr[ni] - wy;
-        const distSq = dx * dx + dy * dy;
-        if (distSq <= 0.0000000001) { continue; }
+      const scanCell = (cellX: number, cellY: number, visitor: (ni: number, distSq: number) => void): void => {
+        const cellKey = getSpatialCellKey(cellX, cellY);
+        let ni = cellHeads!.get(cellKey) ?? -1;
 
-        if (nbrCount < maxNeighbors) {
-          tkIdx[nbrCount] = ni;
-          tkDSq[nbrCount] = distSq;
-          if (distSq > worstDSq) {
-            worstDSq = distSq;
-            worstSlot = nbrCount;
+        while (ni !== -1) {
+          if (ni !== index) {
+            const dx = wxArr[ni] - wx;
+            const dy = wyArr[ni] - wy;
+            const distSq = dx * dx + dy * dy;
+            if (distSq > NEIGHBOR_DISTANCE_EPSILON_SQ && distSq <= effectiveRadiusSq) {
+              visitor(ni, distSq);
+            }
           }
-          nbrCount += 1;
-        } else if (distSq < worstDSq) {
-          tkIdx[worstSlot] = ni;
-          tkDSq[worstSlot] = distSq;
-          // Rescan to find new worst among k entries
-          worstSlot = 0;
-          worstDSq = tkDSq[0];
-          for (let s = 1; s < maxNeighbors; s += 1) {
-            if (tkDSq[s] > worstDSq) {
-              worstDSq = tkDSq[s];
-              worstSlot = s;
+
+          ni = nextInCellArr![ni];
+        }
+      };
+
+      if (needSort) {
+        const tkIdx = topKIdx!;
+        const tkDSq = topKDistSq!;
+        let nbrCount = 0;
+        let worstSlot = 0;
+        let worstDSq = 0;
+
+        for (let ring = 0; ring <= maxSearchRing; ring += 1) {
+          for (let offsetY = -ring; offsetY <= ring; offsetY += 1) {
+            for (let offsetX = -ring; offsetX <= ring; offsetX += 1) {
+              if (ring > 0 && Math.max(Math.abs(offsetX), Math.abs(offsetY)) !== ring) {
+                continue;
+              }
+
+              scanCell(baseCellX + offsetX, baseCellY + offsetY, (ni, distSq) => {
+                if (nbrCount < topKCapacity) {
+                  tkIdx[nbrCount] = ni;
+                  tkDSq[nbrCount] = distSq;
+                  if (distSq > worstDSq) {
+                    worstDSq = distSq;
+                    worstSlot = nbrCount;
+                  }
+                  nbrCount += 1;
+                  return;
+                }
+
+                if (distSq < worstDSq) {
+                  tkIdx[worstSlot] = ni;
+                  tkDSq[worstSlot] = distSq;
+                  worstSlot = 0;
+                  worstDSq = tkDSq[0];
+                  for (let slot = 1; slot < topKCapacity; slot += 1) {
+                    if (tkDSq[slot] > worstDSq) {
+                      worstDSq = tkDSq[slot];
+                      worstSlot = slot;
+                    }
+                  }
+                }
+              });
+            }
+          }
+
+          if (nbrCount >= topKCapacity && worstDSq <= ring * ring * spatialCellSize * spatialCellSize) {
+            break;
+          }
+        }
+
+        for (let neighborIndex = 0; neighborIndex < nbrCount; neighborIndex += 1) {
+          applyNeighborForces(tkIdx[neighborIndex], Math.sqrt(tkDSq[neighborIndex]));
+        }
+      } else {
+        for (let ring = 0; ring <= maxSearchRing; ring += 1) {
+          for (let offsetY = -ring; offsetY <= ring; offsetY += 1) {
+            for (let offsetX = -ring; offsetX <= ring; offsetX += 1) {
+              if (ring > 0 && Math.max(Math.abs(offsetX), Math.abs(offsetY)) !== ring) {
+                continue;
+              }
+
+              scanCell(baseCellX + offsetX, baseCellY + offsetY, (ni, distSq) => {
+                applyNeighborForces(ni, Math.sqrt(distSq));
+              });
             }
           }
         }
-      }
-
-      // Apply forces for the k nearest; compute sqrt only here
-      for (let k = 0; k < nbrCount; k += 1) {
-        applyNeighborForces(tkIdx[k], Math.sqrt(tkDSq[k]));
-      }
-    } else {
-      // No sort needed — iterate all neighbors with distance cutoff
-      for (let ni = 0; ni < n; ni += 1) {
-        if (ni === index || !activeArr[ni]) { continue; }
-        const dx = wxArr[ni] - wx;
-        const dy = wyArr[ni] - wy;
-        const distSq = dx * dx + dy * dy;
-        if (distSq <= 0.0000000001 || distSq > effectiveRadiusSq) { continue; }
-        const dist = Math.sqrt(distSq);
-        applyNeighborForces(ni, dist);
       }
     }
 
@@ -794,9 +873,47 @@ export function resolveFuzzyBoidOutputs(params: FuzzyBoidsParams, centerInput?: 
   return buildOutputs(states, center, totalTimeSeconds, dt, fullSteps + (remainderSeconds > 0.00001 ? 1 : 0), params.bounds?.kind ?? "none");
 }
 
+export const FUZZY_BOIDS_PARAMETER_SCHEMA: OperatorParameterSchema = {
+  sections: [
+    { key: "solver", title: "Solver" },
+    { key: "initial", title: "Initial" },
+    { key: "separation", title: "Separation" },
+    { key: "alignment", title: "Fuzzy Alignment" },
+    { key: "cohesion", title: "Cohesion" },
+    { key: "integration", title: "Integration" }
+  ],
+  fields: [
+    { kind: "number", sectionKey: "solver", path: "numBoids", label: "Boid count", min: 1, max: 2000, step: 1 },
+    { kind: "number", sectionKey: "solver", path: "seed", label: "Seed", min: 0, max: 9999, step: 1 },
+    { kind: "number", sectionKey: "solver", path: "subSteps", label: "Sub-steps", min: 1, max: 20, step: 1 },
+    { kind: "slider", sectionKey: "initial", path: "spawnRadiusPx", label: "Spawn radius", min: 0, max: 600, step: 1 },
+    { kind: "slider", sectionKey: "initial", path: "staggerStartSeconds", label: "Stagger start", min: 0, max: 10, step: 0.1 },
+    { kind: "number", sectionKey: "initial", path: "maxNeighbors", label: "Max neighbors", min: 6, max: 24, step: 1 },
+    { kind: "slider", sectionKey: "initial", path: "pscaleMin", label: "Scale min", min: 0.05, max: 3, step: 0.05 },
+    { kind: "slider", sectionKey: "initial", path: "pscaleMax", label: "Scale max", min: 0.05, max: 3, step: 0.05 },
+    { kind: "slider", sectionKey: "initial", path: "initialSpeed", label: "Initial speed", min: 0, max: 20, step: 0.5 },
+    { kind: "slider", sectionKey: "initial", path: "initialSpeedJitter", label: "Speed jitter", min: 0, max: 1, step: 0.01 },
+    { kind: "slider", sectionKey: "initial", path: "minSpeedLimit", label: "Min speed", min: 0, max: 50, step: 0.5 },
+    { kind: "slider", sectionKey: "initial", path: "maxSpeedLimit", label: "Max speed", min: 0, max: 100, step: 0.5 },
+    { kind: "slider", sectionKey: "initial", path: "minAccelLimit", label: "Min accel", min: 0, max: 100, step: 0.5 },
+    { kind: "slider", sectionKey: "initial", path: "maxAccelLimit", label: "Max accel", min: 0, max: 200, step: 0.5 },
+    { kind: "slider", sectionKey: "separation", path: "separationMinDist", label: "Min distance", min: 0, max: 20, step: 0.1 },
+    { kind: "slider", sectionKey: "separation", path: "separationMaxDist", label: "Max distance", min: 0.1, max: 50, step: 0.1 },
+    { kind: "slider", sectionKey: "separation", path: "separationMaxStrength", label: "Max strength", min: 0, max: 5, step: 0.01 },
+    { kind: "slider", sectionKey: "alignment", path: "alignNearThreshold", label: "Near threshold", min: 0, max: 20, step: 0.1 },
+    { kind: "slider", sectionKey: "alignment", path: "alignFarThreshold", label: "Far threshold", min: 0.1, max: 50, step: 0.1 },
+    { kind: "slider", sectionKey: "alignment", path: "alignSpeedThreshold", label: "Speed threshold", min: 0, max: 20, step: 0.1 },
+    { kind: "slider", sectionKey: "cohesion", path: "cohesionMinDist", label: "Min distance", min: 0, max: 20, step: 0.1 },
+    { kind: "slider", sectionKey: "cohesion", path: "cohesionMaxDist", label: "Max distance", min: 0.1, max: 50, step: 0.1 },
+    { kind: "slider", sectionKey: "cohesion", path: "cohesionMaxAccel", label: "Max accel", min: 0, max: 10, step: 0.01 },
+    { kind: "boolean", sectionKey: "cohesion", path: "attractToOrigin", label: "Attract to origin" }
+  ]
+};
+
 export const fuzzyBoidsOperator: OperatorDefinition<FuzzyBoidsParams> = {
   key: FUZZY_BOIDS_OPERATOR_KEY,
   version: "0.1.0",
+  parameterSchema: FUZZY_BOIDS_PARAMETER_SCHEMA,
   inputs: [
     {
       key: "center",

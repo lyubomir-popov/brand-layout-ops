@@ -1,4 +1,4 @@
-import type { ColorRgba, OperatorDefinition, PointField, Vector3 } from "@brand-layout-ops/core-types";
+import type { ColorRgba, OperatorDefinition, OperatorParameterSchema, PointField, Vector3 } from "@brand-layout-ops/core-types";
 
 export interface PhyllotaxisParams {
   numPoints: number;
@@ -90,9 +90,22 @@ export function resolvePhyllotaxisField(
   };
 }
 
+export const PHYLLOTAXIS_PARAMETER_SCHEMA: OperatorParameterSchema = {
+  sections: [
+    { key: "distribution", title: "Distribution" }
+  ],
+  fields: [
+    { kind: "number", sectionKey: "distribution", path: "numPoints", label: "Points", min: 1, max: 4000, step: 1 },
+    { kind: "slider", sectionKey: "distribution", path: "radius", label: "Radius", min: 1, max: 1200, step: 1 },
+    { kind: "slider", sectionKey: "distribution", path: "radiusFalloff", label: "Radius falloff", min: 0.05, max: 2, step: 0.01 },
+    { kind: "slider", sectionKey: "distribution", path: "angleOffsetDeg", label: "Angle offset", min: -180, max: 180, step: 0.1 }
+  ]
+};
+
 export const phyllotaxisOperator: OperatorDefinition<PhyllotaxisParams> = {
   key: "operator.phyllotaxis",
   version: "0.1.0",
+  parameterSchema: PHYLLOTAXIS_PARAMETER_SCHEMA,
   inputs: [
     {
       key: "centroid",

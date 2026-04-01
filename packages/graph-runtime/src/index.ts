@@ -27,6 +27,23 @@ function buildIncomingEdgeMap(nodes: GraphNode[], edges: GraphEdge[]): Map<strin
   return incoming;
 }
 
+  function collectNodeInputs(
+    edges: GraphEdge[],
+    outputs: Map<string, Record<string, unknown>>,
+    nodeId: string
+  ): Record<string, unknown> {
+    const inputs: Record<string, unknown> = {};
+    for (const edge of edges.filter((candidate) => candidate.toNodeId === nodeId)) {
+      const sourceOutputs = outputs.get(edge.fromNodeId);
+      inputs[edge.toPortKey] = sourceOutputs?.[edge.fromPortKey];
+    }
+    return inputs;
+  }
+
+  function isPromiseLike<T>(value: T | Promise<T>): value is Promise<T> {
+    return typeof (value as PromiseLike<T> | null | undefined)?.then === "function";
+  }
+
 export function topologicallySortGraph(graph: OperatorGraph): GraphNode[] {
   const remaining = new Map(graph.nodes.map((node) => [node.id, node]));
   const incoming = buildIncomingEdgeMap(graph.nodes, graph.edges);
@@ -59,12 +76,25 @@ export async function evaluateGraph(graph: OperatorGraph, registry: OperatorRegi
 
   for (const node of sorted) {
     const definition = registry.get(node.operatorKey);
-    const inputs: Record<string, unknown> = {};
-    for (const edge of graph.edges.filter((candidate) => candidate.toNodeId === node.id)) {
-      const sourceOutputs = outputs.get(edge.fromNodeId);
-      inputs[edge.toPortKey] = sourceOutputs?.[edge.fromPortKey];
+    const inputs = collectNodeInputs(graph.edges, outputs, node.id);
+    const result = await definition.run({ nodeId: node.id, params: node.params, inputs });
+    outputs.set(node.id, result);
+  }
+
+  return outputs;
+}
+
+export function evaluateGraphSync(graph: OperatorGraph, registry: OperatorRegistry): Map<string, Record<string, unknown>> {
+  const sorted = topologicallySortGraph(graph);
+  const outputs = new Map<string, Record<string, unknown>>();
+
+  for (const node of sorted) {
+    const definition = registry.get(node.operatorKey);
+    const inputs = collectNodeInputs(graph.edges, outputs, node.id);
+    const result = definition.run({ nodeId: node.id, params: node.params, inputs });
+    if (isPromiseLike(result)) {
+      throw new Error(`Operator ${node.operatorKey} returned a Promise during synchronous graph evaluation.`);
     }
-    const result = await definition.run({ params: node.params, inputs });
     outputs.set(node.id, result);
   }
 

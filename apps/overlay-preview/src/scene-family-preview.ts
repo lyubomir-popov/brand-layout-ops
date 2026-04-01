@@ -1,6 +1,7 @@
-import type { BoidField, ColorRgba, PointField, PointRecord, Vector3 } from "@brand-layout-ops/core-types";
-import { FuzzyBoidsSimulation } from "@brand-layout-ops/operator-fuzzy-boids";
-import { resolvePhyllotaxisField } from "@brand-layout-ops/operator-phyllotaxis";
+import type { BoidField, ColorRgba, OperatorDefinition, PointField, PointRecord, Vector3 } from "@brand-layout-ops/core-types";
+import { OperatorRegistry, evaluateGraphSync } from "@brand-layout-ops/graph-runtime";
+import { FuzzyBoidsSimulation, type FuzzyBoidsParams } from "@brand-layout-ops/operator-fuzzy-boids";
+import { resolvePhyllotaxisField, type PhyllotaxisParams } from "@brand-layout-ops/operator-phyllotaxis";
 import type {
   OverlayBackgroundGraph,
   OverlayFuzzyBoidsConfig,
@@ -17,37 +18,67 @@ import {
 import {
   resolveScatterPointField,
   type ScatterDistributionMode,
+  type ScatterParams,
 } from "@brand-layout-ops/operator-scatter";
+import type { HaloFieldConfig } from "@brand-layout-ops/operator-halo-field";
+import {
+  FuzzyBoidsPreviewWorkerClient,
+  type WorkerBoidsPreviewSnapshot
+} from "./fuzzy-boids-preview-worker-client.js";
 import { GpuFuzzyBoidsSpike } from "./gpu-fuzzy-boids-spike.js";
 
 const fuzzyBoidsSimulation = new FuzzyBoidsSimulation();
 const gpuFuzzyBoidsSpike = new GpuFuzzyBoidsSpike();
-import type { HaloFieldConfig } from "@brand-layout-ops/operator-halo-field";
+const fuzzyBoidsPreviewWorkerClient = new FuzzyBoidsPreviewWorkerClient();
 let fuzzyBoidsPreviewGraphKey = "";
+let requestSceneFamilyPreviewRefresh: (() => void) | null = null;
 
 export type FuzzyBoidsPreviewConfig = OverlayFuzzyBoidsConfig;
 export type PhyllotaxisPreviewConfig = OverlayPhyllotaxisConfig;
 export type ScatterPreviewConfig = OverlayScatterConfig;
 
 type PreviewableSceneFamilyKey = Exclude<OverlaySceneFamilyKey, "halo">;
+export type SceneFamilyPreviewMode = "interactive" | "export";
 
 interface BaseSceneFamilyPreviewState {
+  sceneFamilyKey: PreviewableSceneFamilyKey;
+}
+
+interface PointFieldSceneFamilyPreviewState extends BaseSceneFamilyPreviewState {
   pointField: PointField;
 }
 
-export interface PhyllotaxisSceneFamilyPreviewState extends BaseSceneFamilyPreviewState {
+export interface PhyllotaxisSceneFamilyPreviewState extends PointFieldSceneFamilyPreviewState {
   sceneFamilyKey: "phyllotaxis";
   maxRadiusPx: number;
 }
 
-export interface FuzzyBoidsSceneFamilyPreviewState extends BaseSceneFamilyPreviewState {
+export interface CpuFuzzyBoidsSceneFamilyPreviewState extends PointFieldSceneFamilyPreviewState {
   sceneFamilyKey: "fuzzy-boids";
   boidField: BoidField;
   dotSizePx: number;
-  simulationBackend: "cpu" | "gpu-spike";
+  simulationBackend: "cpu";
 }
 
-export interface ScatterSceneFamilyPreviewState extends BaseSceneFamilyPreviewState {
+export interface GpuFuzzyBoidsSceneFamilyPreviewState extends BaseSceneFamilyPreviewState {
+  sceneFamilyKey: "fuzzy-boids";
+  dotSizePx: number;
+  simulationBackend: "gpu-spike";
+}
+
+export interface WorkerFuzzyBoidsSceneFamilyPreviewState extends BaseSceneFamilyPreviewState {
+  sceneFamilyKey: "fuzzy-boids";
+  dotSizePx: number;
+  simulationBackend: "cpu-worker";
+  workerSnapshot: WorkerBoidsPreviewSnapshot;
+}
+
+export type FuzzyBoidsSceneFamilyPreviewState =
+  | CpuFuzzyBoidsSceneFamilyPreviewState
+  | WorkerFuzzyBoidsSceneFamilyPreviewState
+  | GpuFuzzyBoidsSceneFamilyPreviewState;
+
+export interface ScatterSceneFamilyPreviewState extends PointFieldSceneFamilyPreviewState {
   sceneFamilyKey: "scatter";
   distributionMode: ScatterDistributionMode;
 }
@@ -77,12 +108,20 @@ const DEFAULT_SCENE_FAMILY_COLOR: ColorRgba = {
   a: 1
 };
 
+const PREVIEW_HIGH_DENSITY_BOID_THRESHOLD = 1200;
+
+export function setSceneFamilyPreviewRefreshCallback(callback: (() => void) | null): void {
+  requestSceneFamilyPreviewRefresh = callback;
+  fuzzyBoidsPreviewWorkerClient.setOnUpdate(callback);
+}
+
 export interface BuildSceneFamilyPreviewStateOptions {
   backgroundGraph: OverlayBackgroundGraph;
   widthPx: number;
   heightPx: number;
   playbackTimeSec: number;
   haloConfig: HaloFieldConfig;
+  mode?: SceneFamilyPreviewMode;
 }
 
 export interface RenderSceneFamilyPreviewFrameOptions {
@@ -92,6 +131,329 @@ export interface RenderSceneFamilyPreviewFrameOptions {
   transparentBackground: boolean;
   haloConfig: HaloFieldConfig;
   previewState: SceneFamilyPreviewState;
+}
+
+type BackgroundGraphEdge = OverlayBackgroundGraph["edges"][number];
+type FuzzyBoidsPreviewBackend = "cpu" | "cpu-worker" | "gpu-spike";
+
+interface FuzzyBoidsPreviewOutputs extends Record<string, unknown> {
+  simulationBackend: FuzzyBoidsPreviewBackend;
+  dotSizePx: number;
+  pointField?: PointField;
+  boidField?: BoidField;
+  workerSnapshot?: WorkerBoidsPreviewSnapshot;
+}
+
+function asPartialVector3Input(value: unknown): Partial<Vector3> | null {
+  return value && typeof value === "object"
+    ? value as Partial<Vector3>
+    : null;
+}
+
+function resolveVector3Input(value: unknown, fallback: Vector3): Vector3 {
+  const vector = asPartialVector3Input(value);
+  return {
+    x: Number(vector?.x ?? fallback.x),
+    y: Number(vector?.y ?? fallback.y),
+    z: Number(vector?.z ?? fallback.z)
+  };
+}
+
+function buildIncomingEdgesByNodeId(graph: OverlayBackgroundGraph): Map<string, BackgroundGraphEdge[]> {
+  const incomingEdgesByNodeId = new Map<string, BackgroundGraphEdge[]>();
+  for (const edge of graph.edges) {
+    const incomingEdges = incomingEdgesByNodeId.get(edge.toNodeId) ?? [];
+    incomingEdges.push(edge);
+    incomingEdgesByNodeId.set(edge.toNodeId, incomingEdges);
+  }
+  return incomingEdgesByNodeId;
+}
+
+function resolvePreviewPhyllotaxisParams(
+  params: OverlayPhyllotaxisConfig,
+  center: Vector3,
+  playbackTimeSec: number
+): PhyllotaxisParams {
+  return {
+    numPoints: params.numPoints,
+    radius: params.radiusPx,
+    radiusFalloff: params.radiusFalloff,
+    angleOffsetDeg: params.angleOffsetDeg + (params.animationEnabled ? playbackTimeSec * params.animationSpeedDegPerSecond : 0),
+    origin: center
+  };
+}
+
+function resolvePreviewScatterParams(
+  params: OverlayScatterConfig,
+  center: Vector3
+): ScatterParams {
+  return {
+    pointCount: params.pointCount,
+    seed: params.seed,
+    distributionMode: params.distributionMode,
+    marginPx: params.marginPx,
+    shape: {
+      kind: params.shapeKind,
+      widthPx: params.widthPx,
+      heightPx: params.heightPx,
+      cornerRadiusPx: params.cornerRadiusPx,
+      svgPath: params.svgPath,
+      origin: center
+    }
+  };
+}
+
+function resolvePreviewFuzzyBoidsParams(
+  params: OverlayFuzzyBoidsConfig,
+  center: Vector3,
+  widthPx: number,
+  heightPx: number,
+  playbackTimeSec: number
+): FuzzyBoidsParams {
+  const effectiveSubSteps = params.numBoids >= PREVIEW_HIGH_DENSITY_BOID_THRESHOLD
+    ? 1
+    : params.subSteps;
+
+  return {
+    timeSeconds: playbackTimeSec,
+    deltaTimeSeconds: 1 / 30,
+    subSteps: effectiveSubSteps,
+    worldScale: Math.min(widthPx, heightPx) / 6,
+    numBoids: params.numBoids,
+    seed: params.seed,
+    center,
+    spawnRadiusPx: params.spawnRadiusPx,
+    staggerStartSeconds: params.staggerStartSeconds,
+    initialSpeed: params.initialSpeed,
+    initialSpeedJitter: params.initialSpeedJitter,
+    massMin: params.massMin,
+    massMax: params.massMax,
+    pscaleMin: params.pscaleMin,
+    pscaleMax: params.pscaleMax,
+    maxNeighbors: params.maxNeighbors,
+    separationMinDist: params.separationMinDist,
+    separationMaxDist: params.separationMaxDist,
+    separationMaxStrength: params.separationMaxStrength,
+    alignNearThreshold: params.alignNearThreshold,
+    alignFarThreshold: params.alignFarThreshold,
+    alignSpeedThreshold: params.alignSpeedThreshold,
+    cohesionMinDist: params.cohesionMinDist,
+    cohesionMaxDist: params.cohesionMaxDist,
+    cohesionMaxAccel: params.cohesionMaxAccel,
+    attractToOrigin: params.attractToOrigin,
+    minSpeedLimit: params.minSpeedLimit,
+    maxSpeedLimit: params.maxSpeedLimit,
+    minAccelLimit: params.minAccelLimit,
+    maxAccelLimit: params.maxAccelLimit,
+    bounds: {
+      kind: params.boundsKind,
+      radiusPx: params.boundsRadiusPx,
+      marginPx: params.boundsMarginPx,
+      forcePxPerSecond2: params.boundsForcePxPerSecond2,
+      ...(params.boundsKind === "box"
+        ? {
+          widthPx,
+          heightPx
+        }
+        : {})
+    }
+  };
+}
+
+function createHaloPreviewOperator(): OperatorDefinition<Record<string, never>> {
+  return {
+    key: OVERLAY_BACKGROUND_HALO_OPERATOR_KEY,
+    version: "0.1.0",
+    inputs: [],
+    outputs: [],
+    run() {
+      return {};
+    }
+  };
+}
+
+function createPhyllotaxisPreviewOperator(
+  options: BuildSceneFamilyPreviewStateOptions,
+  center: Vector3
+): OperatorDefinition<OverlayPhyllotaxisConfig> {
+  return {
+    key: OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY,
+    version: "0.1.0",
+    inputs: [
+      {
+        key: "centroid",
+        kind: "vector3",
+        description: "Optional centroid input to offset the phyllotaxis center."
+      }
+    ],
+    outputs: [
+      {
+        key: "pointField",
+        kind: "point-field",
+        description: "Generated phyllotaxis points for scene-family preview."
+      }
+    ],
+    run({ params, inputs }) {
+      return {
+        pointField: resolvePhyllotaxisField(
+          resolvePreviewPhyllotaxisParams(params, center, options.playbackTimeSec),
+          asPartialVector3Input(inputs.centroid)
+        )
+      } satisfies Record<string, unknown>;
+    }
+  };
+}
+
+function createScatterPreviewOperator(
+  center: Vector3
+): OperatorDefinition<OverlayScatterConfig> {
+  return {
+    key: OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY,
+    version: "0.1.0",
+    inputs: [
+      {
+        key: "centroid",
+        kind: "vector3",
+        description: "Optional centroid input used as the scatter shape center."
+      }
+    ],
+    outputs: [
+      {
+        key: "pointField",
+        kind: "point-field",
+        description: "Scatter point field for scene-family preview."
+      }
+    ],
+    run({ params, inputs }) {
+      return {
+        pointField: resolveScatterPointField(
+          resolvePreviewScatterParams(params, center),
+          asPartialVector3Input(inputs.centroid)
+        )
+      } satisfies Record<string, unknown>;
+    }
+  };
+}
+
+function createFuzzyBoidsPreviewOperator(
+  options: BuildSceneFamilyPreviewStateOptions,
+  center: Vector3,
+  nodesById: Map<string, OverlayBackgroundGraph["nodes"][number]>,
+  incomingEdgesByNodeId: Map<string, BackgroundGraphEdge[]>
+): OperatorDefinition<OverlayFuzzyBoidsConfig> {
+  return {
+    key: OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY,
+    version: "0.1.0",
+    inputs: [
+      {
+        key: "center",
+        kind: "vector3",
+        description: "Optional external center used as the flock anchor and bounds origin."
+      },
+      {
+        key: "seedField",
+        kind: "point-field",
+        description: "Optional seed point field used to initialize boid positions and inherited attributes."
+      }
+    ],
+    outputs: [
+      {
+        key: "boidField",
+        kind: "boid-field",
+        description: "Resolved boid records for scene-family preview."
+      },
+      {
+        key: "pointField",
+        kind: "point-field",
+        description: "Point-field projection of the preview boid simulation."
+      }
+    ],
+    run({ nodeId, params, inputs }) {
+      const resolvedCenter = resolveVector3Input(inputs.center, center);
+      const seedField = inputs.seedField as PointField | null | undefined;
+      const seedEdge = (incomingEdgesByNodeId.get(nodeId) ?? []).find((edge) => edge.toPortKey === "seedField");
+      const seedSourceNode = seedEdge ? nodesById.get(seedEdge.fromNodeId) ?? null : null;
+      const fuzzyParams = resolvePreviewFuzzyBoidsParams(
+        params,
+        resolvedCenter,
+        options.widthPx,
+        options.heightPx,
+        options.playbackTimeSec
+      );
+
+      const topologyKey = JSON.stringify({
+        activeNodeId: options.backgroundGraph.activeNodeId,
+        fuzzyNodeId: nodeId,
+        seedSourceNodeId: seedSourceNode?.id ?? null,
+        seedSourceParams: seedSourceNode?.params ?? null
+      });
+      if (topologyKey !== fuzzyBoidsPreviewGraphKey) {
+        fuzzyBoidsSimulation.reset();
+        gpuFuzzyBoidsSpike.reset();
+        fuzzyBoidsPreviewWorkerClient.reset();
+        fuzzyBoidsPreviewGraphKey = topologyKey;
+      }
+
+      const dotSizePx = Math.max(0.5, params.dotSizePx ?? 3);
+      if (gpuFuzzyBoidsSpike.preparePreview(fuzzyParams, resolvedCenter, seedField ?? null)) {
+        return {
+          simulationBackend: "gpu-spike",
+          dotSizePx
+        } satisfies FuzzyBoidsPreviewOutputs;
+      }
+
+      if (options.mode === "interactive" && fuzzyBoidsPreviewWorkerClient.isSupported()) {
+        const structuralKey = JSON.stringify({
+          topologyKey,
+          params: {
+            ...fuzzyParams,
+            timeSeconds: 0
+          }
+        });
+        const exactKey = JSON.stringify({
+          topologyKey,
+          params: fuzzyParams
+        });
+        const workerSnapshot = fuzzyBoidsPreviewWorkerClient.requestResolve(
+          fuzzyParams,
+          resolvedCenter,
+          seedField ?? null,
+          structuralKey,
+          exactKey
+        );
+
+        if (workerSnapshot) {
+          return {
+            simulationBackend: "cpu-worker",
+            dotSizePx,
+            workerSnapshot
+          } satisfies FuzzyBoidsPreviewOutputs;
+        }
+      }
+
+      const fuzzyBoids = fuzzyBoidsSimulation.resolve(fuzzyParams, resolvedCenter, seedField ?? null);
+      return {
+        simulationBackend: "cpu",
+        dotSizePx,
+        pointField: fuzzyBoids.pointField,
+        boidField: fuzzyBoids.boidField
+      } satisfies FuzzyBoidsPreviewOutputs;
+    }
+  };
+}
+
+function createSceneFamilyPreviewRegistry(
+  options: BuildSceneFamilyPreviewStateOptions,
+  center: Vector3
+): OperatorRegistry {
+  const registry = new OperatorRegistry();
+  const nodesById = new Map(options.backgroundGraph.nodes.map((node) => [node.id, node]));
+  const incomingEdgesByNodeId = buildIncomingEdgesByNodeId(options.backgroundGraph);
+  registry.register(createHaloPreviewOperator());
+  registry.register(createPhyllotaxisPreviewOperator(options, center));
+  registry.register(createScatterPreviewOperator(center));
+  registry.register(createFuzzyBoidsPreviewOperator(options, center, nodesById, incomingEdgesByNodeId));
+  return registry;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -263,7 +625,7 @@ function drawScatterPreview(
 
 function drawFuzzyBoidsPreview(
   ctx: CanvasRenderingContext2D,
-  previewState: FuzzyBoidsSceneFamilyPreviewState
+  previewState: CpuFuzzyBoidsSceneFamilyPreviewState
 ): void {
   previewState.boidField.boids.forEach((boid, pointIndex) => {
     const point = previewState.pointField.points[pointIndex];
@@ -286,6 +648,29 @@ function drawFuzzyBoidsPreview(
   });
 }
 
+function drawWorkerFuzzyBoidsPreview(
+  ctx: CanvasRenderingContext2D,
+  previewState: WorkerFuzzyBoidsSceneFamilyPreviewState
+): void {
+  const { positionsPx, activeMask, boidCount } = previewState.workerSnapshot;
+  const radiusPx = Math.max(0.5, previewState.dotSizePx);
+
+  ctx.fillStyle = toCanvasColor(DEFAULT_SCENE_FAMILY_COLOR, 1);
+  ctx.beginPath();
+  for (let index = 0; index < boidCount; index += 1) {
+    if (!activeMask[index]) {
+      continue;
+    }
+
+    const offset = index * 2;
+    const x = positionsPx[offset];
+    const y = positionsPx[offset + 1];
+    ctx.moveTo(x + radiusPx, y);
+    ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
+  }
+  ctx.fill();
+}
+
 export function clearSceneFamilyPreviewCanvas(canvas: HTMLCanvasElement, widthPx: number, heightPx: number): void {
   normalizeCanvasSize(canvas, widthPx, heightPx);
   const context = canvas.getContext("2d");
@@ -294,6 +679,10 @@ export function clearSceneFamilyPreviewCanvas(canvas: HTMLCanvasElement, widthPx
   }
 
   context.clearRect(0, 0, widthPx, heightPx);
+}
+
+export function clearGpuFuzzyBoidsPreviewCanvas(canvas: HTMLCanvasElement, widthPx: number, heightPx: number): void {
+  gpuFuzzyBoidsSpike.clearPreviewCanvas(canvas, widthPx, heightPx);
 }
 
 export function buildSceneFamilyPreviewState(
@@ -306,203 +695,77 @@ export function buildSceneFamilyPreviewState(
     return null;
   }
 
-  const incomingEdgesByNodeId = new Map<string, typeof options.backgroundGraph.edges>();
-  for (const edge of options.backgroundGraph.edges) {
-    const incomingEdges = incomingEdgesByNodeId.get(edge.toNodeId) ?? [];
-    incomingEdges.push(edge);
-    incomingEdgesByNodeId.set(edge.toNodeId, incomingEdges);
-  }
-
-  interface ResolvedBackgroundNode {
-    sceneFamilyKey: OverlaySceneFamilyKey;
-    pointField?: PointField;
-    boidField?: BoidField;
-    distributionMode?: ScatterDistributionMode;
-    maxRadiusPx?: number;
-    dotSizePx?: number;
-    simulationBackend?: "cpu" | "gpu-spike";
-  }
-
-  const resolvedNodeCache = new Map<string, ResolvedBackgroundNode | null>();
-  const resolvingNodeIds = new Set<string>();
-
-  const resolveNode = (nodeId: string): ResolvedBackgroundNode | null => {
-    if (resolvedNodeCache.has(nodeId)) {
-      return resolvedNodeCache.get(nodeId) ?? null;
-    }
-
-    if (resolvingNodeIds.has(nodeId)) {
-      return null;
-    }
-
-    const node = nodesById.get(nodeId);
-    if (!node) {
-      resolvedNodeCache.set(nodeId, null);
-      return null;
-    }
-
-    resolvingNodeIds.add(nodeId);
-    const incomingEdges = incomingEdgesByNodeId.get(nodeId) ?? [];
-    let resolvedNode: ResolvedBackgroundNode | null = null;
-
-    switch (node.operatorKey) {
-      case OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY: {
-        const pc = node.params as OverlayPhyllotaxisConfig;
-        const angleOffsetDeg = pc.angleOffsetDeg + (pc.animationEnabled ? options.playbackTimeSec * pc.animationSpeedDegPerSecond : 0);
-        const pointField = resolvePhyllotaxisField({
-          numPoints: pc.numPoints,
-          radius: pc.radiusPx,
-          radiusFalloff: pc.radiusFalloff,
-          angleOffsetDeg,
-          origin: center
-        });
-        resolvedNode = {
-          sceneFamilyKey: "phyllotaxis",
-          pointField,
-          maxRadiusPx: Number(pointField.detail.max_radius ?? pc.radiusPx)
-        };
-        break;
-      }
-      case OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY: {
-        const sc = node.params as OverlayScatterConfig;
-        const scatterParams = {
-          pointCount: sc.pointCount,
-          seed: sc.seed,
-          distributionMode: sc.distributionMode,
-          marginPx: sc.marginPx,
-          shape: {
-            kind: sc.shapeKind,
-            widthPx: sc.widthPx,
-            heightPx: sc.heightPx,
-            cornerRadiusPx: sc.cornerRadiusPx,
-            svgPath: sc.svgPath,
-            origin: center
-          }
-        };
-        resolvedNode = {
-          sceneFamilyKey: "scatter",
-          pointField: resolveScatterPointField(scatterParams),
-          distributionMode: sc.distributionMode
-        };
-        break;
-      }
-      case OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY: {
-        const bc = node.params as OverlayFuzzyBoidsConfig;
-        const seedEdge = incomingEdges.find((edge) => edge.toPortKey === "seedField");
-        const seedSourceNode = seedEdge ? nodesById.get(seedEdge.fromNodeId) ?? null : null;
-        const seedField = seedEdge ? resolveNode(seedEdge.fromNodeId)?.pointField ?? null : null;
-
-        // Only reset for graph-topology changes (active node swap, seed wiring).
-        // Param changes are handled by the simulation's own structural cache key
-        // so behavioral slider drags apply live without replaying from t=0.
-        const topologyKey = JSON.stringify({
-          activeNodeId: options.backgroundGraph.activeNodeId,
-          fuzzyNodeId: node.id,
-          seedSourceNodeId: seedSourceNode?.id ?? null,
-          seedSourceParams: seedSourceNode?.params ?? null
-        });
-        if (topologyKey !== fuzzyBoidsPreviewGraphKey) {
-          fuzzyBoidsSimulation.reset();
-          gpuFuzzyBoidsSpike.reset();
-          fuzzyBoidsPreviewGraphKey = topologyKey;
-        }
-
-        const fuzzyParams = {
-          timeSeconds: options.playbackTimeSec,
-          deltaTimeSeconds: 1 / 30,
-          subSteps: bc.subSteps,
-          worldScale: Math.min(options.widthPx, options.heightPx) / 6,
-          numBoids: bc.numBoids,
-          seed: bc.seed,
-          center,
-          spawnRadiusPx: bc.spawnRadiusPx,
-          staggerStartSeconds: bc.staggerStartSeconds,
-          initialSpeed: bc.initialSpeed,
-          initialSpeedJitter: bc.initialSpeedJitter,
-          massMin: bc.massMin,
-          massMax: bc.massMax,
-          pscaleMin: bc.pscaleMin,
-          pscaleMax: bc.pscaleMax,
-          maxNeighbors: bc.maxNeighbors,
-          separationMinDist: bc.separationMinDist,
-          separationMaxDist: bc.separationMaxDist,
-          separationMaxStrength: bc.separationMaxStrength,
-          alignNearThreshold: bc.alignNearThreshold,
-          alignFarThreshold: bc.alignFarThreshold,
-          alignSpeedThreshold: bc.alignSpeedThreshold,
-          cohesionMinDist: bc.cohesionMinDist,
-          cohesionMaxDist: bc.cohesionMaxDist,
-          cohesionMaxAccel: bc.cohesionMaxAccel,
-          attractToOrigin: bc.attractToOrigin,
-          minSpeedLimit: bc.minSpeedLimit,
-          maxSpeedLimit: bc.maxSpeedLimit,
-          minAccelLimit: bc.minAccelLimit,
-          maxAccelLimit: bc.maxAccelLimit,
-          bounds: {
-            kind: bc.boundsKind,
-            radiusPx: bc.boundsRadiusPx,
-            marginPx: bc.boundsMarginPx,
-            forcePxPerSecond2: bc.boundsForcePxPerSecond2,
-            ...(bc.boundsKind === "box"
-              ? {
-                widthPx: options.widthPx,
-                heightPx: options.heightPx
-              }
-              : {})
-          }
-        };
-
-        const fuzzyBoids = gpuFuzzyBoidsSpike.resolve(fuzzyParams, center, seedField)
-          ?? fuzzyBoidsSimulation.resolve(fuzzyParams, center, seedField);
-
-        resolvedNode = {
-          sceneFamilyKey: "fuzzy-boids",
-          pointField: fuzzyBoids.pointField,
-          boidField: fuzzyBoids.boidField,
-          dotSizePx: Math.max(0.5, bc.dotSizePx ?? 3),
-          simulationBackend: fuzzyBoids.pointField.detail.simulation_backend === "gpu-spike" ? "gpu-spike" : "cpu"
-        };
-        break;
-      }
-      default:
-        resolvedNode = null;
-        break;
-    }
-
-    resolvingNodeIds.delete(nodeId);
-    resolvedNodeCache.set(nodeId, resolvedNode);
-    return resolvedNode;
-  };
-
-  const resolvedActiveNode = resolveNode(activeNode.id);
-  if (!resolvedActiveNode?.pointField) {
+  let resultMap: Map<string, Record<string, unknown>>;
+  try {
+    resultMap = evaluateGraphSync(
+      options.backgroundGraph,
+      createSceneFamilyPreviewRegistry(options, center)
+    );
+  } catch {
     return null;
   }
 
-  if (resolvedActiveNode.sceneFamilyKey === "phyllotaxis") {
+  const resolvedActiveNode = resultMap.get(activeNode.id);
+  if (!resolvedActiveNode) {
+    return null;
+  }
+
+  if (activeNode.operatorKey === OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY) {
+    const pointField = resolvedActiveNode.pointField as PointField | undefined;
+    if (!pointField) {
+      return null;
+    }
+
     return {
       sceneFamilyKey: "phyllotaxis",
-      pointField: resolvedActiveNode.pointField,
-      maxRadiusPx: resolvedActiveNode.maxRadiusPx ?? 0
+      pointField,
+      maxRadiusPx: Number(pointField.detail.max_radius ?? (activeNode.params as OverlayPhyllotaxisConfig).radiusPx ?? 0)
     };
   }
 
-  if (resolvedActiveNode.sceneFamilyKey === "scatter" && resolvedActiveNode.distributionMode) {
+  if (activeNode.operatorKey === OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY) {
+    const pointField = resolvedActiveNode.pointField as PointField | undefined;
+    if (!pointField) {
+      return null;
+    }
+
     return {
       sceneFamilyKey: "scatter",
-      pointField: resolvedActiveNode.pointField,
-      distributionMode: resolvedActiveNode.distributionMode
+      pointField,
+      distributionMode: (activeNode.params as OverlayScatterConfig).distributionMode ?? "uniform"
     };
   }
 
-  if (resolvedActiveNode.sceneFamilyKey === "fuzzy-boids" && resolvedActiveNode.boidField) {
-    return {
-      sceneFamilyKey: "fuzzy-boids",
-      pointField: resolvedActiveNode.pointField,
-      boidField: resolvedActiveNode.boidField,
-      dotSizePx: resolvedActiveNode.dotSizePx ?? 3,
-      simulationBackend: resolvedActiveNode.simulationBackend ?? "cpu"
-    };
+  if (activeNode.operatorKey === OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY) {
+    const previewOutputs = resolvedActiveNode as FuzzyBoidsPreviewOutputs;
+    const dotSizePx = Math.max(0.5, Number(previewOutputs.dotSizePx ?? (activeNode.params as OverlayFuzzyBoidsConfig).dotSizePx ?? 3));
+
+    if (previewOutputs.simulationBackend === "gpu-spike") {
+      return {
+        sceneFamilyKey: "fuzzy-boids",
+        dotSizePx,
+        simulationBackend: "gpu-spike"
+      };
+    }
+
+    if (previewOutputs.simulationBackend === "cpu-worker" && previewOutputs.workerSnapshot) {
+      return {
+        sceneFamilyKey: "fuzzy-boids",
+        dotSizePx,
+        simulationBackend: "cpu-worker",
+        workerSnapshot: previewOutputs.workerSnapshot
+      };
+    }
+
+    if (previewOutputs.pointField && previewOutputs.boidField) {
+      return {
+        sceneFamilyKey: "fuzzy-boids",
+        pointField: previewOutputs.pointField,
+        boidField: previewOutputs.boidField,
+        dotSizePx,
+        simulationBackend: "cpu"
+      };
+    }
   }
 
   return null;
@@ -511,6 +774,18 @@ export function buildSceneFamilyPreviewState(
 export function renderSceneFamilyPreviewFrame(
   options: RenderSceneFamilyPreviewFrameOptions
 ): void {
+  if (options.previewState.sceneFamilyKey === "fuzzy-boids" && options.previewState.simulationBackend === "gpu-spike") {
+    gpuFuzzyBoidsSpike.renderPreviewCanvas(
+      options.canvas,
+      options.widthPx,
+      options.heightPx,
+      options.previewState.dotSizePx,
+      options.transparentBackground,
+      options.haloConfig.composition.background_color || "#202020"
+    );
+    return;
+  }
+
   normalizeCanvasSize(options.canvas, options.widthPx, options.heightPx);
   const context = options.canvas.getContext("2d");
   if (!context) {
@@ -531,6 +806,11 @@ export function renderSceneFamilyPreviewFrame(
 
   if (options.previewState.sceneFamilyKey === "scatter") {
     drawScatterPreview(context, options.previewState);
+    return;
+  }
+
+  if (options.previewState.sceneFamilyKey === "fuzzy-boids" && options.previewState.simulationBackend === "cpu-worker") {
+    drawWorkerFuzzyBoidsPreview(context, options.previewState);
     return;
   }
 

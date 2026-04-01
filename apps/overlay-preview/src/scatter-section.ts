@@ -1,29 +1,33 @@
 /**
- * scatter-section.ts — Scatter accordion section builder.
+ * scatter-section.ts — Schema-driven scatter accordion section.
  *
- * Operator panel for the scatter scene family.
+ * UI generated from OVERLAY_SCATTER_CONFIG_SCHEMA via renderSchemaPanel.
  */
 
 import {
   buildAccordionSectionEl,
-  createFormGroup,
-  createNumberInput,
-  createSelectInput,
-  createSliderInput,
-  wrapCol
+  renderSchemaPanel,
+  setupAccordion
 } from "@brand-layout-ops/parameter-ui";
-import { OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY } from "@brand-layout-ops/operator-overlay-layout";
+import {
+  OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY,
+  OVERLAY_SCATTER_CONFIG_SCHEMA,
+  createDefaultOverlayScatterConfig
+} from "@brand-layout-ops/operator-overlay-layout";
 import type { PreviewAppContext } from "./preview-app-context.js";
 import type { ScatterPreviewConfig } from "./scene-family-preview.js";
 
 export function buildScatterSection(ctx: PreviewAppContext): HTMLElement {
   const { root, body } = buildAccordionSectionEl("Scatter");
   const selectedNode = ctx.getSelectedBackgroundNode();
-  const sc = selectedNode?.operatorKey === OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY
-    ? selectedNode.params
-    : ctx.state.documentProject.sceneFamilyConfigs.scatter;
+  const graphNode = selectedNode?.operatorKey === OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY
+    ? selectedNode
+    : ctx.state.documentProject.backgroundGraph.nodes.find(
+        (n) => n.operatorKey === OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY
+      );
+  const sc = (graphNode?.params ?? createDefaultOverlayScatterConfig()) as ScatterPreviewConfig;
 
-  function update(patch: Partial<ScatterPreviewConfig>, rebuildEditor = false) {
+  function update(patch: Partial<ScatterPreviewConfig>) {
     const didUpdate = ctx.updateSelectedBackgroundNode((node) => {
       if (node.operatorKey !== OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY) {
         return node;
@@ -42,98 +46,30 @@ export function buildScatterSection(ctx: PreviewAppContext): HTMLElement {
     }
 
     ctx.markDocumentDirty();
-    if (rebuildEditor) {
-      ctx.buildConfigEditor();
-    }
     void ctx.renderStage();
   }
 
-  const pointFields = document.createElement("div");
-  pointFields.className = "bf-grid";
+  const result = renderSchemaPanel(
+    OVERLAY_SCATTER_CONFIG_SCHEMA,
+    sc as unknown as Record<string, unknown>,
+    (path, value) => {
+      update({ [path]: value } as Partial<ScatterPreviewConfig>);
+    }
+  );
 
-  pointFields.append(wrapCol(1, createFormGroup("Point Count",
-    createNumberInput(sc.pointCount, { min: 1, max: 4000, step: 1 }, (value) => {
-      update({ pointCount: Math.round(value) });
-    })
-  )));
+  const nestedAccordion = document.createElement("aside");
+  nestedAccordion.className = "bf-accordion";
 
-  pointFields.append(wrapCol(1, createFormGroup("Seed",
-    createNumberInput(sc.seed, { min: 0, max: 9999, step: 1 }, (value) => {
-      update({ seed: Math.round(value) });
-    })
-  )));
+  const nestedList = document.createElement("ul");
+  nestedList.className = "bf-accordion-list";
 
-  pointFields.append(wrapCol(1, createFormGroup("Distribution",
-    createSelectInput(sc.distributionMode, [
-      { label: "Uniform", value: "uniform" },
-      { label: "Density Weighted", value: "density-weighted" }
-    ], (value) => {
-      update({ distributionMode: value as ScatterPreviewConfig["distributionMode"] });
-    })
-  )));
-
-  pointFields.append(wrapCol(1, createFormGroup("Margin",
-    createSliderInput(sc.marginPx, { min: 0, max: 120, step: 1 }, (value) => {
-      update({ marginPx: value });
-    })
-  )));
-
-  body.append(pointFields);
-
-  const shapeFields = document.createElement("div");
-  shapeFields.className = "bf-grid";
-
-  shapeFields.append(wrapCol(1, createFormGroup("Shape",
-    createSelectInput(sc.shapeKind, [
-      { label: "Ellipse", value: "ellipse" },
-      { label: "Rectangle", value: "rect" },
-      { label: "Rounded Rect", value: "rounded-rect" },
-      { label: "SVG Path", value: "svg-path" }
-    ], (value) => {
-      update({ shapeKind: value as ScatterPreviewConfig["shapeKind"] }, true);
-    })
-  )));
-
-  if (sc.shapeKind !== "svg-path") {
-    shapeFields.append(wrapCol(1, createFormGroup("Width",
-      createSliderInput(sc.widthPx, { min: 40, max: 1200, step: 1 }, (value) => {
-        update({ widthPx: value });
-      })
-    )));
-
-    shapeFields.append(wrapCol(1, createFormGroup("Height",
-      createSliderInput(sc.heightPx, { min: 40, max: 1200, step: 1 }, (value) => {
-        update({ heightPx: value });
-      })
-    )));
+  for (const section of result.sections) {
+    nestedList.append(section.root);
   }
 
-  if (sc.shapeKind === "rounded-rect") {
-    shapeFields.append(wrapCol(1, createFormGroup("Corner Radius",
-      createSliderInput(sc.cornerRadiusPx, { min: 0, max: 240, step: 1 }, (value) => {
-        update({ cornerRadiusPx: value });
-      })
-    )));
-  }
-
-  body.append(shapeFields);
-
-  if (sc.shapeKind === "svg-path") {
-    const help = document.createElement("p");
-    help.className = "bf-form-help bf-u-no-margin--bottom";
-    help.textContent = "Path input currently supports polygon-style SVG commands: M, L, H, V, and Z in local coordinates around the scene center.";
-    body.append(help);
-
-    const pathInput = document.createElement("textarea");
-    pathInput.className = "bf-input is-dense";
-    pathInput.rows = 5;
-    pathInput.value = sc.svgPath;
-    pathInput.addEventListener("input", () => {
-      update({ svgPath: pathInput.value });
-    });
-
-    body.append(createFormGroup("SVG Path", pathInput));
-  }
+  nestedAccordion.append(nestedList);
+  body.append(nestedAccordion);
+  setupAccordion(nestedAccordion);
 
   return root;
 }

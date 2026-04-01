@@ -92,7 +92,7 @@ export interface HaloRenderer {
   /** Clear the WebGL and text overlay canvases without drawing a halo frame. */
   clearFrame(): void;
   /** Render one frame with the current field config. */
-  renderFrame(sceneDescriptor: UbuntuSummitAnimationSceneDescriptor): void;
+  renderFrame(sceneDescriptor: UbuntuSummitAnimationSceneDescriptor, transparentBackground?: boolean): void;
   /** Dispose all GPU resources. */
   dispose(): void;
   /** Access to the canvas element. */
@@ -175,6 +175,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
   let introField: IntroFieldState | null = null;
   let runtimePoints: RuntimePoint[] = [];
   let lastSceneDescriptor: UbuntuSummitAnimationSceneDescriptor | null = null;
+  let lastTransparentBackground = false;
   let mascotFaceImage: HTMLImageElement | null = null;
   let mascotHaloImage: HTMLImageElement | null = null;
   let mascotAssetsRequested = false;
@@ -203,7 +204,7 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
         mascotFaceImage = faceImage;
         mascotHaloImage = haloImage;
         if (lastSceneDescriptor) {
-          renderFrame(lastSceneDescriptor);
+          renderFrame(lastSceneDescriptor, lastTransparentBackground);
         }
       })
       .catch(() => {
@@ -999,15 +1000,19 @@ export function createHaloRenderer(opts: HaloRendererConfig): HaloRenderer {
 
   // ── main render ─────────────────────────────────────────────────────
 
-  function renderFrame(sceneDescriptor: UbuntuSummitAnimationSceneDescriptor) {
+  function renderFrame(
+    sceneDescriptor: UbuntuSummitAnimationSceneDescriptor,
+    transparentBackground: boolean = false
+  ) {
     lastSceneDescriptor = sceneDescriptor;
+    lastTransparentBackground = transparentBackground;
     const config = sceneDescriptor.haloConfig;
     const mascotBox = sceneDescriptor.mascotBox;
     const frameState = sceneDescriptor.frameState;
 
     // Background + clear
     const bgHex = config.composition.background_color || "#202020";
-    renderer.setClearColor(new THREE.Color(bgHex), 1);
+    renderer.setClearColor(new THREE.Color(bgHex), transparentBackground ? 0 : 1);
 
     clearLayers();
     updateLayerColors(config);

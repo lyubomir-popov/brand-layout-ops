@@ -35,6 +35,7 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
       })),
       (v) => {
         ctx.switchContentFormat(v);
+        ctx.markDocumentDirty();
         ctx.buildConfigEditor();
         void ctx.renderStage();
       }
@@ -47,6 +48,7 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
       [{ label: "Inline text", value: "inline" }, { label: "CSV", value: "csv" }],
       (v) => {
         state.params = { ...state.params, contentSource: v as OverlayContentSource };
+        ctx.markDocumentDirty();
         ctx.buildConfigEditor();
         void ctx.renderStage();
       }

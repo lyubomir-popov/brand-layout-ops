@@ -105,6 +105,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
           if (selectedStyle.key === "title" && state.params.logo?.linkTitleSizeToHeight !== false) {
             ctx.syncLogoToTitleFontSize(value);
           }
+          ctx.markDocumentDirty();
           ctx.buildConfigEditor();
           void ctx.renderStage();
         })
@@ -113,6 +114,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
       styleGrid.append(wrapCol(1, createFormGroup("Line Height",
         createNumberInput(selectedStyle.lineHeightPx, { min: 1, max: 512, step: 1 }, (value) => {
           ctx.updateTextStyle(selectedStyle.key, (style) => ({ ...style, lineHeightPx: value }));
+          ctx.markDocumentDirty();
           ctx.buildConfigEditor();
           void ctx.renderStage();
         })
@@ -121,6 +123,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
       styleGrid.append(wrapCol(1, createFormGroup("Weight",
         createNumberInput(selectedStyle.fontWeight ?? 400, { min: 100, max: 900, step: 100 }, (value) => {
           ctx.updateTextStyle(selectedStyle.key, (style) => ({ ...style, fontWeight: value }));
+          ctx.markDocumentDirty();
           ctx.buildConfigEditor();
           void ctx.renderStage();
         })
@@ -134,25 +137,25 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
 
     grid.append(wrapCol(1, createFormGroup("Keyline",
       createNumberInput(field.keylineIndex, { min: 1, max: 24, step: 1 }, v => {
-        ctx.updateTextField(field.id, f => ({ ...f, keylineIndex: v })); void ctx.renderStage();
+        ctx.updateTextField(field.id, f => ({ ...f, keylineIndex: v })); ctx.markDocumentDirty(); void ctx.renderStage();
       })
     )));
 
     grid.append(wrapCol(1, createFormGroup("Row",
       createNumberInput(field.rowIndex, { min: 1, max: 24, step: 1 }, v => {
-        ctx.updateTextField(field.id, f => ({ ...f, rowIndex: v })); void ctx.renderStage();
+        ctx.updateTextField(field.id, f => ({ ...f, rowIndex: v })); ctx.markDocumentDirty(); void ctx.renderStage();
       })
     )));
 
     grid.append(wrapCol(1, createFormGroup("Y Offset",
       createNumberInput(ctx.getDisplayedTextFieldOffsetBaselines(field), { min: -200, max: 500, step: 1 }, v => {
-        ctx.updateTextField(field.id, f => ({ ...f, offsetBaselines: v })); void ctx.renderStage();
+        ctx.updateTextField(field.id, f => ({ ...f, offsetBaselines: v })); ctx.markDocumentDirty(); void ctx.renderStage();
       })
     )));
 
     grid.append(wrapCol(1, createFormGroup("Span",
       createNumberInput(field.columnSpan, { min: 1, max: 24, step: 1 }, v => {
-        ctx.updateTextField(field.id, f => ({ ...f, columnSpan: v })); void ctx.renderStage();
+        ctx.updateTextField(field.id, f => ({ ...f, columnSpan: v })); ctx.markDocumentDirty(); void ctx.renderStage();
       })
     )));
 
@@ -179,6 +182,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
         }
         return nextLogo;
       });
+      ctx.markDocumentDirty();
       void ctx.loadLogoIntrinsicDimensions(nextAssetPath);
       ctx.buildConfigEditor();
       void ctx.renderStage();
@@ -201,6 +205,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
             ctx.syncLogoToTitleFontSize(titleStyle.fontSizePx);
           }
         }
+        ctx.markDocumentDirty();
         ctx.buildConfigEditor();
         void ctx.renderStage();
       }
@@ -212,11 +217,11 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
     grid.className = "bf-grid";
 
     grid.append(wrapCol(1, createFormGroup("X",
-      createNumberInput(logo.xPx, { step: 1 }, v => { ctx.updateLogo(l => ({ ...l, xPx: v })); void ctx.renderStage(); })
+      createNumberInput(logo.xPx, { step: 1 }, v => { ctx.updateLogo(l => ({ ...l, xPx: v })); ctx.markDocumentDirty(); void ctx.renderStage(); })
     )));
 
     grid.append(wrapCol(1, createFormGroup("Y",
-      createNumberInput(logo.yPx, { step: 1 }, v => { ctx.updateLogo(l => ({ ...l, yPx: v })); void ctx.renderStage(); })
+      createNumberInput(logo.yPx, { step: 1 }, v => { ctx.updateLogo(l => ({ ...l, yPx: v })); ctx.markDocumentDirty(); void ctx.renderStage(); })
     )));
 
     const widthInput = createNumberInput(logo.widthPx, { min: 1, step: 1 }, v => {
@@ -227,6 +232,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
       } else {
         ctx.syncTitleToLogoHeight(nextHeightPx);
       }
+      ctx.markDocumentDirty();
       void ctx.renderStage();
     });
     widthInput.title = logo.linkTitleSizeToHeight === false
@@ -244,6 +250,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
         } else {
           ctx.syncTitleToLogoHeight(v);
         }
+        ctx.markDocumentDirty();
         void ctx.renderStage();
       })
     )));

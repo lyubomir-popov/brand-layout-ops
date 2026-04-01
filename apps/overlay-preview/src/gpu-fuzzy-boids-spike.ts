@@ -5,7 +5,8 @@ import {
   type FuzzyBoidsParams
 } from "@brand-layout-ops/operator-fuzzy-boids";
 
-const MAX_GPU_SPIKE_BOIDS = 512;
+const MAX_GPU_SPIKE_BOIDS = 8192;
+const MAX_GPU_SPIKE_NEIGHBORS = 24;
 
 interface GpuProgramInfo {
   program: WebGLProgram;
@@ -13,6 +14,7 @@ interface GpuProgramInfo {
   uStaticTex: WebGLUniformLocation;
   uCount: WebGLUniformLocation;
   uActiveCount: WebGLUniformLocation;
+  uMaxNeighbors: WebGLUniformLocation;
   uTimeSeconds: WebGLUniformLocation;
   uDeltaTimeSeconds: WebGLUniformLocation;
   uWorldScale: WebGLUniformLocation;
@@ -38,8 +40,50 @@ interface GpuProgramInfo {
   uBoundsForcePxPerSecond2: WebGLUniformLocation;
 }
 
+interface GpuPreviewProgramInfo {
+  program: WebGLProgram;
+  uStateTex: WebGLUniformLocation;
+  uStaticTex: WebGLUniformLocation;
+  uCount: WebGLUniformLocation;
+  uTimeSeconds: WebGLUniformLocation;
+  uWorldScale: WebGLUniformLocation;
+  uCenterPx: WebGLUniformLocation;
+  uViewportPx: WebGLUniformLocation;
+  uDotSizePx: WebGLUniformLocation;
+  uColor: WebGLUniformLocation;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function parseHexColor(rawColor: string): { r: number; g: number; b: number; a: number } | null {
+  const normalized = rawColor.trim();
+  if (!normalized.startsWith("#")) {
+    return null;
+  }
+
+  const hex = normalized.slice(1);
+  if (hex.length === 3) {
+    const [red, green, blue] = hex.split("");
+    return {
+      r: parseInt(`${red}${red}`, 16),
+      g: parseInt(`${green}${green}`, 16),
+      b: parseInt(`${blue}${blue}`, 16),
+      a: 1
+    };
+  }
+
+  if (hex.length === 6 || hex.length === 8) {
+    return {
+      r: parseInt(hex.slice(0, 2), 16),
+      g: parseInt(hex.slice(2, 4), 16),
+      b: parseInt(hex.slice(4, 6), 16),
+      a: hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1
+    };
+  }
+
+  return null;
 }
 
 function toNumber(value: unknown, fallback: number): number {
@@ -86,15 +130,24 @@ export function isGpuFuzzyBoidsSpikeEnabled(): boolean {
     return false;
   }
 
+  // Research-only opt-in: explicit query flag or persisted localStorage toggle.
+  if (getQueryParamFlag("noGpuBoids")) {
+    return false;
+  }
+
   if (getQueryParamFlag("gpuBoids")) {
     return true;
   }
 
   try {
-    return window.localStorage.getItem("brand-layout-ops-gpu-boids-spike") === "1";
+    if (window.localStorage.getItem("brand-layout-ops-gpu-boids-spike") === "1") {
+      return true;
+    }
   } catch {
-    return false;
+    // ignore
   }
+
+  return false;
 }
 
 function createShader(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader {
@@ -141,11 +194,13 @@ precision highp float;
 precision highp sampler2D;
 
 #define MAX_GPU_SPIKE_BOIDS ${MAX_GPU_SPIKE_BOIDS}
+#define MAX_GPU_SPIKE_NEIGHBORS ${MAX_GPU_SPIKE_NEIGHBORS}
 
 uniform sampler2D uStateTex;
 uniform sampler2D uStaticTex;
 uniform int uCount;
 uniform int uActiveCount;
+uniform int uMaxNeighbors;
 uniform float uTimeSeconds;
 uniform float uDeltaTimeSeconds;
 uniform float uWorldScale;
@@ -254,8 +309,14 @@ void main() {
   float alignDistRange = max(0.001, uAlignFarThreshold - uAlignNearThreshold);
   float cohesionDistRange = max(0.001, uCohesionMaxDist - uCohesionMinDist);
   int activeCount = min(uActiveCount, uCount);
+  int maxNeighbors = clamp(uMaxNeighbors, 1, MAX_GPU_SPIKE_NEIGHBORS);
 
   vec2 accelWorld = vec2(0.0);
+  int selectedNeighborIndices[MAX_GPU_SPIKE_NEIGHBORS];
+  float selectedNeighborDistSq[MAX_GPU_SPIKE_NEIGHBORS];
+  int selectedNeighborCount = 0;
+  int worstNeighborSlot = 0;
+  float worstNeighborDistSq = 0.0;
 
   for (int neighborIndex = 0; neighborIndex < MAX_GPU_SPIKE_BOIDS; neighborIndex += 1) {
     if (neighborIndex >= activeCount) {
@@ -273,7 +334,45 @@ void main() {
       continue;
     }
 
+    if (selectedNeighborCount < maxNeighbors) {
+      selectedNeighborIndices[selectedNeighborCount] = neighborIndex;
+      selectedNeighborDistSq[selectedNeighborCount] = distanceSq;
+      if (distanceSq > worstNeighborDistSq) {
+        worstNeighborDistSq = distanceSq;
+        worstNeighborSlot = selectedNeighborCount;
+      }
+      selectedNeighborCount += 1;
+      continue;
+    }
+
+    if (distanceSq < worstNeighborDistSq) {
+      selectedNeighborIndices[worstNeighborSlot] = neighborIndex;
+      selectedNeighborDistSq[worstNeighborSlot] = distanceSq;
+      worstNeighborSlot = 0;
+      worstNeighborDistSq = selectedNeighborDistSq[0];
+      for (int neighborSlot = 1; neighborSlot < MAX_GPU_SPIKE_NEIGHBORS; neighborSlot += 1) {
+        if (neighborSlot >= maxNeighbors) {
+          break;
+        }
+
+        if (selectedNeighborDistSq[neighborSlot] > worstNeighborDistSq) {
+          worstNeighborDistSq = selectedNeighborDistSq[neighborSlot];
+          worstNeighborSlot = neighborSlot;
+        }
+      }
+    }
+  }
+
+  for (int selectedIndex = 0; selectedIndex < MAX_GPU_SPIKE_NEIGHBORS; selectedIndex += 1) {
+    if (selectedIndex >= selectedNeighborCount) {
+      break;
+    }
+
+    int neighborIndex = selectedNeighborIndices[selectedIndex];
+    vec4 neighborState = texelFetch(uStateTex, ivec2(neighborIndex, 0), 0);
+    float distanceSq = selectedNeighborDistSq[selectedIndex];
     float distanceWorld = sqrt(distanceSq);
+    vec2 offsetWorld = neighborState.xy - positionWorld;
     vec2 directionToNeighbor = offsetWorld / distanceWorld;
 
     if (distanceWorld < uSeparationMaxDist) {
@@ -352,6 +451,7 @@ void main() {
     uStaticTex: getUniform(gl, program, "uStaticTex"),
     uCount: getUniform(gl, program, "uCount"),
     uActiveCount: getUniform(gl, program, "uActiveCount"),
+    uMaxNeighbors: getUniform(gl, program, "uMaxNeighbors"),
     uTimeSeconds: getUniform(gl, program, "uTimeSeconds"),
     uDeltaTimeSeconds: getUniform(gl, program, "uDeltaTimeSeconds"),
     uWorldScale: getUniform(gl, program, "uWorldScale"),
@@ -375,6 +475,104 @@ void main() {
     uBoundsHeightPx: getUniform(gl, program, "uBoundsHeightPx"),
     uBoundsMarginPx: getUniform(gl, program, "uBoundsMarginPx"),
     uBoundsForcePxPerSecond2: getUniform(gl, program, "uBoundsForcePxPerSecond2")
+  };
+}
+
+function createPreviewProgram(gl: WebGL2RenderingContext): GpuPreviewProgramInfo {
+  const vertexShader = createShader(gl, gl.VERTEX_SHADER, `#version 300 es
+precision highp float;
+precision highp sampler2D;
+
+uniform sampler2D uStateTex;
+uniform sampler2D uStaticTex;
+uniform int uCount;
+uniform float uTimeSeconds;
+uniform float uWorldScale;
+uniform vec2 uCenterPx;
+uniform vec2 uViewportPx;
+uniform float uDotSizePx;
+
+out float vActive;
+
+void main() {
+  int index = gl_InstanceID;
+  if (index < 0 || index >= uCount) {
+    gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
+    gl_PointSize = 0.0;
+    vActive = 0.0;
+    return;
+  }
+
+  vec4 stateSample = texelFetch(uStateTex, ivec2(index, 0), 0);
+  vec4 staticSample = texelFetch(uStaticTex, ivec2(index, 0), 0);
+  float isActive = uTimeSeconds >= staticSample.x ? 1.0 : 0.0;
+  vActive = isActive;
+  if (isActive < 0.5) {
+    gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
+    gl_PointSize = 0.0;
+    return;
+  }
+
+  vec2 positionPx = stateSample.xy * uWorldScale + uCenterPx;
+  vec2 clipPosition = vec2(
+    positionPx.x / max(1.0, uViewportPx.x) * 2.0 - 1.0,
+    1.0 - positionPx.y / max(1.0, uViewportPx.y) * 2.0
+  );
+
+  gl_Position = vec4(clipPosition, 0.0, 1.0);
+  gl_PointSize = uDotSizePx;
+}`);
+
+  const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, `#version 300 es
+precision highp float;
+
+uniform vec4 uColor;
+
+in float vActive;
+out vec4 fragColor;
+
+void main() {
+  if (vActive < 0.5) {
+    discard;
+  }
+
+  vec2 pointCoord = gl_PointCoord * 2.0 - 1.0;
+  if (dot(pointCoord, pointCoord) > 1.0) {
+    discard;
+  }
+
+  fragColor = uColor;
+}`);
+
+  const program = gl.createProgram();
+  if (!program) {
+    throw new Error("Failed to allocate WebGL preview program.");
+  }
+
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+
+  gl.deleteShader(vertexShader);
+  gl.deleteShader(fragmentShader);
+
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    const info = gl.getProgramInfoLog(program) || "Unknown preview program link failure.";
+    gl.deleteProgram(program);
+    throw new Error(info);
+  }
+
+  return {
+    program,
+    uStateTex: getUniform(gl, program, "uStateTex"),
+    uStaticTex: getUniform(gl, program, "uStaticTex"),
+    uCount: getUniform(gl, program, "uCount"),
+    uTimeSeconds: getUniform(gl, program, "uTimeSeconds"),
+    uWorldScale: getUniform(gl, program, "uWorldScale"),
+    uCenterPx: getUniform(gl, program, "uCenterPx"),
+    uViewportPx: getUniform(gl, program, "uViewportPx"),
+    uDotSizePx: getUniform(gl, program, "uDotSizePx"),
+    uColor: getUniform(gl, program, "uColor")
   };
 }
 
@@ -410,6 +608,7 @@ export class GpuFuzzyBoidsSpike {
   private canvas: HTMLCanvasElement | null = null;
   private gl: WebGL2RenderingContext | null = null;
   private programInfo: GpuProgramInfo | null = null;
+  private previewProgramInfo: GpuPreviewProgramInfo | null = null;
   private framebuffer: WebGLFramebuffer | null = null;
   private readTexture: WebGLTexture | null = null;
   private writeTexture: WebGLTexture | null = null;
@@ -426,6 +625,8 @@ export class GpuFuzzyBoidsSpike {
   private totalSteps = 0;
   private lastDeltaTimeSeconds = 1 / 30;
   private lastError = "";
+  private lastCenter: Vector3 = { x: 0, y: 0, z: 0 };
+  private lastWorldScale = 180;
 
   reset(): void {
     this.cacheKey = "";
@@ -452,18 +653,26 @@ export class GpuFuzzyBoidsSpike {
     if (gl && this.programInfo) {
       gl.deleteProgram(this.programInfo.program);
     }
+    if (gl && this.previewProgramInfo) {
+      gl.deleteProgram(this.previewProgramInfo.program);
+    }
     this.framebuffer = null;
     this.readTexture = null;
     this.writeTexture = null;
     this.staticTexture = null;
     this.programInfo = null;
+    this.previewProgramInfo = null;
     this.gl = null;
     this.canvas = null;
     this.reset();
   }
 
-  private ensureContext(): boolean {
-    if (this.gl && this.programInfo && this.framebuffer) {
+  private ensureContext(targetCanvas?: HTMLCanvasElement): boolean {
+    if (targetCanvas && this.canvas && this.canvas !== targetCanvas) {
+      this.dispose();
+    }
+
+    if (this.gl && this.programInfo && this.previewProgramInfo && this.framebuffer) {
       return true;
     }
 
@@ -471,7 +680,7 @@ export class GpuFuzzyBoidsSpike {
       return false;
     }
 
-    const canvas = document.createElement("canvas");
+    const canvas = targetCanvas ?? document.createElement("canvas");
     const gl = canvas.getContext("webgl2", {
       antialias: false,
       depth: false,
@@ -490,18 +699,21 @@ export class GpuFuzzyBoidsSpike {
     this.canvas = canvas;
     this.gl = gl;
     this.programInfo = createProgram(gl);
+    this.previewProgramInfo = createPreviewProgram(gl);
     this.framebuffer = gl.createFramebuffer();
     return Boolean(this.framebuffer);
   }
 
+  private maxTextureWidth(): number {
+    if (!this.gl) {
+      return MAX_GPU_SPIKE_BOIDS;
+    }
+    return Math.min(MAX_GPU_SPIKE_BOIDS, this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) as number);
+  }
+
   private supportsParams(params: FuzzyBoidsParams, seedField?: PointField | null): boolean {
     const requestedBoidCount = Math.max(0, Math.round(toNumber(params.numBoids, seedField?.points.length ?? 0)));
-    if (requestedBoidCount === 0 || requestedBoidCount > MAX_GPU_SPIKE_BOIDS) {
-      return false;
-    }
-
-    const requestedMaxNeighbors = Math.max(0, Math.round(toNumber(params.maxNeighbors, 0)));
-    return requestedMaxNeighbors === 0 || requestedMaxNeighbors >= requestedBoidCount;
+    return requestedBoidCount > 0 && requestedBoidCount <= this.maxTextureWidth();
   }
 
   private buildCacheKey(params: FuzzyBoidsParams, center: Vector3): string {
@@ -534,12 +746,14 @@ export class GpuFuzzyBoidsSpike {
       deltaTimeSeconds: Math.max(0.001, toNumber(params.deltaTimeSeconds, 1 / 30))
     }, center, seedField);
     const count = initialOutputs.boidField.boids.length;
-    if (count === 0 || count > MAX_GPU_SPIKE_BOIDS) {
+    if (count === 0) {
       return false;
     }
 
     const worldScale = Math.max(1, toNumber(params.worldScale, 180));
     this.count = count;
+    this.lastCenter = center;
+    this.lastWorldScale = worldScale;
     this.templateBoids = initialOutputs.boidField.boids.map((boid) => ({
       ...boid,
       position: { ...boid.position },
@@ -584,11 +798,6 @@ export class GpuFuzzyBoidsSpike {
     } else {
       replaceTextureData(this.gl, this.readTexture, count, this.stateBuffer);
       replaceTextureData(this.gl, this.staticTexture, count, this.staticBuffer);
-    }
-
-    if (this.canvas) {
-      this.canvas.width = count;
-      this.canvas.height = 1;
     }
 
     this.currentTimeSeconds = 0;
@@ -670,6 +879,7 @@ export class GpuFuzzyBoidsSpike {
 
     gl.uniform1i(this.programInfo.uCount, this.count);
     gl.uniform1i(this.programInfo.uActiveCount, activeCount);
+    gl.uniform1i(this.programInfo.uMaxNeighbors, clamp(Math.round(toNumber(params.maxNeighbors, MAX_GPU_SPIKE_NEIGHBORS)), 1, MAX_GPU_SPIKE_NEIGHBORS));
     gl.uniform1f(this.programInfo.uTimeSeconds, stepTimeSeconds);
     gl.uniform1f(this.programInfo.uDeltaTimeSeconds, deltaTimeSeconds);
     gl.uniform1f(this.programInfo.uWorldScale, Math.max(1, toNumber(params.worldScale, 180)));
@@ -794,7 +1004,7 @@ export class GpuFuzzyBoidsSpike {
           ...this.pointDetail,
           simulation_backend: "gpu-spike",
           gpu_spike_max_boids: MAX_GPU_SPIKE_BOIDS,
-          gpu_spike_neighbor_mode: "all-active-neighbors"
+          gpu_spike_neighbor_mode: "top-k-nearest-active"
         }
       },
       pointField: {
@@ -803,13 +1013,13 @@ export class GpuFuzzyBoidsSpike {
           ...this.pointDetail,
           simulation_backend: "gpu-spike",
           gpu_spike_max_boids: MAX_GPU_SPIKE_BOIDS,
-          gpu_spike_neighbor_mode: "all-active-neighbors"
+          gpu_spike_neighbor_mode: "top-k-nearest-active"
         }
       }
     };
   }
 
-  resolve(params: FuzzyBoidsParams, centerInput?: Partial<Vector3> | null, seedField?: PointField | null): FuzzyBoidsOutputs | null {
+  private advanceSimulation(params: FuzzyBoidsParams, center: Vector3, seedField?: PointField | null, targetCanvas?: HTMLCanvasElement): { stepped: boolean } | null {
     if (!isGpuFuzzyBoidsSpikeEnabled()) {
       return null;
     }
@@ -819,11 +1029,10 @@ export class GpuFuzzyBoidsSpike {
       return null;
     }
 
-    if (!this.ensureContext()) {
+    if (!this.ensureContext(targetCanvas)) {
       return null;
     }
 
-    const center = toVector3(params.center, toVector3(centerInput));
     const key = this.buildCacheKey(params, center);
     const totalTimeSeconds = Math.max(0, toNumber(params.timeSeconds, 0));
 
@@ -835,6 +1044,9 @@ export class GpuFuzzyBoidsSpike {
       this.cacheKey = key;
       justReset = true;
     }
+
+    this.lastCenter = center;
+    this.lastWorldScale = Math.max(1, toNumber(params.worldScale, 180));
 
     const dt = Math.max(0.001, toNumber(params.deltaTimeSeconds, 1 / 30));
     const subSteps = Math.max(1, Math.round(toNumber(params.subSteps, 1)));
@@ -867,7 +1079,105 @@ export class GpuFuzzyBoidsSpike {
       this.lastDeltaTimeSeconds = dt;
     }
 
-    if (stepsNeeded > 0 || remainderSeconds > 0.00001) {
+    return {
+      stepped: stepsNeeded > 0 || remainderSeconds > 0.00001
+    };
+  }
+
+  preparePreview(params: FuzzyBoidsParams, centerInput?: Partial<Vector3> | null, seedField?: PointField | null, targetCanvas?: HTMLCanvasElement): boolean {
+    const center = toVector3(params.center, toVector3(centerInput));
+    return Boolean(this.advanceSimulation(params, center, seedField, targetCanvas));
+  }
+
+  clearPreviewCanvas(targetCanvas: HTMLCanvasElement, widthPx: number, heightPx: number): void {
+    if (!this.ensureContext(targetCanvas) || !this.gl) {
+      const context = targetCanvas.getContext("2d");
+      if (context) {
+        if (targetCanvas.width !== widthPx) {
+          targetCanvas.width = widthPx;
+        }
+        if (targetCanvas.height !== heightPx) {
+          targetCanvas.height = heightPx;
+        }
+        context.clearRect(0, 0, widthPx, heightPx);
+      }
+      return;
+    }
+
+    if (targetCanvas.width !== widthPx) {
+      targetCanvas.width = widthPx;
+    }
+    if (targetCanvas.height !== heightPx) {
+      targetCanvas.height = heightPx;
+    }
+
+    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+    this.gl.viewport(0, 0, widthPx, heightPx);
+    this.gl.clearColor(0, 0, 0, 0);
+    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+  }
+
+  renderPreviewCanvas(
+    targetCanvas: HTMLCanvasElement,
+    widthPx: number,
+    heightPx: number,
+    dotSizePx: number,
+    transparentBackground: boolean,
+    backgroundColor: string
+  ): boolean {
+    if (!this.ensureContext(targetCanvas) || !this.gl || !this.previewProgramInfo || !this.readTexture || !this.staticTexture) {
+      return false;
+    }
+
+    if (targetCanvas.width !== widthPx) {
+      targetCanvas.width = widthPx;
+    }
+    if (targetCanvas.height !== heightPx) {
+      targetCanvas.height = heightPx;
+    }
+
+    const gl = this.gl;
+    const color = parseHexColor(backgroundColor) ?? { r: 32, g: 32, b: 32, a: 1 };
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, widthPx, heightPx);
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.CULL_FACE);
+    gl.disable(gl.BLEND);
+    gl.clearColor(
+      transparentBackground ? 0 : color.r / 255,
+      transparentBackground ? 0 : color.g / 255,
+      transparentBackground ? 0 : color.b / 255,
+      transparentBackground ? 0 : color.a
+    );
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    gl.useProgram(this.previewProgramInfo.program);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.readTexture);
+    gl.uniform1i(this.previewProgramInfo.uStateTex, 0);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this.staticTexture);
+    gl.uniform1i(this.previewProgramInfo.uStaticTex, 1);
+    gl.uniform1i(this.previewProgramInfo.uCount, this.count);
+    gl.uniform1f(this.previewProgramInfo.uTimeSeconds, this.currentTimeSeconds);
+    gl.uniform1f(this.previewProgramInfo.uWorldScale, this.lastWorldScale);
+    gl.uniform2f(this.previewProgramInfo.uCenterPx, this.lastCenter.x, this.lastCenter.y);
+    gl.uniform2f(this.previewProgramInfo.uViewportPx, widthPx, heightPx);
+    gl.uniform1f(this.previewProgramInfo.uDotSizePx, Math.max(0.5, dotSizePx));
+    gl.uniform4f(this.previewProgramInfo.uColor, 1, 1, 1, 1);
+    gl.drawArraysInstanced(gl.POINTS, 0, 1, this.count);
+    return true;
+  }
+
+  resolve(params: FuzzyBoidsParams, centerInput?: Partial<Vector3> | null, seedField?: PointField | null): FuzzyBoidsOutputs | null {
+    const center = toVector3(params.center, toVector3(centerInput));
+    const advanceResult = this.advanceSimulation(params, center, seedField);
+    if (!advanceResult) {
+      return null;
+    }
+
+    if (advanceResult.stepped) {
       if (!this.readStateToCpu()) {
         return null;
       }

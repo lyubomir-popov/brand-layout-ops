@@ -3,8 +3,8 @@
   "version": 1,
   "metadata": {
     "name": "Untitled document",
-    "createdAt": "2026-03-29T21:08:51.007Z",
-    "updatedAt": "2026-03-29T21:08:51.007Z"
+    "createdAt": "2026-03-31T09:55:47.366Z",
+    "updatedAt": "2026-03-31T09:55:47.366Z"
   },
   "project": {
     "sceneFamilyKey": "fuzzy-boids",
@@ -67,7 +67,7 @@
         "maxSpeedLimit": 3,
         "minAccelLimit": 0.01,
         "maxAccelLimit": 3,
-        "dotSizePx": 3.5,
+        "dotSizePx": 9.75,
         "boundsKind": "box",
         "boundsRadiusPx": 353,
         "boundsMarginPx": 69,
@@ -130,7 +130,7 @@
             "maxSpeedLimit": 3,
             "minAccelLimit": 0.01,
             "maxAccelLimit": 3,
-            "dotSizePx": 3.5,
+            "dotSizePx": 9.75,
             "boundsKind": "box",
             "boundsRadiusPx": 353,
             "boundsMarginPx": 69,
@@ -419,7 +419,7 @@
               "keylineIndex": 2,
               "rowIndex": 1,
               "offsetBaselines": 6,
-              "columnSpan": 1
+              "columnSpan": 2
             },
             {
               "id": "body_intro",
@@ -427,28 +427,28 @@
               "styleKey": "b_head",
               "text": "",
               "keylineIndex": 2,
-              "rowIndex": 1,
-              "offsetBaselines": 41,
+              "rowIndex": 2,
+              "offsetBaselines": 14,
               "columnSpan": 2
             },
             {
               "id": "detail_primary",
               "contentFieldId": "detail_primary",
-              "styleKey": "paragraph",
+              "styleKey": "b_head",
               "text": "",
               "keylineIndex": 2,
-              "rowIndex": 1,
-              "offsetBaselines": 147,
-              "columnSpan": 1
+              "rowIndex": 4,
+              "offsetBaselines": 17,
+              "columnSpan": 2
             },
             {
               "id": "detail_secondary",
               "contentFieldId": "detail_secondary",
-              "styleKey": "paragraph",
+              "styleKey": "b_head",
               "text": "",
               "keylineIndex": 2,
-              "rowIndex": 1,
-              "offsetBaselines": 152,
+              "rowIndex": 4,
+              "offsetBaselines": 20,
               "columnSpan": 1
             }
           ],
@@ -525,37 +525,37 @@
               "keylineIndex": 2,
               "rowIndex": 1,
               "offsetBaselines": 6,
-              "columnSpan": 1
+              "columnSpan": 2
             },
             {
               "id": "session_title",
               "contentFieldId": "session_title",
               "styleKey": "b_head",
               "text": "",
-              "keylineIndex": 3,
-              "rowIndex": 6,
-              "offsetBaselines": 9,
-              "columnSpan": 2
+              "keylineIndex": 2,
+              "rowIndex": 4,
+              "offsetBaselines": 23,
+              "columnSpan": 1
             },
             {
               "id": "speaker_name",
               "contentFieldId": "speaker_name",
               "styleKey": "paragraph",
               "text": "",
-              "keylineIndex": 3,
-              "rowIndex": 7,
-              "offsetBaselines": 4,
-              "columnSpan": 2
+              "keylineIndex": 2,
+              "rowIndex": 5,
+              "offsetBaselines": 9,
+              "columnSpan": 1
             },
             {
               "id": "speaker_role",
               "contentFieldId": "speaker_role",
               "styleKey": "paragraph",
               "text": "",
-              "keylineIndex": 3,
-              "rowIndex": 7,
-              "offsetBaselines": 14,
-              "columnSpan": 2
+              "keylineIndex": 2,
+              "rowIndex": 5,
+              "offsetBaselines": 19,
+              "columnSpan": 1
             }
           ],
           "logo": {

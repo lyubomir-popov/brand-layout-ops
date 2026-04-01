@@ -414,17 +414,35 @@ export interface OperatorParameterSectionSchema {
   description?: string;
 }
 
+export interface OperatorParameterVisibilityCondition {
+  /** Param path to evaluate (e.g. `"shapeKind"`). */
+  path: string;
+  /** Comparison operator. */
+  operator: "eq" | "neq" | "in" | "notIn";
+  /** Value or array of values to compare against. */
+  value: unknown;
+}
+
 interface OperatorParameterFieldSchemaBase {
   path: string;
   sectionKey: string;
   label: string;
   hint?: string;
+  /** When set, the field is only visible if the condition evaluates to true. */
+  visibleWhen?: OperatorParameterVisibilityCondition;
 }
 
 export interface OperatorParameterNumberFieldSchema extends OperatorParameterFieldSchemaBase {
   kind: "number";
   min?: number;
   max?: number;
+  step?: number;
+}
+
+export interface OperatorParameterSliderFieldSchema extends OperatorParameterFieldSchemaBase {
+  kind: "slider";
+  min: number;
+  max: number;
   step?: number;
 }
 
@@ -442,10 +460,28 @@ export interface OperatorParameterSelectFieldSchema extends OperatorParameterFie
   options: OperatorParameterSelectOptionSchema[];
 }
 
+export interface OperatorParameterTextAreaFieldSchema extends OperatorParameterFieldSchemaBase {
+  kind: "textarea";
+  rows?: number;
+  placeholder?: string;
+}
+
+export interface OperatorParameterColorFieldSchema extends OperatorParameterFieldSchemaBase {
+  kind: "color";
+}
+
+export interface OperatorParameterReadoutFieldSchema extends OperatorParameterFieldSchemaBase {
+  kind: "readout";
+}
+
 export type OperatorParameterFieldSchema =
   | OperatorParameterNumberFieldSchema
+  | OperatorParameterSliderFieldSchema
   | OperatorParameterBooleanFieldSchema
-  | OperatorParameterSelectFieldSchema;
+  | OperatorParameterSelectFieldSchema
+  | OperatorParameterTextAreaFieldSchema
+  | OperatorParameterColorFieldSchema
+  | OperatorParameterReadoutFieldSchema;
 
 export interface OperatorParameterSchema {
   sections: OperatorParameterSectionSchema[];
@@ -462,6 +498,7 @@ export interface OperatorDefinition<TParams = unknown> {
 }
 
 export interface OperatorRunContext<TParams = unknown> {
+  nodeId: string;
   params: TParams;
   inputs: Record<string, unknown>;
 }

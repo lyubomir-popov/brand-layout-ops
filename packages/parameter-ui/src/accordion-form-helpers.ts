@@ -183,6 +183,11 @@ export function setupAccordion(accordionContainer: HTMLElement): void {
     const target = (event.target as HTMLElement).closest<HTMLElement>(".bf-accordion-tab");
     if (!target) return;
 
+    const owningAccordion = target.closest<HTMLElement>(".bf-accordion");
+    if (owningAccordion !== accordionContainer) {
+      return;
+    }
+
     const panelId = target.getAttribute("aria-controls");
     const panel = panelId ? document.getElementById(panelId) : null;
     if (!panel) return;

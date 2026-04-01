@@ -33,12 +33,14 @@ The long-term rule is simple:
 
 If you are resuming work in a fresh chat, read this first:
 
-1. `llm-handoff-context.md` — cold-start handoff with current state and sprint TODO
+1. `llm-handoff-context.md` — cold-start handoff with current state
 
 For deeper context:
 
-2. `docs/rebuild-plan.md` — architecture, parity audit, phase checklist
+2. `docs/TODO.md` — architecture, parity audit, active tasks
 3. `docs/product-roadmap.md` — long-term vision
+4. `docs/history.md` — completed work archive
+5. `docs/AGENT-INBOX.md` — async user notes (agent drains on session start)
 
 Agent behavior rules are in `AGENTS.md` (auto-loaded by Copilot).
 
@@ -64,7 +66,7 @@ npm run preview:dev
 That starts a Vite app at `apps/overlay-preview/` which currently:
 
 - evaluates the overlay-layout operator graph in the browser
-- renders the overlay layout and a lightweight SVG motion layer using the coarse orbits and spokes operators
+- renders the selected document scene family in the live stage, with halo on the Three.js path and phyllotaxis, fuzzy-boids, and scatter on dedicated scene-family preview canvases
 - supports text and logo selection, double-click text editing, drag snapping, guide toggling, and CSV or inline content switching
 - surfaces the main operator document controls from an operator parameter schema instead of only from preview-local hardcoded controls
 - includes left and right snapped resize handles for selected text fields, a first-baseline guide, and staged CSV apply or discard controls
@@ -102,28 +104,20 @@ npm run demo:spokes
 
 ## Resume Point
 
-The repo is past pure kernel extraction.
+The repo is past parity rebuild and shell extraction.
 
-Implemented so far:
+Current state:
 
-- overlay-layout operator and deterministic text measurement path
-- preview shell with guides, selection, double-click text editing, snapped drag interaction, and CSV or inline content switching
-- lightweight motion preview layer using `operator-orbits` and `operator-spokes`
-- richer motion preview layering with orbit trails, spoke segments, and echo rings, still kept adapter-side for parity work
-- denser phase-lobed motion treatment in the preview shell so the background reads closer to the old halo-field composition without moving motion semantics into the kernel
-- schema-driven operator parameter controls for frame, safe area, grid, and content source
-- selected-text baseline guide, snapped resize handles, and staged CSV flow with row diagnostics, header mapping status, and seed/apply/discard controls in the preview shell
-- deterministic export-geometry parity script for text anchors, bounds, grid edges, and resolved logo rectangles
-- copy-to-points instancing path
-- coarse orbits and spokes operators with runnable demos
+- Stage 1 parity is closed for the current rebuild scope: overlay text, logo placement, selected-element editing, presets, exports, and the geometry screenshot pass now match the reference closely enough to treat parity as complete.
+- Local `.brand-layout-ops.json` documents are the working artifact, not browser-local preset state.
+- Background scene families are document-owned through `project.backgroundGraph`, with halo, phyllotaxis, fuzzy-boids, and scatter sharing the same document and export envelope.
+- The preview shell is largely controllerized; `apps/overlay-preview/src/main.ts` is now a composition root rather than the old monolith.
 
-Parity is not closed yet. A full March 27 audit against the reference repo reopened the remaining checklist around output profiles, presets and exports, source-backed content formats, style-aware authoring, logo asset semantics, and the halo-field renderer stack.
+Current active queue:
 
-The next work should stay parity-first:
-
-1. close the unchecked items in `docs/rebuild-plan.md`
-2. validate against the reference app visually and with geometry checks
-3. keep broader feature work such as pushing more non-halo settings deeper into preview-local state deferred until the reopened parity checklist is materially closed
+1. Promote the inspector from the current mixed accordion stack to a true selected-operator pane.
+2. Keep shell-level document, export, and preset actions separate from operator parameter panels.
+3. Treat further `main.ts` thinning as optional cleanup, not the primary plan.
 
 ## Later additions
 
@@ -138,27 +132,28 @@ See `docs/architecture.md` and `docs/future-backends.md`.
 
 ## Documentation & Agent Workflow
 
-This repo uses a lightweight 3-file documentation system designed for AI-assisted development with long-running chat sessions. The rules are codified in `AGENTS.md` (auto-loaded by GitHub Copilot agents).
+This repo uses a 5-file documentation system designed for AI-assisted development. The rules are codified in `AGENTS.md` (auto-loaded by GitHub Copilot agents).
 
-### The 3 canonical files
+### The 5 canonical files
 
 | File | Purpose | When to update |
 |------|---------|----------------|
-| `llm-handoff-context.md` | Cold-start handoff for a new chat. Repo orientation + current sprint TODO. | Every session |
-| `docs/rebuild-plan.md` | Architecture decisions, parity audit, phase checklist | When phases/gaps change |
+| `docs/AGENT-INBOX.md` | Inbox — user drops async notes | Agent drains at session start |
+| `llm-handoff-context.md` | Cold-start handoff for a new chat | Every session |
+| `docs/TODO.md` | Active plan, architecture, parity audit | When tasks/gaps change |
 | `docs/product-roadmap.md` | Long-term 5-stage vision | Rarely |
+| `docs/history.md` | Completed work archive | When tasks complete |
 
 ### Recommended workflow
 
-1. **Start a new chat** → paste or point the agent at `llm-handoff-context.md`. It has everything needed to resume.
+1. **Start a new chat** → read `llm-handoff-context.md`, drain `docs/AGENT-INBOX.md`, read `docs/TODO.md`.
 2. **During work** → make code changes, run `npm run typecheck` to verify.
-3. **After completing a task** → update `llm-handoff-context.md` (check off TODOs, update current state). Update `docs/rebuild-plan.md` if a phase item or gap closed.
+3. **After completing a task** → update `docs/TODO.md` (mark done), move completed items to `docs/history.md`, update `llm-handoff-context.md` if current state changed.
 4. **Commit** with area prefix: `halo: add fold seam alpha`, `ui: accordion sections`, `docs: update sprint TODO`.
-5. **End of session** → verify `llm-handoff-context.md` reflects where you stopped. The next chat (or human) picks up from there.
+5. **End of session** → verify `llm-handoff-context.md` reflects where you stopped. Ensure inbox is empty.
 
 ### Copying to another project
 
 1. Copy `AGENTS.md` to the new repo root.
-2. Create `llm-handoff-context.md` with: repo orientation, current state, sprint TODO, key file map.
-3. Optionally create `docs/<plan>.md` and `docs/<roadmap>.md`.
-4. That's it — no other status/TODO files needed.
+2. Create `llm-handoff-context.md`, `docs/TODO.md`, `docs/product-roadmap.md`, `docs/history.md`, `docs/AGENT-INBOX.md`.
+3. Delete any other TODO/status/handoff files. Five is the maximum.
