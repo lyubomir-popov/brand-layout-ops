@@ -119,6 +119,10 @@ Current active queue:
 2. Keep shell-level document, export, and preset actions separate from operator parameter panels.
 3. Treat further `main.ts` thinning as optional cleanup, not the primary plan.
 
+Queued next after that active lane:
+
+4. Align the overlay preview shell with the latest `baseline-foundry` panel contract: upstream dark tone (`bf-theme is-dark`), shipped drawer or pinned-aside resize runtime, and no remaining local shell classes or `[data-*]` style selectors.
+
 ## Later additions
 
 - field generator operators

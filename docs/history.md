@@ -118,6 +118,11 @@ All initial first splits complete: grid, text, overlay composition, overlay inte
 ### 2026-04-01 — Lane B GPU seam validation
 
 - Added `tmp/export-brand-validation.mjs` to capture repeatable rebuild-side validation exports for the default halo frame plus fuzzy-boids GPU and CPU variants.
+
+### 2026-04-01 — Baseline-Foundry shell compliance audit
+
+- Audited `baseline-foundry` as a read-only reference for the next shell pass and confirmed the upstream contract we should adopt later: dark tone is `bf-theme is-dark`, the dense control surface is the shipped `panel` preset, and pinned resize or drawer behavior comes from `initResizableAsides()` plus `initPanelDrawers()` on canonical `bf-application` / `bf-aside` markup.
+- Recorded the larger downstream cleanup as queued Lane F instead of starting it out of order: remove remaining local shell classes such as `.mascot-app`, `.stage*`, and `.operator-selector*`, and remove the remaining `[data-*]` style selector from `apps/overlay-preview/src/styles.css`.
 - Captured validation outputs in `output/export-validation/2026-04-01/` and a matching reference frame in `output/export-validation/2026-04-01/reference/frame-0073.png`.
 - B1 result: the GPU fuzzy-boids spike is not yet ready to be the default preview backend. At `instagram_1080x1350` and `t=3s`, the GPU and CPU fuzzy-boids exports differed by about `2.76%` of pixels (`40290 / 1458000`), with visible dot-radius mismatch despite broadly similar placement. Single-frame export timing stayed in the same few-hundred-millisecond band across validation runs, so the GPU spike did not show a decisive enough export win to justify default status.
 - Product decision: keep the GPU spike as research-only opt-in behind `?gpuBoids=1` or `localStorage["brand-layout-ops-gpu-boids-spike"] = "1"`. The default preview path now stays on the CPU worker or CPU fallback until the export mismatch is resolved.

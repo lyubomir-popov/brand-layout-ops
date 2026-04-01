@@ -202,6 +202,14 @@ Lanes A-D are complete. See `docs/history.md` for the closed parity, shell-reduc
 | E2 | Introduce a unified selected-operator model for `operator-overlay-layout` plus saved background nodes | E1 | The inspector can switch between overlay-layout and saved background operators through one selected-operator state model rather than background-only selection |
 | E3 | Render only the selected operator surface in the parameter pane | E2 | The config editor stops rendering the full multi-accordion stack by default; overlay-layout and scene-family operators each expose a scoped selected-operator pane |
 
+### Lane F — Baseline-Foundry shell compliance (queued after Lane E)
+
+| Step | Task | Depends on | Exit criteria |
+|------|------|------------|---------------|
+| F1 | Align the preview shell with the latest `baseline-foundry` dark panel contract | E3 | The shell uses the upstream dark tone contract (`bf-theme is-dark`) and the current panel preset or tokens rather than local dark-theme wrappers |
+| F2 | Remove local shell class contracts and data-attribute styling | F1 | Overlay-preview shell markup uses `bf-*` plus state classes only, and `apps/overlay-preview/src/styles.css` no longer styles `[data-*]` selectors |
+| F3 | Finish the shipped drawer or pinned-aside integration without local shell policy chrome | F2 | The live shell relies on `initPanelDrawers()` plus `initResizableAsides()` with canonical `bf-application` or `bf-aside` structure and no custom panel-card layer |
+
 ### Non-blocking follow-ups
 
 - [ ] Halo scale zoom coverage
@@ -274,4 +282,4 @@ Verification:
 Remaining blockers versus panel parity:
 
 - No missing upstream primitive blocker was found in this slice.
-- Remaining variance is mostly local shell policy/layout, especially the custom operator-selector strip, rather than a baseline-foundry component gap.
+- Remaining variance is now mostly downstream shell-compliance debt, not an upstream primitive gap: overlay-preview still carries local shell classes such as `.mascot-app`, `.stage*`, and `.operator-selector*`, plus one remaining data-attribute style hook (`body.editor-docked [data-panel-drawer-close]`). Queue this cleanup behind Lane E instead of diverging from the selected-operator work.

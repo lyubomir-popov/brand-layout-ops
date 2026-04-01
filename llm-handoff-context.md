@@ -85,6 +85,10 @@ All earlier EQ-1 through EQ-12 items are complete. The parity queue is closed.
 2. **Lane E2 — introduce a unified selected-operator model.** The inspector should switch between `operator-overlay-layout` and saved background operators through one selected-operator state model instead of the current background-only selector.
 3. **Lane E3 — render only the selected operator surface.** The config editor should stop rendering the full multi-accordion stack by default and move to a true selected-operator pane.
 
+Queued next after Lane E:
+
+4. **Lane F — Baseline-Foundry shell compliance.** Adopt the current upstream dark panel contract (`bf-theme is-dark` plus panel preset or tokens), keep resize and drawer behavior on the shipped `initResizableAsides()` / `initPanelDrawers()` path, and remove remaining local shell classes plus `[data-*]` style selectors from overlay-preview.
+
 ### Non-blocking follow-ups
 
 1. Halo scale zoom coverage.
@@ -102,6 +106,7 @@ All earlier EQ-1 through EQ-12 items are complete. The parity queue is closed.
 - **Read-only dependency** — keep `baseline-foundry` read-only from this repo unless shared shell or style work clearly belongs upstream.
 - **Authoring direction** — keep steering toward ordered visual layers and dedicated project/export chrome rather than adding more inspector-local special cases.
 - **Background graph authority** — `backgroundGraph` is the live background execution model. `sceneFamilyConfigs` only updates at family-switch boundaries and backward-compat automation apply. Do not re-introduce per-edit mirroring.
+- **Shell contract discipline** — do not add new local shell class contracts or new `[data-*]` style selectors in overlay-preview while Lane E is active. Lane F exists to remove the remaining ones once the selected-operator work is done.
 
 ## Key file map
 
