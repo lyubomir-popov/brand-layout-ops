@@ -208,7 +208,7 @@ export function renderDocumentWorkspaceUi(args: {
     meta.textContent = `${summary.fileName} • Last opened ${formatDocumentTimestamp(summary.lastOpenedAt)}`;
 
     const actionsEl = document.createElement("div");
-    actionsEl.className = "bf-cluster preview-cluster--tight";
+    actionsEl.className = "bf-cluster is-tight-cluster";
 
     const reopenButton = document.createElement("button");
     reopenButton.type = "button";

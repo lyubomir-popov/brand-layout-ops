@@ -64,7 +64,7 @@ export function buildContentFormatSection(ctx: PreviewAppContext): HTMLElement {
     const formatSpec = OVERLAY_CONTENT_FORMATS[state.contentFormatKey];
 
     const textarea = document.createElement("textarea");
-    textarea.className = "bf-input is-dense control-inline-text";
+    textarea.className = "bf-input is-dense is-inline-text-control";
     textarea.rows = 5;
     textarea.value = ctx.getStagedCsvDraft() ?? state.params.csvContent?.draft ?? "";
     body.append(createFormGroup("CSV Data", textarea));

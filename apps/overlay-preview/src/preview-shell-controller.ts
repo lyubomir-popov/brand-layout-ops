@@ -51,7 +51,7 @@ export function createPreviewShellController(
   }
 
   function getAppShellEl(): HTMLElement | null {
-    return document.querySelector<HTMLElement>(".mascot-app");
+    return document.querySelector<HTMLElement>(".bf-application");
   }
 
   function getControlPanelEl(): HTMLElement | null {
@@ -63,7 +63,7 @@ export function createPreviewShellController(
   }
 
   function getControlPanelOverlayEl(): HTMLElement | null {
-    return document.querySelector<HTMLElement>(".bf-application__overlay");
+    return document.querySelector<HTMLElement>(".bf-application-overlay");
   }
 
   function getDocumentNameInput(): HTMLInputElement | null {
@@ -89,6 +89,10 @@ export function createPreviewShellController(
   function refreshResizableAsidesRuntime(): void {
     destroyResizableAsides?.();
     destroyResizableAsides = initResizableAsides();
+  }
+
+  function isDockedViewport(): boolean {
+    return window.innerWidth >= 1200;
   }
 
   function updateDocumentUi(): void {
@@ -148,7 +152,7 @@ export function createPreviewShellController(
       return false;
     }
 
-    if (document.body.classList.contains("editor-docked")) {
+    if (isDockedViewport()) {
       return aside.classList.contains("is-pinned") && !aside.classList.contains("is-collapsed");
     }
 
@@ -164,7 +168,7 @@ export function createPreviewShellController(
       return;
     }
 
-    const isDocked = document.body.classList.contains("editor-docked");
+    const isDocked = isDockedViewport();
     toggle?.setAttribute("aria-expanded", String(!isDocked && isOpen));
 
     if (isDocked) {
@@ -261,7 +265,7 @@ export function createPreviewShellController(
     }
 
     if (event.key === "Escape") {
-      if (!document.body.classList.contains("editor-docked") && isControlPanelOpen()) {
+      if (!isDockedViewport() && isControlPanelOpen()) {
         setDrawerOpen(false);
         event.preventDefault();
         return;
@@ -323,13 +327,14 @@ export function createPreviewShellController(
     let lastDockedState: boolean | null = null;
 
     function checkDock(): void {
-      const isDocked = window.innerWidth >= 1200;
+      const isDocked = isDockedViewport();
       if (hasInitializedDockMode && lastDockedState === isDocked) {
         return;
       }
 
-      const desiredOpen = hasInitializedDockMode ? isControlPanelOpen() : true;
-      document.body.classList.toggle("editor-docked", isDocked);
+      const desiredOpen = hasInitializedDockMode
+        ? (isDocked ? true : isControlPanelOpen())
+        : isDocked;
       setDrawerOpen(desiredOpen);
       lastDockedState = isDocked;
       hasInitializedDockMode = true;

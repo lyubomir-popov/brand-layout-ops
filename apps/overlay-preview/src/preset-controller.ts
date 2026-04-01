@@ -365,7 +365,7 @@ export function createPresetController(deps: PresetControllerDeps): PresetContro
     }
 
     const list = document.createElement("div");
-    list.className = "bf-choice-list bf-stack preview-stack--compact";
+    list.className = "bf-choice-list bf-stack is-compact-stack";
 
     for (const preset of state.presets) {
       const row = document.createElement("label");

@@ -44,7 +44,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
 
     if (ctx.getContentSource() === "inline") {
       const textarea = document.createElement("textarea");
-      textarea.className = "bf-input is-dense control-inline-text";
+      textarea.className = "bf-input is-dense is-inline-text-control";
       textarea.rows = 3;
       textarea.value = ctx.getResolvedTextFieldText(field);
       textarea.addEventListener("input", () => {

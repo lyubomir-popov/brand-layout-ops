@@ -14,7 +14,7 @@ body {
   overflow: hidden;
 }
 
-.mascot-app {
+body.bf-theme.is-dark {
   --vf-color-text-default: #ffffff;
   --vf-color-text-muted: #c8c8c8;
   --vf-color-text-inactive: #8f8f8f;
@@ -36,6 +36,9 @@ body {
   --bf-app-aside-width-max: 30rem;
   --bf-app-aside-width-wide: min(100vw, 30rem);
   background: #202020;
+}
+
+.bf-application {
   block-size: 100dvh;
   max-block-size: 100dvh;
   min-block-size: 100dvh;
@@ -43,14 +46,14 @@ body {
   width: 100%;
 }
 
-.mascot-app > .bf-main,
-.mascot-app > .bf-aside {
+.bf-application > .bf-main,
+.bf-application > .bf-aside {
   block-size: 100%;
   max-block-size: 100%;
   min-block-size: 0;
 }
 
-.mascot-app .bf-aside {
+.bf-application .bf-aside {
   max-block-size: 100%;
   overflow: hidden;
   overscroll-behavior: contain;
@@ -59,51 +62,42 @@ body {
 /* Override baseline-foundry .bf-panel.is-fill { min-block-size: 100% }
    which makes the panel grow unbounded inside the fixed-height aside,
    preventing .bf-panel-content overflow: auto from ever triggering. */
-.mascot-app .bf-panel.is-fill {
+.bf-application .bf-panel.is-fill {
   block-size: 100%;
   min-block-size: 0;
 }
 
-.mascot-app .bf-panel-content {
+.bf-application .bf-panel-content {
   min-block-size: 0;
   overflow: auto;
   overscroll-behavior: contain;
 }
 
-body.editor-docked .mascot-app .bf-application__aside-resize-handle {
+.bf-application.has-pinned-aside .bf-application-aside-resize-handle {
   inset-inline-start: -0.75rem;
   width: 1.5rem;
 }
 
-body.editor-docked .mascot-app .bf-application__aside-resize-handle::after {
+.bf-application.has-pinned-aside .bf-application-aside-resize-handle::after {
   background: rgba(255, 255, 255, 0.18);
   inset-block: 1rem;
 }
 
-body.editor-docked .mascot-app .bf-application__aside-resize-handle:hover::after,
-body.editor-docked .mascot-app .bf-application__aside-resize-handle:focus-visible::after,
-body.editor-docked .mascot-app.is-resizing-aside .bf-application__aside-resize-handle::after {
+.bf-application.has-pinned-aside .bf-application-aside-resize-handle:hover::after,
+.bf-application.has-pinned-aside .bf-application-aside-resize-handle:focus-visible::after,
+.bf-application.has-pinned-aside.is-resizing-aside .bf-application-aside-resize-handle::after {
   background: rgba(246, 183, 60, 0.95);
 }
 
-body.editor-docked .mascot-app .bf-application__aside-resize-handle:focus-visible {
+.bf-application.has-pinned-aside .bf-application-aside-resize-handle:focus-visible {
   box-shadow: inset 0 0 0 2px rgba(246, 183, 60, 0.55);
 }
 
-.preview-stage-actions {
+.is-stage-actions {
   inline-size: 100%;
 }
 
-body.editor-docked .bf-application__overlay,
-body.editor-docked [data-panel-drawer-close] {
-  display: none;
-}
-
-body.editor-docked .bf-stage-shell {
-  min-block-size: 100%;
-}
-
-.stage {
+.is-stage {
   --stage-aspect-ratio: 1.7777778;
   aspect-ratio: 16 / 9;
   background: #202020;
@@ -116,7 +110,7 @@ body.editor-docked .bf-stage-shell {
   width: min(100%, calc((100dvh - 2rem) * var(--stage-aspect-ratio)));
 }
 
-.stage > canvas {
+.is-stage > canvas {
   display: block;
   inset: 0;
   position: absolute;
@@ -124,15 +118,15 @@ body.editor-docked .bf-stage-shell {
   width: 100%;
 }
 
-.stage__scene-preview,
-.stage__scene-preview-gpu,
-.stage__text-overlay {
+.is-scene-preview,
+.is-scene-preview-gpu,
+.is-text-overlay {
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
 }
 
-.stage__authoring-layer {
+.is-authoring-layer {
   inset: 0;
   pointer-events: none;
   position: absolute;
@@ -140,7 +134,7 @@ body.editor-docked .bf-stage-shell {
   -webkit-user-select: none;
 }
 
-.stage__authoring-baseline-guide {
+.is-authoring-baseline-guide {
   background: rgba(255, 79, 79, 0.9);
   box-shadow: 0 0 0 1px rgba(255, 79, 79, 0.3);
   height: 1px;
@@ -149,7 +143,7 @@ body.editor-docked .bf-stage-shell {
   right: 0;
 }
 
-.stage__authoring-box {
+.is-authoring-box {
   border: 1px dashed rgba(255, 255, 255, 0.55);
   border-radius: 0.35rem;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
@@ -158,16 +152,16 @@ body.editor-docked .bf-stage-shell {
   -webkit-user-select: none;
 }
 
-.stage__authoring-box.is-selected {
+.is-authoring-box.is-selected {
   border-color: #f6b73c;
   box-shadow: 0 0 0 1px rgba(246, 183, 60, 0.4);
 }
 
-.stage__authoring-box.is-hover {
+.is-authoring-box.is-hover {
   border-color: rgba(255, 255, 255, 0.7);
 }
 
-.stage__authoring-handle {
+.is-authoring-handle {
   background: #f6b73c;
   border: 1px solid rgba(0, 0, 0, 0.5);
   border-radius: 1px;
@@ -178,14 +172,14 @@ body.editor-docked .bf-stage-shell {
   z-index: 1;
 }
 
-.stage__authoring-handle--nw { cursor: nwse-resize; left: -4px; top: -4px; }
-.stage__authoring-handle--ne { cursor: nesw-resize; right: -4px; top: -4px; }
-.stage__authoring-handle--sw { cursor: nesw-resize; left: -4px; bottom: -4px; }
-.stage__authoring-handle--se { cursor: nwse-resize; right: -4px; bottom: -4px; }
-.stage__authoring-handle--e { cursor: ew-resize; right: -4px; top: 50%; transform: translateY(-50%); }
-.stage__authoring-handle--w { cursor: ew-resize; left: -4px; top: 50%; transform: translateY(-50%); }
+.is-authoring-handle.is-nw { cursor: nwse-resize; left: -4px; top: -4px; }
+.is-authoring-handle.is-ne { cursor: nesw-resize; right: -4px; top: -4px; }
+.is-authoring-handle.is-sw { cursor: nesw-resize; left: -4px; bottom: -4px; }
+.is-authoring-handle.is-se { cursor: nwse-resize; right: -4px; bottom: -4px; }
+.is-authoring-handle.is-e { cursor: ew-resize; right: -4px; top: 50%; transform: translateY(-50%); }
+.is-authoring-handle.is-w { cursor: ew-resize; left: -4px; top: 50%; transform: translateY(-50%); }
 
-.stage__authoring-box-label {
+.is-authoring-box-label {
   background: rgba(15, 15, 15, 0.88);
   border-radius: 999px;
   color: #ffffff;
@@ -201,7 +195,7 @@ body.editor-docked .bf-stage-shell {
   white-space: nowrap;
 }
 
-.stage__inline-editor {
+.is-inline-editor {
   background: rgba(20, 20, 20, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.7);
   box-sizing: border-box;
@@ -217,43 +211,43 @@ body.editor-docked .bf-stage-shell {
   resize: none;
 }
 
-.mascot-app .bf-field {
+.bf-application .bf-field {
   margin-top: 0;
 }
 
-.mascot-app .bf-field.is-checkbox {
+.bf-application .bf-field.is-checkbox {
   gap: 0;
 }
 
-.mascot-app .bf-field.is-checkbox .bf-control {
+.bf-application .bf-field.is-checkbox .bf-control {
   gap: 0;
 }
 
-.mascot-app .bf-field.is-checkbox .bf-checkbox {
+.bf-application .bf-field.is-checkbox .bf-checkbox {
   align-items: center;
   min-block-size: var(--bf-control-block-size-dense);
 }
 
-.preview-stack--compact {
+.is-compact-stack {
   --bf-stack-space: 0.75rem;
 }
 
-.preview-inspector-rail {
+.is-inspector-rail {
   min-block-size: 0;
 }
 
-.preview-inspector-rail + .preview-inspector-rail {
+.is-inspector-rail + .is-inspector-rail {
   border-top: 1px solid var(--bf-color-rule);
   margin-top: 1rem;
   padding-top: 1rem;
 }
 
-.preview-inspector-rail-heading {
+.is-inspector-rail-heading {
   display: grid;
   gap: 0.25rem;
 }
 
-.preview-inspector-rail-label {
+.is-inspector-rail-label {
   color: var(--bf-color-muted);
   font-size: 0.6875rem;
   font-weight: 600;
@@ -261,38 +255,50 @@ body.editor-docked .bf-stage-shell {
   text-transform: uppercase;
 }
 
-.preview-cluster--tight {
+.is-tight-cluster {
   gap: 0.5rem;
 }
 
-.control-inline-text {
+.is-inline-text-control {
   resize: vertical;
 }
 
 @media (max-width: 720px) {
-  .stage {
+  .is-stage {
     width: min(100%, calc((100dvh - 1.5rem) * var(--stage-aspect-ratio)));
   }
 }
 
 @media (min-width: 1200px) {
-  .preview-stage-actions {
+  .is-stage-actions {
     display: none;
+  }
+
+  .bf-application-overlay {
+    display: none;
+  }
+
+  .bf-aside.is-pinned .bf-panel-controls {
+    display: none;
+  }
+
+  .bf-stage-shell {
+    min-block-size: 100%;
   }
 }
 
 /* Operator selector between shell sections and operator panels */
-.operator-selector {
+.is-operator-selector {
   border-bottom: 1px solid var(--bf-color-rule);
   padding: 0.5rem 1rem;
 }
 
-.operator-selector__heading {
+.is-operator-selector-heading {
   margin-bottom: 0.375rem;
 }
 
-.operator-selector__heading .bf-form-label,
-.operator-selector__subheading {
+.is-operator-selector-heading .bf-form-label,
+.is-operator-selector-subheading {
   color: var(--bf-color-muted);
   font-size: 0.6875rem;
   font-weight: 600;
@@ -300,21 +306,21 @@ body.editor-docked .bf-stage-shell {
   text-transform: uppercase;
 }
 
-.operator-selector__help {
+.is-operator-selector-help {
   margin-top: 0;
 }
 
-.operator-selector__section + .operator-selector__section {
+.is-operator-selector-section + .is-operator-selector-section {
   margin-top: 0.75rem;
 }
 
-.operator-selector__options {
+.is-operator-selector-options {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
 }
 
-.operator-selector__option {
+.is-operator-selector-option {
   align-items: center;
   cursor: pointer;
   display: flex;
@@ -323,22 +329,22 @@ body.editor-docked .bf-stage-shell {
   line-height: 1rem;
 }
 
-.operator-selector__option input[type="radio"] {
+.is-operator-selector-option input[type="radio"] {
   margin: 0;
 }
 
-.operator-selector__node {
+.is-operator-selector-node {
   align-items: start;
   grid-template-columns: auto minmax(0, 1fr);
 }
 
-.operator-selector__node-copy {
+.is-operator-selector-node-copy {
   display: grid;
   gap: 0.2rem;
   min-width: 0;
 }
 
-.operator-selector__node .bf-choice-row-meta {
+.is-operator-selector-node .bf-choice-row-meta {
   font-size: 0.72rem;
   line-height: 1.25;
 }

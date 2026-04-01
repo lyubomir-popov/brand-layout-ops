@@ -50,6 +50,15 @@ All initial first splits complete: grid, text, overlay composition, overlay inte
 - Document/state refresh paths now normalize both the saved background-node focus and the higher-level selected-operator choice after load, reset, and source-default apply.
 - Validation: `npm run typecheck` and `npm run preview:build`.
 
+## Lane F1/F2 — shell contract cleanup (2026-04-01)
+
+- Switched the live preview shell to the canonical `baseline-foundry` dark root contract: `body` now uses `bf-theme is-dark`, the application overlay now uses `bf-application-overlay`, and the resize handle now uses `bf-application-aside-resize-handle`.
+- Removed the preview-local `editor-docked` body class and now derive docked-vs-overlay mode directly from viewport width plus canonical aside/application state.
+- Removed the remaining bespoke shell class names from live markup and styles, replacing them with `bf-*` plus `is-*` state naming. The old `.mascot-app`, `.stage*`, `.preview-*`, and `.operator-selector*` contracts are gone from source.
+- `apps/overlay-preview/src/styles.css` no longer styles `[data-*]` selectors.
+- Finished the F3 runtime seam: desktop now starts pinned open, mobile now starts with the drawer closed, and a Playwright smoke pass confirmed the canonical `bf-application-overlay` open/close path plus the pinned-aside desktop path both behave correctly.
+- Validation: `npm run typecheck` and `npm run preview:build`.
+
 ## Completed Execution Queue
 
 - EQ-1 through EQ-12 are complete.

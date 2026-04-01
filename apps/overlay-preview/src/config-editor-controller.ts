@@ -113,10 +113,10 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
 
   function buildOperatorSelectorEl(): HTMLElement {
     const section = document.createElement("li");
-    section.className = "bf-accordion-group operator-selector";
+    section.className = "bf-accordion-group is-operator-selector";
 
     const heading = document.createElement("div");
-    heading.className = "operator-selector__heading";
+    heading.className = "is-operator-selector-heading";
 
     const label = document.createElement("span");
     label.className = "bf-form-label";
@@ -124,23 +124,23 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
     heading.append(label);
 
     const help = document.createElement("p");
-    help.className = "bf-form-help is-tight bf-u-no-margin--bottom operator-selector__help";
+    help.className = "bf-form-help is-tight bf-u-no-margin--bottom is-operator-selector-help";
     help.textContent = "Select one operator surface to edit. Rendered output chooses which saved background node feeds the preview.";
 
     const outputSection = document.createElement("div");
-    outputSection.className = "operator-selector__section";
+    outputSection.className = "is-operator-selector-section";
 
     const outputLabel = document.createElement("div");
-    outputLabel.className = "operator-selector__subheading";
+    outputLabel.className = "is-operator-selector-subheading";
     outputLabel.textContent = "Rendered Output";
     outputSection.append(outputLabel);
 
     const radioGroup = document.createElement("div");
-    radioGroup.className = "operator-selector__options";
+    radioGroup.className = "is-operator-selector-options";
 
     for (const sceneFamilyKey of OVERLAY_SCENE_FAMILY_ORDER) {
       const radioLabel = document.createElement("label");
-      radioLabel.className = "operator-selector__option";
+      radioLabel.className = "is-operator-selector-option";
 
       const radio = document.createElement("input");
       radio.type = "radio";
@@ -175,19 +175,19 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
     outputSection.append(radioGroup);
 
     const nodesSection = document.createElement("div");
-    nodesSection.className = "operator-selector__section";
+  nodesSection.className = "is-operator-selector-section";
 
     const nodesLabel = document.createElement("div");
-    nodesLabel.className = "operator-selector__subheading";
+  nodesLabel.className = "is-operator-selector-subheading";
     nodesLabel.textContent = "Parameter Surface";
     nodesSection.append(nodesLabel);
 
     const nodeList = document.createElement("div");
-    nodeList.className = "bf-choice-list bf-stack preview-stack--compact";
+    nodeList.className = "bf-choice-list bf-stack is-compact-stack";
     const selectedOperatorId = deps.getSelectedOperatorId();
 
     const overlayRow = document.createElement("label");
-    overlayRow.className = "bf-choice-row operator-selector__node";
+    overlayRow.className = "bf-choice-row is-operator-selector-node";
 
     const overlayRadio = document.createElement("input");
     overlayRadio.type = "radio";
@@ -204,7 +204,7 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
     });
 
     const overlayCopy = document.createElement("span");
-    overlayCopy.className = "operator-selector__node-copy";
+    overlayCopy.className = "is-operator-selector-node-copy";
 
     const overlayName = document.createElement("span");
     overlayName.className = "bf-choice-row-name";
@@ -220,7 +220,7 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
 
     for (const node of state.documentProject.backgroundGraph.nodes) {
       const row = document.createElement("label");
-      row.className = "bf-choice-row operator-selector__node";
+      row.className = "bf-choice-row is-operator-selector-node";
 
       const radio = document.createElement("input");
       radio.type = "radio";
@@ -237,7 +237,7 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
       });
 
       const copy = document.createElement("span");
-      copy.className = "operator-selector__node-copy";
+      copy.className = "is-operator-selector-node-copy";
 
       const nameSpan = document.createElement("span");
       nameSpan.className = "bf-choice-row-name";
@@ -293,13 +293,13 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
 
   function buildInspectorRail(title: string, description: string, accordion: HTMLElement): HTMLElement {
     const rail = document.createElement("section");
-    rail.className = "preview-inspector-rail bf-stack preview-stack--compact";
+    rail.className = "bf-stack is-compact-stack is-inspector-rail";
 
     const heading = document.createElement("div");
-    heading.className = "preview-inspector-rail-heading";
+    heading.className = "is-inspector-rail-heading";
 
     const label = document.createElement("span");
-    label.className = "bf-form-label preview-inspector-rail-label";
+    label.className = "bf-form-label is-inspector-rail-label";
     label.textContent = title;
 
     const help = document.createElement("p");

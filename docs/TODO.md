@@ -203,17 +203,17 @@ Lane E is complete: workspace-level controls now render in a dedicated shell rai
 | E2 | Introduce a unified selected-operator model for `operator-overlay-layout` plus saved background nodes | E1 | **DONE** — the inspector now switches between overlay-layout and saved background operators through one selected-operator state model rather than the earlier background-only selector |
 | E3 | Render only the selected operator surface in the parameter pane | E2 | **DONE** — the config editor now renders only the selected operator surface in the parameter rail instead of the earlier mixed overlay-plus-background stack |
 
-### Lane F — Baseline-Foundry shell compliance (active)
+### Lane F — Baseline-Foundry shell compliance (complete)
 
 | Step | Task | Depends on | Exit criteria |
 |------|------|------------|---------------|
-| F1 | Align the preview shell with the latest `baseline-foundry` dark panel contract | E3 | The shell uses the upstream dark tone contract (`bf-theme is-dark`) and the current panel preset or tokens rather than local dark-theme wrappers |
-| F2 | Remove local shell class contracts and data-attribute styling | F1 | Overlay-preview shell markup uses `bf-*` plus state classes only, and `apps/overlay-preview/src/styles.css` no longer styles `[data-*]` selectors |
-| F3 | Finish the shipped drawer or pinned-aside integration without local shell policy chrome | F2 | The live shell relies on `initPanelDrawers()` plus `initResizableAsides()` with canonical `bf-application` or `bf-aside` structure and no custom panel-card layer |
+| F1 | Align the preview shell with the latest `baseline-foundry` dark panel contract | E3 | **DONE** — the live shell now uses the canonical `bf-theme is-dark` root plus canonical application overlay and resize-handle classes instead of the older local dark-theme wrappers |
+| F2 | Remove local shell class contracts and data-attribute styling | F1 | **DONE** — overlay-preview shell markup now uses `bf-*` plus `is-*` state classes only, and `apps/overlay-preview/src/styles.css` no longer styles `[data-*]` selectors |
+| F3 | Finish the shipped drawer or pinned-aside integration without local shell policy chrome | F2 | **DONE** — the live shell now starts desktop pinned-open and mobile drawer-closed, while relying on `initPanelDrawers()` plus `initResizableAsides()` with canonical `bf-application` / `bf-aside` structure and no custom panel-card layer |
 
 ### Lane G — Document-model regression fixes (closed 2026-04-01)
 
-These regressions were introduced during the document-model and shell extraction work. They are now closed, so feature work can continue on Lane F.
+These regressions were introduced during the document-model and shell extraction work. They are now closed, so feature work can continue on optional follow-ups or later roadmap work.
 
 | Step | Task | Status | Detail |
 |------|------|--------|--------|
@@ -221,6 +221,12 @@ These regressions were introduced during the document-model and shell extraction
 | G2 | Remove remaining localStorage presets/content-format persistence | **DONE** | Presets section removed from config editor. localStorage read/write for presets and output-format stubbed to no-ops. Presets and content-format are legacy; only file-based document save and source-default writeback should persist state. |
 | G3 | Remove content-format section from config editor | **DONE** | The dedicated Content Format accordion is no longer registered in the live inspector. Content-format remains a document/source-default concern in the data model, but it is no longer presented as a localStorage-era shell toggle. |
 | G4 | Verify source-default writeback round-trips all operator settings | **DONE** | User re-checked the regression during this session and confirmed source-default writeback still works; the earlier failure report was a false alarm. |
+
+## Immediate next steps after the above is done
+- **Content-format vs project variants.** If file-backed variants replace content-format switching, current format UI can shrink later.
+- **Full compositor model.** Layer-stack direction is committed but the active queue should add parity-friendly seams first, not schedule a premature compositor rewrite.
+- **Timeline and clip model.** Belongs after parity, as a sequencing layer above the operator graph.
+- **Cross-operator transition choreography.** Future timeline/sequencing concern, not preview-local temporal glue.
 
 ### Non-blocking follow-ups
 
@@ -233,15 +239,12 @@ These are optional spot checks, not Stage 1 parity gates and not part of the act
 
 Deferred until explicitly promoted. Each carries a working assumption.
 
-- **Timeline and clip model.** Belongs after parity, as a sequencing layer above the operator graph.
 - **Broader graph persistence.** First background-chain persistence landed via `project.backgroundGraph`. Expand only after list-first network view proves out.
 - **GPU/execution backends.** Keep moderate operators in TypeScript. Allow GPU paths only where profiling proves TypeScript insufficient.
 - **Spokes decomposition.** Keep `operator-spokes` coarse for parity. Later split toward wave, mask, and polar-field operators.
-- **Full compositor model.** Layer-stack direction is committed but the active queue should add parity-friendly seams first, not schedule a premature compositor rewrite.
+
 - **Arbitrary output-size authoring.** Custom sizes stay below parity-critical work.
 - **Paragraph-style set authoring.** Wait for stable project model and operator-scoped parameter surfaces.
-- **Content-format vs project variants.** If file-backed variants replace content-format switching, current format UI can shrink later.
-- **Cross-operator transition choreography.** Future timeline/sequencing concern, not preview-local temporal glue.
 
 ### Splits to not get bogged down with
 

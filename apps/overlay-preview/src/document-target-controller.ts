@@ -247,7 +247,7 @@ export function createDocumentTargetController(
     container.append(help);
 
     const toolbar = document.createElement("div");
-    toolbar.className = "bf-cluster preview-cluster--tight";
+    toolbar.className = "bf-cluster is-tight-cluster";
 
     const addButton = document.createElement("button");
     addButton.type = "button";
@@ -283,7 +283,7 @@ export function createDocumentTargetController(
     container.append(toolbar);
 
     const list = document.createElement("div");
-    list.className = "bf-choice-list bf-stack preview-stack--compact";
+    list.className = "bf-choice-list bf-stack is-compact-stack";
 
     for (const target of state.documentProject.targets) {
       const profile = OUTPUT_PROFILES[target.outputProfileKey];

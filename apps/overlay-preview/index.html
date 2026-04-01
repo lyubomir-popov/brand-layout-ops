@@ -6,29 +6,29 @@
   <meta name="theme-color" content="#202020">
   <title>Brand Layout Ops Preview</title>
 </head>
-<body class="bf-theme" data-bf-tone="dark">
-  <div class="bf-application mascot-app" data-bf-tone="dark" data-aside-resize-storage-key="brand-layout-ops-control-panel-width-v1">
+<body class="bf-theme is-dark">
+  <div class="bf-application" data-aside-resize-storage-key="brand-layout-ops-control-panel-width-v1">
     <main class="bf-main">
       <div class="bf-fixed-width bf-stage-shell">
-        <div class="bf-actions is-end preview-stage-actions">
+        <div class="bf-actions is-end is-stage-actions">
           <button class="bf-panel-toggle" type="button" data-control-panel-toggle data-panel-drawer-toggle aria-controls="control-drawer" aria-expanded="false">Controls</button>
         </div>
-        <section class="stage" data-stage aria-label="Animated halo field">
+        <section class="is-stage" data-stage aria-label="Animated halo field">
           <canvas data-stage-canvas aria-hidden="true"></canvas>
-          <canvas class="stage__scene-preview" data-scene-preview aria-hidden="true"></canvas>
-          <canvas class="stage__scene-preview-gpu" data-scene-preview-gpu aria-hidden="true"></canvas>
-          <canvas class="stage__text-overlay" data-text-overlay aria-hidden="true"></canvas>
-          <svg class="stage__svg-overlay" data-svg-overlay aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></svg>
-          <div class="stage__authoring-layer" data-authoring-layer></div>
+          <canvas class="is-scene-preview" data-scene-preview aria-hidden="true"></canvas>
+          <canvas class="is-scene-preview-gpu" data-scene-preview-gpu aria-hidden="true"></canvas>
+          <canvas class="is-text-overlay" data-text-overlay aria-hidden="true"></canvas>
+          <svg data-svg-overlay aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></svg>
+          <div class="is-authoring-layer" data-authoring-layer></div>
         </section>
       </div>
     </main>
 
-    <div class="bf-application__overlay" data-panel-drawer-close aria-controls="control-drawer" aria-hidden="true"></div>
+    <div class="bf-application-overlay" data-panel-drawer-close aria-controls="control-drawer" aria-hidden="true"></div>
 
     <aside class="bf-aside is-overlay is-medium" id="control-drawer" data-control-panel aria-label="Animation controls" aria-hidden="true">
       <div
-        class="bf-application__aside-resize-handle"
+        class="bf-application-aside-resize-handle"
         data-control-panel-resize-handle
         role="separator"
         tabindex="0"
@@ -45,7 +45,7 @@
           </div>
         </div>
         <div class="bf-panel-content bf-grid-scope">
-          <div class="bf-stack preview-stack--compact" data-config-editor></div>
+          <div class="bf-stack is-compact-stack" data-config-editor></div>
         </div>
       </div>
     </aside>

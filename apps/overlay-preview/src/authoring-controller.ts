@@ -85,7 +85,7 @@ export function createAuthoringInteractionController(
     box.hidden = true;
 
     const label = document.createElement("div");
-    label.className = "stage__authoring-box-label";
+    label.className = "is-authoring-box-label";
     box.appendChild(label);
 
     return { box, label };
@@ -223,7 +223,7 @@ export function createAuthoringInteractionController(
     const typeScale = Math.max(0.1, Math.min(scaleX, scaleY));
 
     const textarea = document.createElement("textarea");
-    textarea.className = "stage__inline-editor";
+    textarea.className = "is-inline-editor";
     textarea.value = ctx.getResolvedTextFieldText(field);
     textarea.style.left = `${(editorBounds.leftPx / widthPx) * 100}%`;
     textarea.style.top = `${(editorBounds.topPx / heightPx) * 100}%`;
@@ -749,23 +749,23 @@ export function createAuthoringInteractionController(
 
     const layer = getAuthoringLayerEl();
     if (layer) {
-      const hover = createAuthoringBox("stage__authoring-box is-hover");
+      const hover = createAuthoringBox("is-authoring-box is-hover");
       authoringHoverBox = hover.box;
       authoringHoverLabel = hover.label;
 
-      const selected = createAuthoringBox("stage__authoring-box is-selected");
+      const selected = createAuthoringBox("is-authoring-box is-selected");
       authoringSelectedBox = selected.box;
       authoringSelectedLabel = selected.label;
 
       for (const edge of ["nw", "ne", "sw", "se", "e", "w"] as ResizeEdge[]) {
         const handle = document.createElement("div");
-        handle.className = `stage__authoring-handle stage__authoring-handle--${edge}`;
+        handle.className = `is-authoring-handle is-${edge}`;
         handle.dataset.resizeEdge = edge;
         authoringSelectedBox.appendChild(handle);
       }
 
       authoringBaselineGuide = document.createElement("div");
-      authoringBaselineGuide.className = "stage__authoring-baseline-guide";
+      authoringBaselineGuide.className = "is-authoring-baseline-guide";
       authoringBaselineGuide.hidden = true;
 
       layer.append(authoringHoverBox, authoringSelectedBox, authoringBaselineGuide);

@@ -232,7 +232,7 @@ export function createOverlayEditingController(deps: OverlayEditingControllerDep
 
   function createOverlayItemActionRow(): HTMLElement {
     const actions = document.createElement("div");
-    actions.className = "bf-cluster preview-cluster--tight";
+    actions.className = "bf-cluster is-tight-cluster";
 
     for (const field of state.params.textFields) {
       const selectButton = document.createElement("button");
