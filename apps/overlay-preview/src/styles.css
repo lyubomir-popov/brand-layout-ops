@@ -238,6 +238,29 @@ body.editor-docked .bf-stage-shell {
   --bf-stack-space: 0.75rem;
 }
 
+.preview-inspector-rail {
+  min-block-size: 0;
+}
+
+.preview-inspector-rail + .preview-inspector-rail {
+  border-top: 1px solid var(--bf-color-rule);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.preview-inspector-rail-heading {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.preview-inspector-rail-label {
+  color: var(--bf-color-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .preview-cluster--tight {
   gap: 0.5rem;
 }

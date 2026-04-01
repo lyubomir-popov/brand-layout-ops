@@ -234,6 +234,47 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
     return true;
   }
 
+  function buildSectionAccordion(
+    sections: ParameterSectionDefinition[],
+    renderedSections: RenderedSection[]
+  ): HTMLElement {
+    const accordion = document.createElement("aside");
+    accordion.className = "bf-accordion";
+
+    const list = document.createElement("ul");
+    list.className = "bf-accordion-list";
+
+    for (const section of sections) {
+      const element = section.factory();
+      element.dataset.sectionKey = section.key;
+      list.append(element);
+      renderedSections.push({ section, element });
+    }
+
+    accordion.append(list);
+    return accordion;
+  }
+
+  function buildInspectorRail(title: string, description: string, accordion: HTMLElement): HTMLElement {
+    const rail = document.createElement("section");
+    rail.className = "preview-inspector-rail bf-stack preview-stack--compact";
+
+    const heading = document.createElement("div");
+    heading.className = "preview-inspector-rail-heading";
+
+    const label = document.createElement("span");
+    label.className = "bf-form-label preview-inspector-rail-label";
+    label.textContent = title;
+
+    const help = document.createElement("p");
+    help.className = "bf-form-help is-tight bf-u-no-margin--bottom";
+    help.textContent = description;
+
+    heading.append(label, help);
+    rail.append(heading, accordion);
+    return rail;
+  }
+
   function buildConfigEditor(): void {
     const container = deps.getConfigEditor();
     if (!container) {
@@ -255,40 +296,47 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
     const backgroundSections = operatorSections.filter((section) => section.group === activeGroup);
     const renderedSections: RenderedSection[] = [];
 
-    const accordion = document.createElement("aside");
-    accordion.className = "bf-accordion";
-
-    const list = document.createElement("ul");
-    list.className = "bf-accordion-list";
-
-    for (const section of shellSections) {
-      const element = section.factory();
-      element.dataset.sectionKey = section.key;
-      list.append(element);
-      renderedSections.push({ section, element });
+    if (shellSections.length > 0) {
+      const shellAccordion = buildSectionAccordion(shellSections, renderedSections);
+      container.append(
+        buildInspectorRail(
+          "Workspace",
+          "Document, export, playback, and source-default actions stay shell-level.",
+          shellAccordion
+        )
+      );
+      setupAccordion(shellAccordion);
     }
 
     if (overlayLayoutSections.length > 0 || backgroundSections.length > 0) {
-      list.append(buildOperatorSelectorEl());
+      const operatorAccordion = buildSectionAccordion([], renderedSections);
+      const operatorList = operatorAccordion.querySelector(".bf-accordion-list");
+      operatorList?.append(buildOperatorSelectorEl());
+
+      for (const section of overlayLayoutSections) {
+        const element = section.factory();
+        element.dataset.sectionKey = section.key;
+        operatorList?.append(element);
+        renderedSections.push({ section, element });
+      }
+
+      for (const section of backgroundSections) {
+        const element = section.factory();
+        element.dataset.sectionKey = section.key;
+        operatorList?.append(element);
+        renderedSections.push({ section, element });
+      }
+
+      container.append(
+        buildInspectorRail(
+          "Parameters",
+          "Overlay layout and the currently selected saved background operator own the parameter pane.",
+          operatorAccordion
+        )
+      );
+      setupAccordion(operatorAccordion);
     }
 
-    for (const section of overlayLayoutSections) {
-      const element = section.factory();
-      element.dataset.sectionKey = section.key;
-      list.append(element);
-      renderedSections.push({ section, element });
-    }
-
-    for (const section of backgroundSections) {
-      const element = section.factory();
-      element.dataset.sectionKey = section.key;
-      list.append(element);
-      renderedSections.push({ section, element });
-    }
-
-    accordion.append(list);
-    container.append(accordion);
-    setupAccordion(accordion);
     initRangeControls({ root: container });
 
     let restoredSection = false;

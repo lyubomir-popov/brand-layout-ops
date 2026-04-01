@@ -196,9 +196,10 @@ Lanes A-D are complete. See `docs/history.md` for the closed parity, shell-reduc
 
 ### Lane E — Selected-operator pane
 
+E1 is complete: workspace-level controls now render in a dedicated shell rail above a separate operator pane, so the inspector no longer treats one mixed accordion stack as the long-term model.
+
 | Step | Task | Depends on | Exit criteria |
 |------|------|------------|---------------|
-| E1 | Split shell-level sections from operator-level pane policy | A-D complete | Document, preset, playback, and export actions remain shell-level; the inspector no longer treats "all shell accordions plus the active background group" as the long-term pane model |
 | E2 | Introduce a unified selected-operator model for `operator-overlay-layout` plus saved background nodes | E1 | The inspector can switch between overlay-layout and saved background operators through one selected-operator state model rather than background-only selection |
 | E3 | Render only the selected operator surface in the parameter pane | E2 | The config editor stops rendering the full multi-accordion stack by default; overlay-layout and scene-family operators each expose a scoped selected-operator pane |
 
@@ -216,7 +217,7 @@ These regressions were introduced during the document-model and shell extraction
 
 | Step | Task | Status | Detail |
 |------|------|--------|--------|
-| G1 | File toolbar buttons (New/Open/Save/Save As/Duplicate) broken in Chrome | **DONE** | Root cause was the File System Access picker config, not the shell wiring: Chromium rejects accept suffixes longer than 16 characters, so passing `.brand-layout-ops.json` into `showOpenFilePicker` / `showSaveFilePicker` made the picker fail before opening. Picker filters now use `.json` while suggested filenames still use `.brand-layout-ops.json`, and save/open now degrade to browser download or file-input fallback if the picker still fails unexpectedly. |
+| G1 | File toolbar buttons (New/Open/Save/Save As/Duplicate) broken in Chrome | **DONE** | User later confirmed the toolbar works in Chrome incognito, so the original normal-profile failure was likely extension or profile interference rather than a current repo regression. The document picker still uses the safer `.json` filter plus fallback path, but no further toolbar bug work remains queued. |
 | G2 | Remove remaining localStorage presets/content-format persistence | **DONE** | Presets section removed from config editor. localStorage read/write for presets and output-format stubbed to no-ops. Presets and content-format are legacy; only file-based document save and source-default writeback should persist state. |
 | G3 | Remove content-format section from config editor | **DONE** | The dedicated Content Format accordion is no longer registered in the live inspector. Content-format remains a document/source-default concern in the data model, but it is no longer presented as a localStorage-era shell toggle. |
 | G4 | Verify source-default writeback round-trips all operator settings | **DONE** | User re-checked the regression during this session and confirmed source-default writeback still works; the earlier failure report was a false alarm. |

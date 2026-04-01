@@ -32,10 +32,15 @@ All initial first splits complete: grid, text, overlay composition, overlay inte
 
 ## Document-model regression follow-up (2026-04-01)
 
-- Fixed the Chrome file-toolbar regression in the document workspace. The root cause was the File System Access picker config in `document-storage.ts`: Chromium rejects accept suffixes longer than 16 characters, so using `.brand-layout-ops.json` in the picker filter caused `showOpenFilePicker()` / `showSaveFilePicker()` to fail before opening. The picker now filters on `.json` while suggested filenames still use `.brand-layout-ops.json`.
+- The suspected Chrome file-toolbar regression did not reproduce in a clean Chrome incognito session; the user's ordinary-profile failure was likely caused by extension or profile interference rather than the repo. The document picker remains hardened around a `.json` filter plus fallback path.
 - Hardened the document workspace fallback path: if the local file picker fails unexpectedly, Save/Save As/Duplicate now fall back to a browser download with an explicit status message, and Open falls back to the legacy file-input chooser instead of looking dead.
 - Removed the dedicated Content Format accordion from the live inspector. Content-format still exists inside the document/source-default schema for compatibility, but it is no longer presented as a localStorage-era sidebar control.
 - Closed the suspected source-default round-trip regression after the user re-tested it during this session and confirmed the writeback path still works.
+
+## Lane E1 — workspace vs parameter rails (2026-04-01)
+
+- Split the live inspector into two explicit rails inside `config-editor-controller.ts`: a shell-level `Workspace` rail for document, export, playback, and source-default controls, and a separate `Parameters` rail for overlay-layout plus the selected saved background operator.
+- This closes Lane E1 by making the shell/operator boundary visible in the UI before the later selected-operator model and single-surface pane work.
 
 ## Completed Execution Queue
 
