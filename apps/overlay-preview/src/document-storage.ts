@@ -1,6 +1,15 @@
 const DOCUMENT_STORAGE_DB_NAME = "brand-layout-ops-document-storage-v1";
 const DOCUMENT_STORAGE_STORE_NAME = "recent-documents";
 const MAX_RECENT_DOCUMENTS = 12;
+const DOCUMENT_PICKER_ACCEPT_TYPES: Array<{
+  description: string;
+  accept: Record<string, string[]>;
+}> = [{
+  description: "Brand Layout Ops document",
+  accept: {
+    "application/json": [".json"]
+  }
+}];
 
 export const DOCUMENT_FILE_EXTENSION = ".brand-layout-ops.json";
 
@@ -337,12 +346,7 @@ export async function pickDocumentFileToOpen(): Promise<FileSystemFileHandle | n
     id: "brand-layout-ops-open-document",
     multiple: false,
     startIn: "documents",
-    types: [{
-      description: "Brand Layout Ops document",
-      accept: {
-        "application/json": [DOCUMENT_FILE_EXTENSION, ".json"]
-      }
-    }]
+    types: [...DOCUMENT_PICKER_ACCEPT_TYPES]
   });
 
   return Array.isArray(handles) && handles.length > 0 ? handles[0] : null;
@@ -358,12 +362,7 @@ export async function pickDocumentFileToSave(suggestedName: string): Promise<Fil
     id: "brand-layout-ops-save-document",
     suggestedName,
     startIn: "documents",
-    types: [{
-      description: "Brand Layout Ops document",
-      accept: {
-        "application/json": [DOCUMENT_FILE_EXTENSION, ".json"]
-      }
-    }]
+    types: [...DOCUMENT_PICKER_ACCEPT_TYPES]
   }) ?? null;
 }
 

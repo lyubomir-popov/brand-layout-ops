@@ -30,6 +30,13 @@ All initial first splits complete: grid, text, overlay composition, overlay inte
 - Killed localStorage persistence for presets (`brand-layout-ops-presets-v1`, `brand-layout-ops-active-preset-v1`) and output format (`brand-layout-ops-output-format-v1`). All functions now return empty defaults / no-op.
 - Changed baseline grid overlay stroke from red at 15% to white at 15% so it's visible on the dark stage background.
 
+## Document-model regression follow-up (2026-04-01)
+
+- Fixed the Chrome file-toolbar regression in the document workspace. The root cause was the File System Access picker config in `document-storage.ts`: Chromium rejects accept suffixes longer than 16 characters, so using `.brand-layout-ops.json` in the picker filter caused `showOpenFilePicker()` / `showSaveFilePicker()` to fail before opening. The picker now filters on `.json` while suggested filenames still use `.brand-layout-ops.json`.
+- Hardened the document workspace fallback path: if the local file picker fails unexpectedly, Save/Save As/Duplicate now fall back to a browser download with an explicit status message, and Open falls back to the legacy file-input chooser instead of looking dead.
+- Removed the dedicated Content Format accordion from the live inspector. Content-format still exists inside the document/source-default schema for compatibility, but it is no longer presented as a localStorage-era sidebar control.
+- Closed the suspected source-default round-trip regression after the user re-tested it during this session and confirmed the writeback path still works.
+
 ## Completed Execution Queue
 
 - EQ-1 through EQ-12 are complete.

@@ -145,6 +145,14 @@ function promptForSingleDocumentFile(): Promise<File | null> {
   });
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unknown error";
+}
+
 export function renderDocumentWorkspaceUi(args: {
   workspace: DocumentWorkspaceState;
   untitledName: string;
@@ -328,8 +336,25 @@ export function createDocumentWorkspaceController<TDocument>(
       let fileHandle: FileSystemFileHandle | null = null;
       try {
         fileHandle = await pickDocumentFileToOpen();
-      } catch {
-        return { kind: "cancelled" };
+      } catch (error) {
+        if (isAbortError(error)) {
+          return { kind: "cancelled" };
+        }
+
+        const file = await promptForSingleDocumentFile();
+        if (!file) {
+          setStatus(`Open picker failed: ${getErrorMessage(error)}`, "error");
+          return { kind: "cancelled" };
+        }
+
+        try {
+          const document = options.parseDocument(JSON.parse(await file.text()) as unknown);
+          return document
+            ? { kind: "success", document, fileHandle: null, fileName: file.name }
+            : { kind: "invalid" };
+        } catch {
+          return { kind: "invalid" };
+        }
       }
 
       if (!fileHandle) {
@@ -467,12 +492,18 @@ export function createDocumentWorkspaceController<TDocument>(
 
     let fileHandle = forceSaveAs ? null : workspace.fileHandle;
     let fileName = forceSaveAs ? null : workspace.fileName;
+    let usedDownloadFallback = false;
+    let pickerFallbackReason: string | null = null;
 
     if (!fileHandle && supportsLocalDocumentFiles()) {
       try {
         fileHandle = await pickDocumentFileToSave(createSuggestedDocumentFileName(nextDocumentName));
-      } catch {
-        return false;
+      } catch (error) {
+        if (isAbortError(error)) {
+          return false;
+        }
+
+        pickerFallbackReason = getErrorMessage(error);
       }
     }
 
@@ -483,9 +514,10 @@ export function createDocumentWorkspaceController<TDocument>(
       } else {
         fileName = createSuggestedDocumentFileName(nextDocumentName);
         downloadJsonFile(fileName, serializedDocument);
+        usedDownloadFallback = true;
       }
-    } catch {
-      setStatus("Document save failed.", "error");
+    } catch (error) {
+      setStatus(`Document save failed: ${getErrorMessage(error)}`, "error");
       return false;
     }
 
@@ -508,7 +540,14 @@ export function createDocumentWorkspaceController<TDocument>(
       notifyWorkspaceChanged();
     }
 
-    setStatus(`Saved ${fileName ?? nextDocumentName}.`, "success");
+    if (usedDownloadFallback && pickerFallbackReason) {
+      setStatus(
+        `Saved ${fileName ?? nextDocumentName} via browser download because the local file picker failed: ${pickerFallbackReason}`,
+        "success"
+      );
+    } else {
+      setStatus(`Saved ${fileName ?? nextDocumentName}.`, "success");
+    }
     return true;
   };
 

@@ -99,7 +99,6 @@ import {
   createPreviewShellController,
   type PreviewShellController
 } from "./preview-shell-controller.js";
-import { buildContentFormatSection } from "./content-format-section.js";
 import { buildDocumentSection } from "./document-section.js";
 import { buildExportSection } from "./export-section.js";
 import { buildFuzzyBoidsSection } from "./fuzzy-boids-section.js";
@@ -902,7 +901,6 @@ const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
   { key: "source-default", scope: "shell", order: 110, factory: () => buildSourceDefaultSection(ctx) },
   { key: "output-format", scope: "shell", order: 200, factory: () => buildOutputFormatSection(), afterRender: buildOutputProfileOptions },
   { key: "document", scope: "shell", order: 250, factory: () => buildDocumentSection(ctx), afterRender: updateDocumentUi },
-  { key: "content-format", scope: "operator", order: 400, factory: () => buildContentFormatSection(ctx) },
   { key: "selected-overlay", scope: "operator", order: 500, factory: () => buildOverlaySection(ctx) },
   { key: "layout-grid", scope: "operator", order: 700, factory: () => buildGridSection(ctx), afterRender: syncOverlayVisibilityUi },
   { key: "halo-config", scope: "operator", order: 800, group: "halo", factory: () => buildHaloConfigSection(ctx) },
