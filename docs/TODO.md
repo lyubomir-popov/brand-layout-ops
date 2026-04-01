@@ -210,6 +210,17 @@ Lanes A-D are complete. See `docs/history.md` for the closed parity, shell-reduc
 | F2 | Remove local shell class contracts and data-attribute styling | F1 | Overlay-preview shell markup uses `bf-*` plus state classes only, and `apps/overlay-preview/src/styles.css` no longer styles `[data-*]` selectors |
 | F3 | Finish the shipped drawer or pinned-aside integration without local shell policy chrome | F2 | The live shell relies on `initPanelDrawers()` plus `initResizableAsides()` with canonical `bf-application` or `bf-aside` structure and no custom panel-card layer |
 
+### Lane G — Document-model regression fixes (queued, blocks Lane E)
+
+These are regressions introduced during the document-model and shell extraction work. They need to be resolved before feature work.
+
+| Step | Task | Status | Detail |
+|------|------|--------|--------|
+| G1 | File toolbar buttons (New/Open/Save/Save As/Duplicate) broken in Chrome | **OPEN** | Buttons are in `[data-file-toolbar]` nav built by `preview-shell-controller.ts`. Click handlers call `documentWorkspace` methods which use `showSaveFilePicker`/`showOpenFilePicker` (Chromium File System Access API). Works in Firefox blob-download fallback but fails silently in Chrome despite API support. Needs runtime debugging with Chrome DevTools to identify the actual failure point — possibly a permissions-policy issue, an unhandled promise rejection, or an init-order race. |
+| G2 | Remove remaining localStorage presets/content-format persistence | **DONE** | Presets section removed from config editor. localStorage read/write for presets and output-format stubbed to no-ops. Presets and content-format are legacy; only file-based document save and source-default writeback should persist state. |
+| G3 | Remove content-format section from config editor | **OPEN** | Content-format section is still registered. User wants it gone — content format should be a document-level property set at save time or in source defaults, not a sidebar toggle backed by localStorage. |
+| G4 | Verify source-default writeback round-trips all operator settings | **OPEN** | User reported changing fuzzy-boids dot size, writing source default, and refreshing — change didn't persist. May be a serialization gap where some operator fields don't make it into the source-default JSON, or the dev server middleware isn't writing the file. Needs targeted testing. |
+
 ### Non-blocking follow-ups
 
 - [ ] Halo scale zoom coverage
