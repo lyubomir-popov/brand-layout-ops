@@ -719,7 +719,7 @@ export function createPreviewShellController(
       { kind: "separator" },
       {
         label: deps.state.isPlaying ? "Pause Motion" : "Play Motion",
-        shortcut: "Space",
+        shortcut: "K",
         dataAttribute: "data-playback-toggle",
         onClick: () => {
           deps.togglePlayback();
@@ -881,7 +881,7 @@ export function createPreviewShellController(
       return;
     }
 
-    if (event.key === " " || event.key === "Spacebar") {
+    if (event.key === "k" || event.key === "K") {
       event.preventDefault();
       deps.togglePlayback();
       return;
