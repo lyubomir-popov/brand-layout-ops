@@ -16,6 +16,7 @@ import {
   resolveOverlayTextValue
 } from "@brand-layout-ops/operator-overlay-layout";
 import type {
+  OverlayBackgroundEdge,
   OverlayBackgroundNode,
   OverlayBackgroundOperatorKey,
   OverlayContentSource,
@@ -413,6 +414,18 @@ function updateSelectedBackgroundNode(
   updater: (node: OverlayBackgroundNode) => OverlayBackgroundNode
 ): boolean {
   return backgroundGraphController.updateSelectedBackgroundNode(updater);
+}
+
+function connectBackgroundEdge(edge: OverlayBackgroundEdge): boolean {
+  const didConnect = backgroundGraphController.connectBackgroundEdge(edge);
+  networkOverlayController?.render();
+  return didConnect;
+}
+
+function disconnectBackgroundInput(nodeId: string, portKey: string): boolean {
+  const didDisconnect = backgroundGraphController.disconnectBackgroundInput(nodeId, portKey);
+  networkOverlayController?.render();
+  return didDisconnect;
 }
 
 function syncDocumentBackgroundGraph(): void {
@@ -964,6 +977,8 @@ configEditorController = createConfigEditorController({
   getSceneFamilyLabel,
   getAvailableBackgroundOperatorKeys,
   addBackgroundNode,
+  connectBackgroundEdge,
+  disconnectBackgroundInput,
   setSelectedOperator,
   selectOverlayItem: select,
   syncDocumentBackgroundGraph,

@@ -8,12 +8,18 @@
 import { initRangeControls } from "baseline-foundry";
 
 import {
+  findOverlayBackgroundIncomingEdge,
+  findOverlayBackgroundOutputPort,
   getOverlayFieldDisplayLabel,
+  getOverlayBackgroundCompatibleOutputPorts,
+  getOverlayBackgroundInputPorts,
   getOverlaySceneFamilyKeyForBackgroundOperator,
   OVERLAY_BACKGROUND_FUZZY_SEED_NODE_ID,
   OVERLAY_BACKGROUND_HALO_OPERATOR_KEY,
   OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY,
   OVERLAY_SCENE_FAMILY_ORDER,
+  validateOverlayBackgroundEdge,
+  type OverlayBackgroundEdge,
   type OverlayBackgroundNode,
   type OverlayBackgroundOperatorKey,
   type OverlaySceneFamilyKey
@@ -39,6 +45,8 @@ export interface ConfigEditorControllerDeps {
   getSceneFamilyLabel(key: OverlaySceneFamilyKey): string;
   getAvailableBackgroundOperatorKeys(): OverlayBackgroundOperatorKey[];
   addBackgroundNode(operatorKey: OverlayBackgroundOperatorKey): string | null;
+  connectBackgroundEdge(edge: OverlayBackgroundEdge): boolean;
+  disconnectBackgroundInput(nodeId: string, portKey: string): boolean;
   setSelectedOperator(operatorId: string | null): boolean;
   selectOverlayItem(selection: Selection | null): void;
   syncDocumentBackgroundGraph(): void;
@@ -55,6 +63,11 @@ export interface ConfigEditorController {
 interface RenderedSection {
   section: ParameterSectionDefinition;
   element: HTMLElement;
+}
+
+interface BackgroundConnectionOption {
+  edge: OverlayBackgroundEdge;
+  label: string;
 }
 
 const OVERLAY_LOGO_LAYER_TOKEN = "overlay:logo";
@@ -122,6 +135,145 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
     }
 
     return statusParts.join(" | ");
+  }
+
+  function serializeBackgroundConnectionOption(edge: Pick<OverlayBackgroundEdge, "fromNodeId" | "fromPortKey">): string {
+    return JSON.stringify([edge.fromNodeId, edge.fromPortKey]);
+  }
+
+  function getBackgroundConnectionSourceLabel(edge: OverlayBackgroundEdge): string {
+    const sourceNode = state.documentProject.backgroundGraph.nodes.find((node) => node.id === edge.fromNodeId) ?? null;
+    const sourceLabel = sourceNode ? getBackgroundNodeLabel(sourceNode) : edge.fromNodeId;
+    const outputPort = sourceNode ? findOverlayBackgroundOutputPort(sourceNode.operatorKey, edge.fromPortKey) : null;
+
+    return outputPort ? `${sourceLabel} -> ${outputPort.label}` : sourceLabel;
+  }
+
+  function getBackgroundConnectionOptions(
+    node: OverlayBackgroundNode,
+    inputPortKey: string
+  ): BackgroundConnectionOption[] {
+    return state.documentProject.backgroundGraph.nodes.flatMap((sourceNode) => {
+      const outputPorts = getOverlayBackgroundCompatibleOutputPorts(sourceNode.operatorKey, node.operatorKey, inputPortKey);
+      return outputPorts.flatMap((outputPort) => {
+        const edge = {
+          fromNodeId: sourceNode.id,
+          fromPortKey: outputPort.key,
+          toNodeId: node.id,
+          toPortKey: inputPortKey
+        } satisfies OverlayBackgroundEdge;
+        const validation = validateOverlayBackgroundEdge(state.documentProject.backgroundGraph, edge, { allowReplacingInput: true });
+        if (!validation.isValid && validation.code !== "duplicate-edge") {
+          return [];
+        }
+
+        return [{
+          edge,
+          label: `${getBackgroundNodeLabel(sourceNode)} -> ${outputPort.label}`
+        }];
+      });
+    });
+  }
+
+  function buildBackgroundConnectionControls(node: OverlayBackgroundNode): HTMLElement | null {
+    const connectionFields = getOverlayBackgroundInputPorts(node.operatorKey).flatMap((inputPort) => {
+      const existingEdge = findOverlayBackgroundIncomingEdge(state.documentProject.backgroundGraph, node.id, inputPort.key);
+      const options = getBackgroundConnectionOptions(node, inputPort.key);
+      if (!existingEdge && options.length === 0) {
+        return [];
+      }
+
+      const field = document.createElement("div");
+      field.className = "is-layer-connection-field";
+
+      const heading = document.createElement("div");
+      heading.className = "is-layer-connection-heading";
+
+      const label = document.createElement("span");
+      label.className = "is-layer-connection-label";
+      label.textContent = inputPort.label;
+
+      const meta = document.createElement("span");
+      meta.className = "is-layer-connection-meta";
+      meta.textContent = existingEdge
+        ? `Current: ${getBackgroundConnectionSourceLabel(existingEdge)}`
+        : "No source connected.";
+
+      heading.append(label, meta);
+      field.append(heading);
+
+      if (options.length === 0) {
+        return [field];
+      }
+
+      const controls = document.createElement("div");
+      controls.className = "is-layer-connection-controls";
+
+      const select = document.createElement("select");
+      select.className = "bf-input is-layer-connection-select";
+
+      for (const option of options) {
+        const optionEl = document.createElement("option");
+        optionEl.value = serializeBackgroundConnectionOption(option.edge);
+        optionEl.textContent = option.label;
+        select.append(optionEl);
+      }
+
+      const currentValue = existingEdge ? serializeBackgroundConnectionOption(existingEdge) : null;
+      const defaultValue = currentValue && options.some((option) => serializeBackgroundConnectionOption(option.edge) === currentValue)
+        ? currentValue
+        : serializeBackgroundConnectionOption(options[0].edge);
+      select.value = defaultValue;
+
+      const connectButton = document.createElement("button");
+      connectButton.type = "button";
+      connectButton.className = "bf-button is-base is-dense";
+
+      function getSelectedOption(): BackgroundConnectionOption | null {
+        return options.find((option) => serializeBackgroundConnectionOption(option.edge) === select.value) ?? null;
+      }
+
+      function syncConnectButtonState(): void {
+        const selectedOption = getSelectedOption();
+        const isCurrentSelection = existingEdge !== null
+          && selectedOption !== null
+          && selectedOption.edge.fromNodeId === existingEdge.fromNodeId
+          && selectedOption.edge.fromPortKey === existingEdge.fromPortKey;
+
+        connectButton.disabled = selectedOption === null || isCurrentSelection;
+        connectButton.textContent = existingEdge
+          ? (isCurrentSelection ? "Connected" : "Replace")
+          : "Connect";
+      }
+
+      connectButton.addEventListener("click", () => {
+        const selectedOption = getSelectedOption();
+        if (!selectedOption || !deps.connectBackgroundEdge(selectedOption.edge)) {
+          return;
+        }
+
+        deps.setSelectedOperator(node.id);
+        shouldAutoOpenNextOperatorSection = true;
+        deps.markDocumentDirty();
+        buildConfigEditor();
+        void deps.renderStage();
+      });
+      select.addEventListener("change", syncConnectButtonState);
+      syncConnectButtonState();
+
+      controls.append(select, connectButton);
+      field.append(controls);
+      return [field];
+    });
+
+    if (connectionFields.length === 0) {
+      return null;
+    }
+
+    const container = document.createElement("div");
+    container.className = "is-layer-connection-list";
+    container.append(...connectionFields);
+    return container;
   }
 
   function findRenderedSection(renderedSections: RenderedSection[], key: string | null): HTMLElement | null {
@@ -242,6 +394,9 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
     const canRemoveNodes = state.documentProject.backgroundGraph.nodes.length > 1;
 
     for (const node of state.documentProject.backgroundGraph.nodes) {
+      const nodeEntry = document.createElement("div");
+      nodeEntry.className = "is-layer-palette-node";
+
       const row = document.createElement("label");
       row.className = "bf-choice-row is-layer-palette-row";
 
@@ -295,7 +450,14 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
         row.append(removeBtn);
       }
 
-      backgroundList.append(row);
+      nodeEntry.append(row);
+
+      const connectionControls = buildBackgroundConnectionControls(node);
+      if (connectionControls) {
+        nodeEntry.append(connectionControls);
+      }
+
+      backgroundList.append(nodeEntry);
     }
 
     backgroundSection.append(backgroundList);
