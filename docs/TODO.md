@@ -148,7 +148,7 @@ Inbox-promoted shell ergonomics request to keep in view when the next lane is ch
 3. Remove forced stage overflow caused by canvas-shell padding. The preview stage should not show a gratuitous scrollbar when the fitted document still conceptually fits in view.
 4. Keep fit-to-viewport as the default stage behavior, but add a `100%` zoom action so authored output can be inspected at real pixels.
 5. Evaluate panning for oversized documents while holding `Space`, matching the expected canvas-hand interaction for inspection.
-6. Replace the current playback shortcut before `Space` is reassigned to pan. Choose a playback shortcut that does not conflict with canvas navigation and document-shell text inputs.
+6. Done: playback now uses `K`, so `Space` is free for a future pan-hand interaction without conflicting with document-shell text inputs.
 
 ### Splits to not get bogged down with
 

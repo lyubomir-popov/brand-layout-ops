@@ -31,6 +31,11 @@ Items moved here from `docs/TODO.md` to keep the active backlog lean.
 - The stage network overlay now labels authored graph edges with human port names instead of raw key strings.
 - Validation: `npm run typecheck`.
 
+## Shell ergonomics prework — playback shortcut (2026-04-02)
+
+- Moved the playback shortcut from `Space` to `K` in `preview-shell-controller.ts` and the `View` menu so future canvas-hand or pan work can claim `Space` without colliding with transport controls.
+- Validation: `npm run typecheck`.
+
 ## Lane L — Sparse operator graph inclusion + node CRUD
 
 - Changed `OverlaySceneFamilyGraphs` from a fixed interface with all four families to a sparse `Partial<Record<OverlaySceneFamilyKey, OverlayBackgroundGraph>>`. New documents start with only the active family's graph.
