@@ -51,6 +51,7 @@ const PREVIEW_NODE_ID = "overlay-preview";
 
 export interface StageRenderControllerDeps {
   readonly state: PreviewState;
+  getStageShellEl(): HTMLElement | null;
   getStageEl(): HTMLElement | null;
   getCanvasEl(): HTMLCanvasElement | null;
   getScenePreviewCanvas(): HTMLCanvasElement | null;
@@ -89,6 +90,22 @@ export function createStageRenderController(
       nodes: [{ id: PREVIEW_NODE_ID, operatorKey: OVERLAY_LAYOUT_OPERATOR_KEY, params }],
       edges: []
     };
+  }
+
+  function syncStageShellMetrics(): void {
+    const stageShell = deps.getStageShellEl();
+    if (!stageShell) {
+      return;
+    }
+
+    const rect = stageShell.getBoundingClientRect();
+    const computedStyle = window.getComputedStyle(stageShell);
+    const paddingBlock =
+      Number.parseFloat(computedStyle.paddingTop || "0") +
+      Number.parseFloat(computedStyle.paddingBottom || "0");
+    const availableBlock = Math.max(0, rect.height - paddingBlock);
+
+    stageShell.style.setProperty("--stage-shell-available-block", `${availableBlock}px`);
   }
 
   function updateStageAspectRatio(): void {
@@ -138,6 +155,7 @@ export function createStageRenderController(
       heightPx
     });
 
+    syncStageShellMetrics();
     updateStageAspectRatio();
     syncBackgroundRendererVisibilityWithState(lastPreviewState);
   }
@@ -173,14 +191,16 @@ export function createStageRenderController(
   }
 
   function resizeRenderer(): void {
+    const { widthPx, heightPx } = deps.state.params.frame;
+    syncStageShellMetrics();
+    updateStageAspectRatio();
+
     if (!haloRendererInstance) {
       return;
     }
 
-    const { widthPx, heightPx } = deps.state.params.frame;
     haloRendererInstance.resize(widthPx, heightPx);
     syncBackgroundRendererVisibilityWithState(lastPreviewState);
-    updateStageAspectRatio();
   }
 
   function syncBackgroundRendererVisibility(): void {

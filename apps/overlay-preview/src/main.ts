@@ -220,6 +220,10 @@ function getStageEl(): HTMLElement | null {
   return $("[data-stage]");
 }
 
+function getStageShellEl(): HTMLElement | null {
+  return $("[data-stage-shell]");
+}
+
 function getCanvasEl(): HTMLCanvasElement | null {
   return $("[data-stage-canvas]");
 }
@@ -262,6 +266,7 @@ function getOverlayVisibilityInput(): HTMLInputElement | null {
 
 const stageRenderController = createStageRenderController({
   state,
+  getStageShellEl,
   getStageEl,
   getCanvasEl,
   getScenePreviewCanvas,
@@ -703,6 +708,7 @@ function syncOverlayVisibilityUi() {
 
 function resizeRenderer() {
   stageRenderController.resizeRenderer();
+  authoringController?.render();
   networkOverlayController?.render();
 }
 

@@ -80,6 +80,8 @@ export function createPreviewShellController(
   deps: PreviewShellControllerDeps
 ): PreviewShellController {
   let destroyResizableAsides: (() => void) | null = null;
+  let stageShellResizeObserver: ResizeObserver | null = null;
+  let pendingStageResizeFrame = 0;
   let hasBoundDocumentInputs = false;
   let hasBoundControlPanelToggle = false;
   let hasBoundResize = false;
@@ -122,6 +124,10 @@ export function createPreviewShellController(
     return document.querySelector<HTMLElement>(".bf-application-overlay");
   }
 
+  function getStageShellEl(): HTMLElement | null {
+    return $(`[data-stage-shell]`);
+  }
+
   function getDocumentSummaryEl(): HTMLElement | null {
     return $("[data-document-summary]");
   }
@@ -156,6 +162,17 @@ export function createPreviewShellController(
     for (const dropdownItem of topNavigation.querySelectorAll<HTMLElement>(".bf-top-navigation-item.is-dropdown-toggle")) {
       dropdownItem.classList.remove("is-active");
     }
+  }
+
+  function queueStageResizeRefresh(): void {
+    if (pendingStageResizeFrame !== 0) {
+      cancelAnimationFrame(pendingStageResizeFrame);
+    }
+
+    pendingStageResizeFrame = window.requestAnimationFrame(() => {
+      pendingStageResizeFrame = 0;
+      deps.resizeRenderer();
+    });
   }
 
   function createMenuActionButton(
@@ -772,6 +789,7 @@ export function createPreviewShellController(
       aside.classList.toggle("is-collapsed", !isOpen);
       aside.setAttribute("aria-hidden", String(!isOpen));
       refreshResizableAsidesRuntime();
+      queueStageResizeRefresh();
       return;
     }
 
@@ -783,6 +801,7 @@ export function createPreviewShellController(
     appShell?.classList.toggle("is-drawer-expanded", isOpen);
     overlay?.setAttribute("aria-hidden", String(!isOpen));
     refreshResizableAsidesRuntime();
+    queueStageResizeRefresh();
   }
 
   function cycleGuideMode(): void {
@@ -941,12 +960,23 @@ export function createPreviewShellController(
       return;
     }
 
+    if (!stageShellResizeObserver && typeof ResizeObserver !== "undefined") {
+      const stageShell = getStageShellEl();
+      if (stageShell) {
+        stageShellResizeObserver = new ResizeObserver(() => {
+          queueStageResizeRefresh();
+        });
+        stageShellResizeObserver.observe(stageShell);
+      }
+    }
+
     let hasInitializedDockMode = false;
     let lastDockedState: boolean | null = null;
 
     function checkDock(): void {
       const isDocked = isDockedViewport();
       if (hasInitializedDockMode && lastDockedState === isDocked) {
+        queueStageResizeRefresh();
         return;
       }
 
