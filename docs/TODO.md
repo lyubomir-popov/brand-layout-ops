@@ -28,7 +28,7 @@ Use this before and after substantial work so parity implementation keeps servin
 - A scene family must be swappable. New motion work should move toward a world where halo, boids, phyllotaxis, and later generators can sit behind the same document, layout, and export stack.
 - The layout engine stays rigorous and document-owned. Do not let renderer adapters or preview-only helpers become the canonical home for layout semantics.
 - Preview code is an adapter, not the product core. If a rule must survive renderer changes, it belongs in shared types, layout kernels, operator outputs, or backend contracts.
-- Background graph execution should converge on one live authority. `project.backgroundGraph` is the canonical execution model; `sceneFamilyConfigs` seeds new graphs at family-switch boundaries and during document migration, but is not updated on every parameter edit. Do not re-introduce per-edit mirroring.
+- Background graph execution should converge on one graph-shaped authority. `project.sceneFamilyGraphs` is the persisted per-family store, and `project.backgroundGraph` is the live active-family projection for `project.sceneFamilyKey`. Legacy `sceneFamilyConfigs` is now a load/apply compatibility bridge only. Do not re-introduce per-edit mirroring.
 - UI work should reduce hardcoded preview ownership over time. Prefer section registration, manifests, and typed operator surfaces over adding more bespoke accordion builders indefinitely.
 - Do not let Ubuntu-specific render quirks calcify into permanent one-off features. If a need is really "multiple ordered visual planes" or "a compositor above and below text," move toward a layer-stack model rather than adding another special-case toggle.
 - Shell-level project actions belong in authoring chrome, not buried in operator panels.
@@ -113,7 +113,7 @@ Active architectural risks requiring attention during the next work cycle.
 | Signal | Severity | Detail |
 |--------|----------|--------|
 | `main.ts` at ~833 lines | **Medium** | CSV draft, playback, source-default, authoring, export, overlay editing, stage rendering/composition, inspector section registration, document target CRUD, profile/content switching, preview-document/workspace state orchestration, and background-graph selection or sync are all extracted from the former monolith. Remaining: DOM query helpers, overlay-visibility shell glue, and the final controller/bootstrap composition root. |
-| `project.backgroundGraph` vs `sceneFamilyConfigs` | **Medium** | Per-edit mirroring is removed. Section panels read from graph nodes; `sceneFamilyConfigs` only updates at family-switch boundaries. Remaining cleanup: the saved document still serializes both; consider dropping `sceneFamilyConfigs` from the serialized envelope once all consumers use graph nodes. |
+| `project.backgroundGraph` vs `sceneFamilyGraphs` | **Medium** | `sceneFamilyGraphs` now persists one graph per family, while `backgroundGraph` mirrors the active family graph for live runtime convenience. Remaining cleanup is optional: if desired, drop `backgroundGraph` from serialized envelopes and treat it as a purely derived runtime projection. |
 | `operator-overlay-layout/src/index.ts` at 262 lines (was 2,031) | **Resolved** | Decomposed into `document-schema.ts`, `background-graph.ts`, `field-defaults.ts`, `csv-resolution.ts`, `overlay-internals.ts`. Barrel re-exports only. |
 | `scene-family-preview.ts` at 724 lines | **Medium** | Graph orchestration now uses preview operators registered with the shared graph runtime, which is the right direction. Remaining cleanup should extract preview operator wrappers or draw adapters only when reuse is concrete, not as a file-split exercise. |
 | `halo-config-section.ts` at 62 lines | **Resolved** | Converted to schema-driven rendering via `renderSchemaPanel(HALO_FIELD_CONFIG_SCHEMA, ...)`. |
@@ -227,13 +227,13 @@ These regressions were introduced during the document-model and shell extraction
 |------|------|------------|---------------|
 | H1 | Remove remaining preset runtime and preview-document residue | G4 | **DONE** — preset state, preset controller code, preset preview-document fields, preset export path, and preset-local UI hooks are removed; file-backed documents and source-defaults are the only shipped persistence paths |
 
-### Lane I — Graph-first family persistence
+### Lane I — Graph-first family persistence (complete)
 
 | Step | Task | Depends on | Exit criteria |
 |------|------|------------|---------------|
-| I1 | Replace `sceneFamilyConfigs` envelope persistence with per-family graph persistence | H1 | Saved documents no longer need a config-shadow map to preserve inactive family edits; backward-compatible load of older docs remains intact |
-| I2 | Route family switching and automation apply through stored family graphs | I1 | Family switches reuse the saved graph for each family instead of rebuilding from config snapshots, and automation can still apply older config payloads through a compatibility bridge |
-| I3 | Simplify document drift rules around graph authority | I2 | Canonical docs and runtime rules describe one graph-shaped persistence authority instead of the current graph-plus-config compromise |
+| I1 | Replace `sceneFamilyConfigs` envelope persistence with per-family graph persistence | H1 | **DONE** — saved documents now persist `sceneFamilyGraphs`, and older documents still load through the legacy `sceneFamilyConfigs` bridge |
+| I2 | Route family switching and automation apply through stored family graphs | I1 | **DONE** — family switches now reuse the stored graph for each family instead of rebuilding from config snapshots, and automation accepts both legacy config payloads and the new graph map |
+| I3 | Simplify document drift rules around graph authority | I2 | **DONE** — the canonical rules now treat `sceneFamilyGraphs` as the persisted family store and `backgroundGraph` as the live active-family projection |
 
 ## Immediate next steps after the above is done
 - **Content-format vs project variants.** If file-backed variants replace content-format switching, current format UI can shrink later.

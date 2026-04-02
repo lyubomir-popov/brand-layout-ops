@@ -3,9 +3,12 @@ import {
   getOutputProfile
 } from "@brand-layout-ops/core-types";
 import {
+  cloneOverlayBackgroundGraph,
   cloneOverlayDocumentProject,
+  createDefaultOverlaySceneFamilyConfigs,
   extractOverlaySceneFamilyConfigsFromGraph,
   normalizeOverlayBackgroundGraph,
+  normalizeOverlaySceneFamilyGraphs,
   normalizeOverlaySceneFamilyConfigs,
   OVERLAY_SCENE_FAMILY_ORDER,
   type OverlaySceneFamilyKey
@@ -456,6 +459,7 @@ export function createExportAutomationController(
         label: target.label,
         output_profile_key: target.outputProfileKey
       })),
+      document_scene_family_graphs: cloneOverlayDocumentProject(ctx.state.documentProject).sceneFamilyGraphs,
       document_background_graph: cloneOverlayDocumentProject(ctx.state.documentProject).backgroundGraph,
       frame_rate: Math.max(1, Math.round(ctx.state.exportSettings.frameRate)),
       current_playback_time_sec: ctx.state.playbackTimeSec,
@@ -517,28 +521,50 @@ export function createExportAutomationController(
       shouldSyncDocumentBackgroundGraph = true;
     }
 
+    if (typeof payload.document_scene_family_graphs === "object" && payload.document_scene_family_graphs !== null) {
+      ctx.state.documentProject = {
+        ...ctx.state.documentProject,
+        sceneFamilyGraphs: normalizeOverlaySceneFamilyGraphs(
+          payload.document_scene_family_graphs,
+          ctx.state.outputProfileKey,
+          payload.document_scene_family_configs
+        )
+      };
+      shouldRebuildConfigEditor = true;
+      shouldSyncDocumentBackgroundGraph = true;
+    }
+
     if (typeof payload.document_scene_family_configs === "object" && payload.document_scene_family_configs !== null) {
       ctx.state.documentProject = {
         ...ctx.state.documentProject,
-        sceneFamilyConfigs: normalizeOverlaySceneFamilyConfigs(payload.document_scene_family_configs)
+        sceneFamilyGraphs: normalizeOverlaySceneFamilyGraphs(
+          ctx.state.documentProject.sceneFamilyGraphs,
+          ctx.state.outputProfileKey,
+          payload.document_scene_family_configs
+        )
       };
       shouldRebuildConfigEditor = true;
       shouldSyncDocumentBackgroundGraph = true;
     }
 
     if (typeof payload.document_background_graph === "object" && payload.document_background_graph !== null) {
+      const fallbackSceneFamilyConfigs = extractOverlaySceneFamilyConfigsFromGraph(
+        ctx.state.documentProject.sceneFamilyGraphs[ctx.state.documentProject.sceneFamilyKey]
+        ?? ctx.state.documentProject.backgroundGraph,
+        createDefaultOverlaySceneFamilyConfigs(ctx.state.outputProfileKey)
+      );
       const normalizedGraph = normalizeOverlayBackgroundGraph(
         payload.document_background_graph,
         ctx.state.documentProject.sceneFamilyKey,
-        ctx.state.documentProject.sceneFamilyConfigs
+        fallbackSceneFamilyConfigs
       );
       ctx.state.documentProject = {
         ...ctx.state.documentProject,
         backgroundGraph: normalizedGraph,
-        sceneFamilyConfigs: extractOverlaySceneFamilyConfigsFromGraph(
-          normalizedGraph,
-          ctx.state.documentProject.sceneFamilyConfigs
-        )
+        sceneFamilyGraphs: {
+          ...ctx.state.documentProject.sceneFamilyGraphs,
+          [ctx.state.documentProject.sceneFamilyKey]: cloneOverlayBackgroundGraph(normalizedGraph)
+        }
       };
       options.normalizeSelectedBackgroundNodeId(ctx.state.selectedBackgroundNodeId);
       backgroundGraphProvided = true;

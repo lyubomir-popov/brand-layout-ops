@@ -11,14 +11,18 @@ import {
   type TextStyleSpec
 } from "@brand-layout-ops/core-types";
 import {
+  cloneOverlayBackgroundGraph,
   createDefaultOverlayBackgroundGraph,
   createDefaultOverlaySceneFamilyConfigs,
+  createDefaultOverlaySceneFamilyGraphs,
   DEFAULT_OVERLAY_SCENE_FAMILY_KEY,
+  extractOverlaySceneFamilyConfigsFromGraph,
   normalizeOverlayBackgroundGraph,
+  normalizeOverlaySceneFamilyGraphs,
   normalizeOverlaySceneFamilyConfigs,
   normalizeOverlaySceneFamilyKey,
   type OverlayBackgroundGraph,
-  type OverlaySceneFamilyConfigs,
+  type OverlaySceneFamilyGraphs,
   type OverlaySceneFamilyKey
 } from "./background-graph.js";
 import {
@@ -91,7 +95,7 @@ export interface OverlayDocumentProject {
   sceneFamilyKey: OverlaySceneFamilyKey;
   activeTargetId: string;
   targets: OverlayDocumentTarget[];
-  sceneFamilyConfigs: OverlaySceneFamilyConfigs;
+  sceneFamilyGraphs: OverlaySceneFamilyGraphs;
   backgroundGraph: OverlayBackgroundGraph;
 }
 
@@ -234,14 +238,17 @@ export function normalizeOverlayDocumentProject<
     const activeTargetId = fallbackTargets.find((target) => target.outputProfileKey === snapshot.outputProfileKey)?.id
       ?? fallbackTargets[0]?.id
       ?? getOverlayDocumentTargetId(snapshot.outputProfileKey);
-    const sceneFamilyConfigs = createDefaultOverlaySceneFamilyConfigs(snapshot.outputProfileKey);
+    const sceneFamilyGraphs = createDefaultOverlaySceneFamilyGraphs(
+      createDefaultOverlaySceneFamilyConfigs(snapshot.outputProfileKey),
+      snapshot.outputProfileKey
+    );
 
     return {
       sceneFamilyKey: DEFAULT_OVERLAY_SCENE_FAMILY_KEY,
       activeTargetId,
       targets: fallbackTargets,
-      sceneFamilyConfigs,
-      backgroundGraph: createDefaultOverlayBackgroundGraph(DEFAULT_OVERLAY_SCENE_FAMILY_KEY, sceneFamilyConfigs, snapshot.outputProfileKey)
+      sceneFamilyGraphs,
+      backgroundGraph: cloneOverlayBackgroundGraph(sceneFamilyGraphs[DEFAULT_OVERLAY_SCENE_FAMILY_KEY])
     };
   }
 
@@ -303,14 +310,32 @@ export function normalizeOverlayDocumentProject<
     ? rawProject.activeTargetId
     : snapshotTargetId;
   const sceneFamilyKey = normalizeOverlaySceneFamilyKey(rawProject.sceneFamilyKey);
-  const sceneFamilyConfigs = normalizeOverlaySceneFamilyConfigs(rawProject.sceneFamilyConfigs, snapshot.outputProfileKey);
+  const legacySceneFamilyConfigs = normalizeOverlaySceneFamilyConfigs(rawProject.sceneFamilyConfigs, snapshot.outputProfileKey);
+  let sceneFamilyGraphs = normalizeOverlaySceneFamilyGraphs(
+    rawProject.sceneFamilyGraphs,
+    snapshot.outputProfileKey,
+    rawProject.sceneFamilyConfigs
+  );
+  const hasRawBackgroundGraph = Object.prototype.hasOwnProperty.call(rawProject, "backgroundGraph")
+    && typeof rawProject.backgroundGraph !== "undefined";
+  const backgroundGraph = hasRawBackgroundGraph
+    ? normalizeOverlayBackgroundGraph(
+      rawProject.backgroundGraph,
+      sceneFamilyKey,
+      extractOverlaySceneFamilyConfigsFromGraph(sceneFamilyGraphs[sceneFamilyKey], legacySceneFamilyConfigs)
+    )
+    : cloneOverlayBackgroundGraph(sceneFamilyGraphs[sceneFamilyKey]);
+  sceneFamilyGraphs = {
+    ...sceneFamilyGraphs,
+    [sceneFamilyKey]: cloneOverlayBackgroundGraph(backgroundGraph)
+  };
 
   return {
     sceneFamilyKey,
     activeTargetId,
     targets,
-    sceneFamilyConfigs,
-    backgroundGraph: normalizeOverlayBackgroundGraph(rawProject.backgroundGraph, sceneFamilyKey, sceneFamilyConfigs)
+    sceneFamilyGraphs,
+    backgroundGraph
   };
 }
 

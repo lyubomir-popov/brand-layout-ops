@@ -209,6 +209,13 @@ export interface OverlaySceneFamilyConfigs {
   scatter: OverlayScatterConfig;
 }
 
+export interface OverlaySceneFamilyGraphs {
+  halo: OverlayBackgroundGraph;
+  phyllotaxis: OverlayBackgroundGraph;
+  "fuzzy-boids": OverlayBackgroundGraph;
+  scatter: OverlayBackgroundGraph;
+}
+
 function getOverlaySceneFrame(profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY): FrameSize {
   const profile = getOutputProfile(profileKey);
   return {
@@ -413,6 +420,18 @@ export function getOverlaySceneFamilyKeyForBackgroundOperator(
   }
 }
 
+export function getOverlaySceneFamilyKeyForBackgroundGraph(
+  graph: OverlayBackgroundGraph,
+  fallbackKey: OverlaySceneFamilyKey = DEFAULT_OVERLAY_SCENE_FAMILY_KEY
+): OverlaySceneFamilyKey {
+  const activeNode = graph.nodes.find((node) => node.id === graph.activeNodeId) ?? graph.nodes[0];
+  if (!activeNode) {
+    return fallbackKey;
+  }
+
+  return getOverlaySceneFamilyKeyForBackgroundOperator(activeNode.operatorKey);
+}
+
 export function createDefaultOverlayBackgroundGraph(
   sceneFamilyKey: OverlaySceneFamilyKey = DEFAULT_OVERLAY_SCENE_FAMILY_KEY,
   sceneFamilyConfigs: OverlaySceneFamilyConfigs = createDefaultOverlaySceneFamilyConfigs(),
@@ -474,8 +493,26 @@ export function createDefaultOverlayBackgroundGraph(
   }
 }
 
+export function createDefaultOverlaySceneFamilyGraphs(
+  sceneFamilyConfigs: OverlaySceneFamilyConfigs = createDefaultOverlaySceneFamilyConfigs(),
+  profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY
+): OverlaySceneFamilyGraphs {
+  return {
+    halo: createDefaultOverlayBackgroundGraph("halo", sceneFamilyConfigs, profileKey),
+    phyllotaxis: createDefaultOverlayBackgroundGraph("phyllotaxis", sceneFamilyConfigs, profileKey),
+    "fuzzy-boids": createDefaultOverlayBackgroundGraph("fuzzy-boids", sceneFamilyConfigs, profileKey),
+    scatter: createDefaultOverlayBackgroundGraph("scatter", sceneFamilyConfigs, profileKey)
+  };
+}
+
 export function cloneOverlayBackgroundGraph(graph: OverlayBackgroundGraph): OverlayBackgroundGraph {
   return cloneOverlayJson(graph);
+}
+
+export function cloneOverlaySceneFamilyGraphs(
+  sceneFamilyGraphs: OverlaySceneFamilyGraphs
+): OverlaySceneFamilyGraphs {
+  return cloneOverlayJson(sceneFamilyGraphs);
 }
 
 export function normalizeOverlaySceneFamilyKey(
@@ -653,6 +690,29 @@ export function normalizeOverlaySceneFamilyConfigs(
     phyllotaxis: normalizeOverlayPhyllotaxisConfig(rawConfigs.phyllotaxis, defaults.phyllotaxis),
     fuzzyBoids: normalizeOverlayFuzzyBoidsConfig(rawConfigs.fuzzyBoids, defaults.fuzzyBoids),
     scatter: normalizeOverlayScatterConfig(rawConfigs.scatter, defaults.scatter)
+  };
+}
+
+export function normalizeOverlaySceneFamilyGraphs(
+  rawGraphs: unknown,
+  profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY,
+  rawLegacyConfigs: unknown = undefined
+): OverlaySceneFamilyGraphs {
+  const legacySceneFamilyConfigs = normalizeOverlaySceneFamilyConfigs(rawLegacyConfigs, profileKey);
+  const defaults = createDefaultOverlaySceneFamilyGraphs(legacySceneFamilyConfigs, profileKey);
+  if (!isRecord(rawGraphs)) {
+    return defaults;
+  }
+
+  return {
+    halo: normalizeOverlayBackgroundGraph(rawGraphs.halo, "halo", legacySceneFamilyConfigs),
+    phyllotaxis: normalizeOverlayBackgroundGraph(rawGraphs.phyllotaxis, "phyllotaxis", legacySceneFamilyConfigs),
+    "fuzzy-boids": normalizeOverlayBackgroundGraph(
+      rawGraphs["fuzzy-boids"] ?? rawGraphs.fuzzyBoids,
+      "fuzzy-boids",
+      legacySceneFamilyConfigs
+    ),
+    scatter: normalizeOverlayBackgroundGraph(rawGraphs.scatter, "scatter", legacySceneFamilyConfigs)
   };
 }
 

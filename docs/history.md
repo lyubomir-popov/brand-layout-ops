@@ -74,6 +74,14 @@ All initial first splits complete: grid, text, overlay composition, overlay inte
 - Source-default reset no longer rebuilds non-existent preset tabs, and `sample-document.ts` now only carries overlay-param cloning plus export-format defaults instead of dead preset persistence utilities.
 - Validation: `npm run typecheck` and `npm run preview:build`.
 
+## Lane I — graph-first family persistence (2026-04-02)
+
+- Replaced the old `sceneFamilyConfigs` persistence bridge with graph-shaped family storage in the shared document schema: `OverlayDocumentProject` now persists `sceneFamilyGraphs`, while `backgroundGraph` remains the live active-family projection used by the preview runtime.
+- Family switching in `background-graph-controller.ts` now snapshots the current active graph into the per-family map and reloads the stored graph for the newly selected family instead of rebuilding from config snapshots.
+- Automation state now exposes `document_scene_family_graphs`, and automation apply accepts both the new graph-map payload and older `document_scene_family_configs` payloads through a compatibility bridge.
+- Older document and source-default files still load: `document-schema.ts` now normalizes legacy `sceneFamilyConfigs` into per-family graphs and lets any saved active `backgroundGraph` override the current family entry during migration.
+- Validation: `npm run typecheck` and `npm run preview:build`.
+
 ## Completed Execution Queue
 
 - EQ-1 through EQ-12 are complete.

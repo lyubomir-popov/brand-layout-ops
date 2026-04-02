@@ -92,7 +92,7 @@ npm run demo:spokes
 - `@brand-layout-ops/layout-grid`: baseline-grid and column-grid resolution
 - `@brand-layout-ops/layout-text`: wrapping and placement math using a provided measurer
 - `@brand-layout-ops/layout-engine`: scene-level layout composition for branded overlay content
-- `@brand-layout-ops/operator-overlay-layout`: graph-facing overlay composition operator plus shared overlay defaults and document-schema primitives, including document-owned scene-family configs and background-chain persistence
+- `@brand-layout-ops/operator-overlay-layout`: graph-facing overlay composition operator plus shared overlay defaults and document-schema primitives, including document-owned scene-family graphs and background-chain persistence
 - `@brand-layout-ops/operator-copy-to-points`: Houdini-style point instancing with propagated attributes for later Three.js and SVG backends
 - `@brand-layout-ops/operator-orbits`: coarse orbit-ring point-field generator for motion-side rebuild work
 - `@brand-layout-ops/operator-phyllotaxis`: golden-angle point-field generation matching the current Houdini phyllotaxis HDA logic
@@ -110,18 +110,17 @@ Current state:
 
 - Stage 1 parity is closed for the current rebuild scope: overlay text, logo placement, selected-element editing, document workflow, exports, and the geometry screenshot pass now match the reference closely enough to treat parity as complete.
 - Local `.brand-layout-ops.json` documents are the working artifact, not browser-local preset state.
-- Background scene families are document-owned through `project.backgroundGraph`, with halo, phyllotaxis, fuzzy-boids, and scatter sharing the same document and export envelope.
+- Background scene families are document-owned through `project.sceneFamilyGraphs`, with `project.backgroundGraph` acting as the live active-family projection for halo, phyllotaxis, fuzzy-boids, and scatter inside the preview runtime.
 - The preview shell is largely controllerized; `apps/overlay-preview/src/main.ts` is now a composition root rather than the old monolith.
 
 Current active queue:
 
-1. Promote the inspector from the current mixed accordion stack to a true selected-operator pane.
-2. Keep shell-level document, export, and source-default actions separate from operator parameter panels.
-3. Treat further `main.ts` thinning as optional cleanup, not the primary plan.
+- No approved execution lane is currently open. The repo is caught up through the selected-operator pane, baseline-foundry shell compliance, preset-residue removal, and graph-first family persistence.
 
-Queued next after that active lane:
+Most concrete next follow-ups:
 
-4. Align the overlay preview shell with the latest `baseline-foundry` panel contract: upstream dark tone (`bf-theme is-dark`), shipped drawer or pinned-aside resize runtime, and no remaining local shell classes or `[data-*]` style selectors.
+1. Decide whether serialized documents should omit `project.backgroundGraph` and derive it from `project.sceneFamilyGraphs` at load time.
+2. Revisit content-format versus project-variant ownership now that documents, not presets, are the working-state unit.
 
 ## Later additions
 

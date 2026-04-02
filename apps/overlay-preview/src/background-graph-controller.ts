@@ -1,7 +1,9 @@
 import {
+  cloneOverlayBackgroundGraph,
   createDefaultOverlayBackgroundGraph,
-  extractOverlaySceneFamilyConfigsFromGraph,
+  createDefaultOverlaySceneFamilyConfigs,
   getOverlaySceneFamilyKeyForBackgroundOperator,
+  getOverlaySceneFamilyKeyForBackgroundGraph,
   type OverlayBackgroundNode,
   type OverlaySceneFamilyKey
 } from "@brand-layout-ops/operator-overlay-layout";
@@ -33,6 +35,26 @@ export function createBackgroundGraphController(
   options: BackgroundGraphControllerOptions
 ): BackgroundGraphController {
   const { state } = options;
+
+  function getFallbackSceneFamilyGraph(sceneFamilyKey: OverlaySceneFamilyKey) {
+    return createDefaultOverlayBackgroundGraph(
+      sceneFamilyKey,
+      createDefaultOverlaySceneFamilyConfigs(state.outputProfileKey),
+      state.outputProfileKey
+    );
+  }
+
+  function setCurrentSceneFamilyGraph(nextBackgroundGraph: ReturnType<typeof cloneOverlayBackgroundGraph>): void {
+    const clonedGraph = cloneOverlayBackgroundGraph(nextBackgroundGraph);
+    state.documentProject = {
+      ...state.documentProject,
+      backgroundGraph: clonedGraph,
+      sceneFamilyGraphs: {
+        ...state.documentProject.sceneFamilyGraphs,
+        [state.documentProject.sceneFamilyKey]: cloneOverlayBackgroundGraph(clonedGraph)
+      }
+    };
+  }
 
   function normalizeSelectedBackgroundNodeId(
     preferredNodeId: string | null = state.selectedBackgroundNodeId
@@ -123,29 +145,32 @@ export function createBackgroundGraphController(
       return false;
     }
 
-    state.documentProject = {
-      ...state.documentProject,
-      backgroundGraph: {
-        ...state.documentProject.backgroundGraph,
-        nodes: nextNodes
-      }
-    };
+    setCurrentSceneFamilyGraph({
+      ...state.documentProject.backgroundGraph,
+      nodes: nextNodes
+    });
     normalizeSelectedBackgroundNodeId(selectedNodeId);
     return true;
   }
 
   function syncDocumentBackgroundGraph(): void {
-    const snapshotConfigs = extractOverlaySceneFamilyConfigsFromGraph(
+    const currentGraphSceneFamilyKey = getOverlaySceneFamilyKeyForBackgroundGraph(
       state.documentProject.backgroundGraph,
-      state.documentProject.sceneFamilyConfigs
+      state.documentProject.sceneFamilyKey
     );
+    const nextSceneFamilyGraphs = {
+      ...state.documentProject.sceneFamilyGraphs,
+      [currentGraphSceneFamilyKey]: cloneOverlayBackgroundGraph(state.documentProject.backgroundGraph)
+    };
+    const nextBackgroundGraph = cloneOverlayBackgroundGraph(
+      nextSceneFamilyGraphs[state.documentProject.sceneFamilyKey]
+      ?? getFallbackSceneFamilyGraph(state.documentProject.sceneFamilyKey)
+    );
+
     state.documentProject = {
       ...state.documentProject,
-      sceneFamilyConfigs: snapshotConfigs,
-      backgroundGraph: createDefaultOverlayBackgroundGraph(
-        state.documentProject.sceneFamilyKey,
-        snapshotConfigs
-      )
+      sceneFamilyGraphs: nextSceneFamilyGraphs,
+      backgroundGraph: nextBackgroundGraph
     };
     normalizeSelectedBackgroundNodeId(state.selectedBackgroundNodeId);
     normalizeSelectedOperatorId(state.selectedOperatorId);
