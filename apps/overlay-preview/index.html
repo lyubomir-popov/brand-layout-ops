@@ -8,44 +8,57 @@
 </head>
 <body class="bf-theme is-dark">
   <div class="bf-application has-navigation" data-aside-resize-storage-key="brand-layout-ops-control-panel-width-v1">
-    <div class="bf-navigation-bar is-authoring-navigation">
-      <section class="bf-panel is-fill">
-        <div class="bf-panel-header">
-          <div class="bf-stack is-flush">
-            <h1 class="bf-panel-title">Brand Layout Ops</h1>
-            <p class="bf-form-help is-tight">File, document, defaults, export, and playback actions now live in the top shell chrome.</p>
+    <header id="authoring-top-navigation" class="bf-top-navigation is-sticky is-authoring-top-navigation">
+      <div class="bf-fixed-width">
+        <div class="bf-top-navigation-row">
+          <div class="bf-top-navigation-banner">
+            <div class="bf-top-navigation-logo">
+              <span class="bf-top-navigation-link is-authoring-top-navigation-brand">
+                <span class="bf-top-navigation-logo-tag" aria-hidden="true">BL</span>
+                <span class="bf-top-navigation-logo-title">Brand Layout Ops</span>
+              </span>
+            </div>
+            <ul class="bf-top-navigation-list is-banner-actions" aria-label="Authoring menu toggle">
+              <li class="bf-top-navigation-item">
+                <button class="bf-top-navigation-menu-toggle" type="button">Menu</button>
+              </li>
+            </ul>
           </div>
-          <div class="is-authoring-nav-actions">
-            <div class="is-authoring-nav-group">
-              <span class="is-authoring-nav-group-label">File</span>
-              <nav class="bf-actions is-nowrap" aria-label="File actions" data-file-toolbar></nav>
-            </div>
-            <div class="is-authoring-nav-group">
-              <span class="is-authoring-nav-group-label">Document</span>
-              <nav class="bf-actions is-nowrap" aria-label="Document size actions" data-document-toolbar></nav>
-            </div>
-            <div class="is-authoring-nav-group">
-              <span class="is-authoring-nav-group-label">Defaults</span>
-              <nav class="bf-actions is-nowrap" aria-label="Source default actions" data-source-default-toolbar></nav>
-            </div>
-            <div class="is-authoring-nav-group">
-              <span class="is-authoring-nav-group-label">Export</span>
-              <nav class="bf-actions is-nowrap" aria-label="Export actions" data-export-toolbar></nav>
-            </div>
-            <div class="is-authoring-nav-group">
-              <span class="is-authoring-nav-group-label">Motion</span>
-              <nav class="bf-actions is-nowrap" aria-label="Playback actions" data-playback-toolbar></nav>
-            </div>
-            <div class="is-authoring-nav-group">
-              <span class="is-authoring-nav-group-label">Panel</span>
-              <div class="bf-actions is-nowrap">
-                <button class="bf-button is-base is-dense" type="button" data-control-panel-toggle data-panel-drawer-toggle aria-controls="control-drawer" aria-expanded="false">Parameters</button>
-              </div>
-            </div>
-          </div>
+
+          <nav class="bf-top-navigation-nav" aria-label="Authoring actions">
+            <ul class="bf-top-navigation-list">
+              <li class="bf-top-navigation-item is-dropdown-toggle">
+                <button class="bf-top-navigation-link bf-top-navigation-dropdown-toggle" type="button">File</button>
+                <ul class="bf-top-navigation-dropdown" aria-hidden="true" data-file-menu></ul>
+              </li>
+              <li class="bf-top-navigation-item is-dropdown-toggle">
+                <button class="bf-top-navigation-link bf-top-navigation-dropdown-toggle" type="button">Document</button>
+                <ul class="bf-top-navigation-dropdown" aria-hidden="true" data-document-menu></ul>
+              </li>
+              <li class="bf-top-navigation-item is-dropdown-toggle">
+                <button class="bf-top-navigation-link bf-top-navigation-dropdown-toggle" type="button">Defaults</button>
+                <ul class="bf-top-navigation-dropdown" aria-hidden="true" data-source-default-menu></ul>
+              </li>
+              <li class="bf-top-navigation-item is-dropdown-toggle">
+                <button class="bf-top-navigation-link bf-top-navigation-dropdown-toggle" type="button">Export</button>
+                <ul class="bf-top-navigation-dropdown" aria-hidden="true" data-export-menu></ul>
+              </li>
+              <li class="bf-top-navigation-item is-dropdown-toggle">
+                <button class="bf-top-navigation-link bf-top-navigation-dropdown-toggle" type="button">Motion</button>
+                <ul class="bf-top-navigation-dropdown" aria-hidden="true" data-playback-menu></ul>
+              </li>
+            </ul>
+
+            <ul class="bf-top-navigation-list" aria-label="Workspace panels">
+              <li class="bf-top-navigation-item is-right-shifted">
+                <button class="bf-top-navigation-link" type="button" data-control-panel-toggle aria-controls="control-drawer" aria-expanded="false">Parameters</button>
+              </li>
+            </ul>
+          </nav>
         </div>
-      </section>
-    </div>
+      </div>
+      <div class="bf-top-navigation-search-overlay" aria-hidden="true"></div>
+    </header>
 
     <main class="bf-main">
       <div class="bf-fixed-width bf-stage-shell">

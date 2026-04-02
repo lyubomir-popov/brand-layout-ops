@@ -1,4 +1,4 @@
-import { initPanelDrawers, initResizableAsides } from "baseline-foundry";
+import { initPanelDrawers, initResizableAsides, initTopNavigations } from "baseline-foundry";
 
 import {
   renderDocumentWorkspaceUi,
@@ -47,6 +47,7 @@ export function createPreviewShellController(
 ): PreviewShellController {
   let destroyResizableAsides: (() => void) | null = null;
   let hasBoundDocumentInputs = false;
+  let hasBoundControlPanelToggle = false;
   let hasBoundResize = false;
   let isInitialized = false;
 
@@ -54,6 +55,10 @@ export function createPreviewShellController(
 
   function getConfigEditor(): HTMLElement | null {
     return $("[data-config-editor]");
+  }
+
+  function getTopNavigationEl(): HTMLElement | null {
+    return document.querySelector<HTMLElement>(".bf-top-navigation");
   }
 
   function getAppShellEl(): HTMLElement | null {
@@ -88,30 +93,41 @@ export function createPreviewShellController(
     return $("[data-document-recent-list]");
   }
 
-  function getFileToolbarEl(): HTMLElement | null {
-    return $("[data-file-toolbar]");
+  function getFileMenuEl(): HTMLElement | null {
+    return $("[data-file-menu]");
   }
 
-  function getDocumentToolbarEl(): HTMLElement | null {
-    return $("[data-document-toolbar]");
+  function getDocumentMenuEl(): HTMLElement | null {
+    return $("[data-document-menu]");
   }
 
-  function getSourceDefaultToolbarEl(): HTMLElement | null {
-    return $("[data-source-default-toolbar]");
+  function getSourceDefaultMenuEl(): HTMLElement | null {
+    return $("[data-source-default-menu]");
   }
 
-  function getExportToolbarEl(): HTMLElement | null {
-    return $("[data-export-toolbar]");
+  function getExportMenuEl(): HTMLElement | null {
+    return $("[data-export-menu]");
   }
 
-  function getPlaybackToolbarEl(): HTMLElement | null {
-    return $("[data-playback-toolbar]");
+  function getPlaybackMenuEl(): HTMLElement | null {
+    return $("[data-playback-menu]");
   }
 
-  function createToolbarButton(
+  function collapseTopNavigation(): void {
+    const topNavigation = getTopNavigationEl();
+    if (!topNavigation) {
+      return;
+    }
+
+    topNavigation.classList.remove("has-menu-open", "has-search-open");
+    for (const dropdownItem of topNavigation.querySelectorAll<HTMLElement>(".bf-top-navigation-item.is-dropdown-toggle")) {
+      dropdownItem.classList.remove("is-active");
+    }
+  }
+
+  function createMenuActionButton(
     label: string,
     options: {
-      primary?: boolean;
       dataAttribute?: string;
       onClick: (button: HTMLButtonElement) => void | Promise<void>;
       onError?: (error: unknown) => void;
@@ -119,17 +135,47 @@ export function createPreviewShellController(
   ): HTMLButtonElement {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = options.primary ? "bf-button is-dense" : "bf-button is-base is-dense";
+    button.className = "bf-top-navigation-dropdown-item";
     button.textContent = label;
     if (options.dataAttribute) {
       button.setAttribute(options.dataAttribute, "");
     }
     button.addEventListener("click", () => {
+      collapseTopNavigation();
       Promise.resolve(options.onClick(button)).catch((error: unknown) => {
         options.onError?.(error);
       });
     });
     return button;
+  }
+
+  function buildMenu(
+    menu: HTMLElement | null,
+    items: Array<{
+      label: string;
+      dataAttribute?: string;
+      onClick: (button: HTMLButtonElement) => void | Promise<void>;
+      onError?: (error: unknown) => void;
+    }>
+  ): void {
+    if (!menu) {
+      return;
+    }
+
+    menu.innerHTML = "";
+
+    for (const itemSpec of items) {
+      const item = document.createElement("li");
+      const buttonOptions = {
+        onClick: itemSpec.onClick,
+        ...(itemSpec.dataAttribute ? { dataAttribute: itemSpec.dataAttribute } : {}),
+        ...(itemSpec.onError ? { onError: itemSpec.onError } : {})
+      };
+      item.append(
+        createMenuActionButton(itemSpec.label, buttonOptions)
+      );
+      menu.append(item);
+    }
   }
 
   function refreshResizableAsidesRuntime(): void {
@@ -159,49 +205,31 @@ export function createPreviewShellController(
   }
 
   function buildFileToolbar(): void {
-    const toolbar = getFileToolbarEl();
-    if (!toolbar) {
-      return;
-    }
-
-    toolbar.innerHTML = "";
-
-    const specs: Array<{ label: string; primary?: boolean; onClick: () => void | Promise<void> }> = [
+    const specs: Array<{ label: string; onClick: () => void | Promise<void> }> = [
       { label: "New", onClick: () => deps.documentWorkspace.createNewDocument() },
       { label: "Open", onClick: () => deps.documentWorkspace.openDocumentFromDisk() },
-      { label: "Save", primary: true, onClick: async () => { await deps.documentWorkspace.saveCurrentDocument(false); } },
+      { label: "Save", onClick: async () => { await deps.documentWorkspace.saveCurrentDocument(false); } },
       { label: "Save As", onClick: async () => { await deps.documentWorkspace.saveCurrentDocument(true); } },
       { label: "Duplicate", onClick: () => deps.documentWorkspace.duplicateCurrentDocument() }
     ];
 
-    for (const spec of specs) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = spec.primary ? "bf-button is-dense" : "bf-button is-base is-dense";
-      button.textContent = spec.label;
-      button.addEventListener("click", () => {
-        Promise.resolve(spec.onClick()).catch((error: unknown) => {
+    buildMenu(getFileMenuEl(), specs.map((spec) => ({
+      label: spec.label,
+      onClick: async () => spec.onClick(),
+      onError: (error: unknown) => {
           console.error(`[file-toolbar] ${spec.label} failed:`, error);
           deps.documentWorkspace.setStatus(
             `${spec.label} failed: ${error instanceof Error ? error.message : "Unknown error"}`,
             "error"
           );
-        });
-      });
-      toolbar.append(button);
-    }
+      }
+    })));
   }
 
   function buildDocumentToolbar(): void {
-    const toolbar = getDocumentToolbarEl();
-    if (!toolbar) {
-      return;
-    }
-
-    toolbar.innerHTML = "";
-    toolbar.append(
-      createToolbarButton("Add Size", {
-        primary: true,
+    buildMenu(getDocumentMenuEl(), [
+      {
+        label: "Add Size",
         onClick: () => {
           if (!deps.addDocumentTarget()) {
             return;
@@ -212,8 +240,9 @@ export function createPreviewShellController(
           deps.buildConfigEditor();
           void deps.renderStage();
         }
-      }),
-      createToolbarButton("Remove Size", {
+      },
+      {
+        label: "Remove Size",
         onClick: () => {
           if (!deps.removeActiveDocumentTarget()) {
             return;
@@ -224,19 +253,14 @@ export function createPreviewShellController(
           deps.buildConfigEditor();
           void deps.renderStage();
         }
-      })
-    );
+      }
+    ]);
   }
 
   function buildSourceDefaultToolbar(): void {
-    const toolbar = getSourceDefaultToolbarEl();
-    if (!toolbar) {
-      return;
-    }
-
-    toolbar.innerHTML = "";
-    toolbar.append(
-      createToolbarButton("Reset", {
+    buildMenu(getSourceDefaultMenuEl(), [
+      {
+        label: "Reset",
         onClick: () => {
           deps.sourceDefaultController.applySourceDefaultSnapshot(deps.state.sourceDefaults);
           deps.markDocumentDirty();
@@ -251,8 +275,9 @@ export function createPreviewShellController(
           const message = error instanceof Error ? error.message : "Source default reset failed.";
           deps.sourceDefaultController.setSourceDefaultStatus(`Source default reset failed: ${message}`, "error");
         }
-      }),
-      createToolbarButton("Save as Default", {
+      },
+      {
+        label: "Save as Default",
         onClick: async (button) => {
           button.disabled = true;
           deps.sourceDefaultController.setSourceDefaultStatus("Saving source default...");
@@ -267,49 +292,39 @@ export function createPreviewShellController(
           const message = error instanceof Error ? error.message : "Source default save failed.";
           deps.sourceDefaultController.setSourceDefaultStatus(`Source default save failed: ${message}`, "error");
         }
-      })
-    );
+      }
+    ]);
   }
 
   function buildExportToolbar(): void {
-    const toolbar = getExportToolbarEl();
-    if (!toolbar) {
-      return;
-    }
-
-    toolbar.innerHTML = "";
-    toolbar.append(
-      createToolbarButton("Export PNG", {
+    buildMenu(getExportMenuEl(), [
+      {
+        label: "Export PNG",
         onClick: () => deps.exportComposedFramePng(),
         onError: (error) => {
           console.error("[export-toolbar] Export PNG failed:", error);
         }
-      }),
-      createToolbarButton("Export Sequence", {
+      },
+      {
+        label: "Export Sequence",
         onClick: () => deps.exportPngSequence(),
         onError: (error) => {
           console.error("[export-toolbar] Export Sequence failed:", error);
         }
-      })
-    );
+      }
+    ]);
   }
 
   function buildPlaybackToolbar(): void {
-    const toolbar = getPlaybackToolbarEl();
-    if (!toolbar) {
-      return;
-    }
-
-    toolbar.innerHTML = "";
-    toolbar.append(
-      createToolbarButton(deps.state.isPlaying ? "Pause Motion" : "Play Motion", {
-        primary: true,
+    buildMenu(getPlaybackMenuEl(), [
+      {
+        label: deps.state.isPlaying ? "Pause Motion" : "Play Motion",
         dataAttribute: "data-playback-toggle",
         onClick: () => {
           deps.togglePlayback();
         }
-      })
-    );
+      }
+    ]);
   }
 
   function buildShellChrome(): void {
@@ -343,7 +358,8 @@ export function createPreviewShellController(
     }
 
     const isDocked = isDockedViewport();
-    toggle?.setAttribute("aria-expanded", String(!isDocked && isOpen));
+    toggle?.setAttribute("aria-expanded", String(isOpen));
+    toggle?.closest(".bf-top-navigation-item")?.classList.toggle("is-selected", isOpen);
 
     if (isDocked) {
       appShell?.classList.remove("is-drawer-expanded");
@@ -464,40 +480,44 @@ export function createPreviewShellController(
   }
 
   function setupButtons(): void {
-    if (hasBoundDocumentInputs) {
-      return;
-    }
-
     const configEditor = getConfigEditor();
-    if (!configEditor) {
-      return;
+    if (!hasBoundDocumentInputs && configEditor) {
+      const trackDocumentInput = (event: Event): void => {
+        const target = event.target;
+        if (
+          !(target instanceof HTMLInputElement) &&
+          !(target instanceof HTMLTextAreaElement) &&
+          !(target instanceof HTMLSelectElement)
+        ) {
+          return;
+        }
+
+        if (target instanceof HTMLInputElement && target.type === "file") {
+          return;
+        }
+
+        if (target instanceof HTMLInputElement && target.hasAttribute("data-document-name-input")) {
+          deps.documentWorkspace.setName(target.value);
+          return;
+        }
+
+        deps.markDocumentDirty();
+      };
+
+      configEditor.addEventListener("input", trackDocumentInput);
+      configEditor.addEventListener("change", trackDocumentInput);
+      hasBoundDocumentInputs = true;
     }
 
-    const trackDocumentInput = (event: Event): void => {
-      const target = event.target;
-      if (
-        !(target instanceof HTMLInputElement) &&
-        !(target instanceof HTMLTextAreaElement) &&
-        !(target instanceof HTMLSelectElement)
-      ) {
-        return;
-      }
-
-      if (target instanceof HTMLInputElement && target.type === "file") {
-        return;
-      }
-
-      if (target instanceof HTMLInputElement && target.hasAttribute("data-document-name-input")) {
-        deps.documentWorkspace.setName(target.value);
-        return;
-      }
-
-      deps.markDocumentDirty();
-    };
-
-    configEditor.addEventListener("input", trackDocumentInput);
-    configEditor.addEventListener("change", trackDocumentInput);
-    hasBoundDocumentInputs = true;
+    if (!hasBoundControlPanelToggle) {
+      const controlPanelToggle = getControlPanelToggleEl();
+      controlPanelToggle?.addEventListener("click", (event) => {
+        event.preventDefault();
+        collapseTopNavigation();
+        setDrawerOpen(!isControlPanelOpen());
+      });
+      hasBoundControlPanelToggle = true;
+    }
   }
 
   function setupResize(): void {
@@ -555,6 +575,7 @@ export function createPreviewShellController(
     buildShellChrome();
     deps.buildConfigEditor();
 
+    initTopNavigations();
     initPanelDrawers();
     setupButtons();
     setupResize();

@@ -39,7 +39,7 @@ Useful focused checks: `npm run demo:overlay-layout`, `npm run demo:copy-to-poin
 No approved lane is currently open in `docs/TODO.md`.
 
 - Lane K is complete.
-- The current authoring baseline is: top-level shell chrome for workspace actions, a dedicated Layers palette, and a Parameters rail that follows the current layer selection.
+- The current authoring baseline is: baseline-foundry's `bf-top-navigation` for workspace actions, a dedicated Layers palette, and a Parameters rail that follows the current layer selection.
 - The next pass should promote a new lane explicitly rather than drifting into unscheduled shell polish.
 
 ## Invariants that still matter
@@ -67,4 +67,4 @@ No approved lane is currently open in `docs/TODO.md`.
 
 ## Fresh chat prompt
 
-Continue work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\lyubo\work\repos\racoon-anim` as the read-only reference app. Read `AGENTS.md`, `llm-handoff-context.md`, `docs/TODO.md`, `docs/product-roadmap.md`, and `README.md` first. Treat `docs/TODO.md` as the canonical active queue. Stage 1 parity, the selected-operator pane, the baseline-foundry shell cleanup, the preset-residue cleanup, the graph-first family-persistence migration, Lane J1-J5, and Lane K1-K3 are complete. The current baseline is a top-level action chrome plus a dedicated Layers palette and a layer-following Parameters rail, with persisted documents now storing `sceneFamilyGraphs` without serializing `backgroundGraph`. Promote a new lane explicitly before starting another large refactor.
+Continue work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\lyubo\work\repos\racoon-anim` as the read-only reference app. Read `AGENTS.md`, `llm-handoff-context.md`, `docs/TODO.md`, `docs/product-roadmap.md`, and `README.md` first. Treat `docs/TODO.md` as the canonical active queue. Stage 1 parity, the selected-operator pane, the baseline-foundry shell cleanup, the preset-residue cleanup, the graph-first family-persistence migration, Lane J1-J5, and Lane K1-K3 are complete. The current baseline is a `bf-top-navigation` action shell plus a dedicated Layers palette and a layer-following Parameters rail, with persisted documents now storing `sceneFamilyGraphs` without serializing `backgroundGraph`. Promote a new lane explicitly before starting another large refactor.

@@ -248,7 +248,7 @@ J1-J5 are complete. The canonical docs now follow their stated roles again, the 
 | J2 | Lock the one-source-of-truth authored model | J1 | **DONE** — the plan and live UI both treat the document graph plus authored overlay objects as the only editable authority; the Layers palette derives from that state instead of creating panel-only shadow data |
 | J3 | Add a list-first layer palette as the primary selection surface | J2 | **DONE** — users can now select background nodes, overlay root, text fields, and logo from a dedicated Layers palette without relying on direct canvas picks |
 | J4 | Collapse the inspector into a pure parameters pane | J3 | **DONE** — the Parameters rail now follows the selected overlay layer, hides root-only overlay controls while a text or logo layer is selected, and no longer carries the special `Selected Element` framing |
-| J5 | Move file, export, document-setup, and source-default actions into top-level navigation | J4 | **DONE** — file, document-size, source-default, export, and playback actions now live in top-level shell chrome, the playback inspector section is retired, and first-class file shortcuts include Ctrl/Cmd+N, Ctrl/Cmd+O, Ctrl/Cmd+S, and Ctrl/Cmd+Shift+S |
+| J5 | Move file, export, document-setup, and source-default actions into top-level navigation | J4 | **DONE** — file, document-size, source-default, export, and playback actions now live in top-level navigation, the playback inspector section is retired, the current shell uses baseline-foundry's `bf-top-navigation` dropdown pattern instead of a custom grouped toolbar slab, and first-class file shortcuts include Ctrl/Cmd+N, Ctrl/Cmd+O, Ctrl/Cmd+S, and Ctrl/Cmd+Shift+S |
 
 ### Lane K — Serialized-envelope cleanup (complete)
 
@@ -262,7 +262,7 @@ Lane K is complete. Persisted preview documents and source-default writes now ke
 
 ## Immediate next steps after the above is done
 - **Promote the next lane explicitly.** Lane K is complete, so the next pass should choose a new approved lane instead of drifting into opportunistic shell work.
-- **Keep the shell stable.** Treat the new top-level chrome plus Layers palette as the current authoring baseline and only reopen it for a concrete product need.
+- **Keep the shell stable.** Treat the baseline-foundry `bf-top-navigation` plus Layers palette as the current authoring baseline and only reopen it for a concrete product need.
 - **Full compositor model.** Layer-stack direction is committed but the active queue should add parity-friendly seams first, not schedule a premature compositor rewrite.
 - **Timeline and clip model.** Belongs after parity, as a sequencing layer above the operator graph.
 - **Cross-operator transition choreography.** Future timeline/sequencing concern, not preview-local temporal glue.
