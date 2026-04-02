@@ -103,16 +103,17 @@ Goal: Documents only persist operator graphs for families the user has explicitl
 | L5 | Done | `removeBackgroundNode()` — removes node, prunes edges, falls back `activeNodeId`, refuses to remove last node. Wired into Layers palette with hover-reveal × button |
 | L6 | Verified | Source-default, legacy files, and automation all work unchanged under sparse type |
 
-### Lane M — List-based network view (next)
+### Lane M — Stage network overlay + compositor seam (active)
 
-Goal: Replace the flat node list in the Layers palette with a DAG-aware list showing connection topology. Add node CRUD (add operator from registry). This is the list-first prerequisite before a spatial graph editor.
+Goal: Add a toggleable stage overlay that visualizes the current operator flow with deterministic DAG autolayout, connection lines, and a 50% black scrim. Do not build a temporary spatial editor. Dependency flow stays in the operator graph; visual ordering and future z-index live in a separate composition seam.
 
 | Step | Status | Summary |
 |------|--------|---------|
-| M1 | Not started | Topological sort of `backgroundGraph.nodes` using `edges` |
-| M2 | Not started | Render DAG-aware list with indent or connection indicators |
-| M3 | Not started | Add-node action: browse registered operators, insert into graph |
-| M4 | Not started | Edge CRUD: connect/disconnect ports between nodes |
+| M1 | Done | Added `networkOverlayVisible` state, persisted visibility, `View` menu wiring, and `N` keyboard toggle. Mounted a dedicated stage overlay layer with a 50% black scrim |
+| M2 | Done | Render the current graph as an auto-laid-out DAG overlay using topological depth rather than force layout or persisted XY positions |
+| M3 | Done | Overlay nodes are selectable and edges show direction or port labels so flows like `scatter -> boids` are legible |
+| M4 | Not started | Introduce a separate composition seam for ordered render layers (`Three.js scene`, `vignette`, `2D overlay`, future media) instead of overloading the dependency graph with z-order |
+| M5 | Not started | Model preview and export backends as sinks (`frame`, `image sequence`, `SVG`, `PDF`) that consume the composed output rather than mutating graph semantics |
 
 ## Immediate next steps after the above is done
 - **Promote the next lane explicitly.** Lane K is complete, so the next pass should choose a new approved lane instead of drifting into opportunistic shell work.

@@ -59,6 +59,7 @@ export interface PreviewShellControllerDeps {
     updater: (settings: PreviewState["exportSettings"]) => PreviewState["exportSettings"]
   ): void;
   setOverlayVisible(visible: boolean): void;
+  setNetworkOverlayVisible(visible: boolean): void;
   addDocumentTarget(): boolean;
   removeActiveDocumentTarget(): boolean;
   exportComposedFramePng(): Promise<void>;
@@ -691,6 +692,14 @@ export function createPreviewShellController(
           updateViewUi();
         }
       },
+      {
+        label: deps.state.networkOverlayVisible ? "Hide Network Overlay" : "Show Network Overlay",
+        shortcut: "N",
+        onClick: () => {
+          deps.setNetworkOverlayVisible(!deps.state.networkOverlayVisible);
+          updateViewUi();
+        }
+      },
       { kind: "separator" },
       {
         label: "Composition Guides",
@@ -855,6 +864,13 @@ export function createPreviewShellController(
 
     if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.key === "o" || event.key === "O")) {
       deps.setOverlayVisible(!deps.state.overlayVisible);
+      updateViewUi();
+      event.preventDefault();
+      return;
+    }
+
+    if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.key === "n" || event.key === "N")) {
+      deps.setNetworkOverlayVisible(!deps.state.networkOverlayVisible);
       updateViewUi();
       event.preventDefault();
       return;

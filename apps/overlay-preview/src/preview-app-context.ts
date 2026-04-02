@@ -59,6 +59,7 @@ export interface PreviewState {
   selected: Selection | null;
   guideMode: GuideMode;
   overlayVisible: boolean;
+  networkOverlayVisible: boolean;
   pendingCsvDraftsByBucket: Record<string, string>;
   outputProfileKey: string;
   contentFormatKey: string;

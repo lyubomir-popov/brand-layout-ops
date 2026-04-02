@@ -331,6 +331,71 @@ body.bf-theme.is-dark {
   -webkit-user-select: none;
 }
 
+.is-network-overlay {
+  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  position: absolute;
+}
+
+.is-network-overlay[aria-hidden="true"] {
+  display: none;
+}
+
+.is-network-overlay[aria-hidden="false"] {
+  display: block;
+}
+
+.is-network-overlay-edges,
+.is-network-overlay-nodes {
+  inset: 0;
+  position: absolute;
+}
+
+.is-network-overlay-edges {
+  height: 100%;
+  pointer-events: none;
+  width: 100%;
+}
+
+.is-network-overlay-edge {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.72);
+  stroke-width: 1.5;
+}
+
+.is-network-overlay-edge-label {
+  fill: rgba(255, 255, 255, 0.88);
+  font-size: 10px;
+  text-anchor: middle;
+}
+
+.is-network-overlay-node {
+  left: 0;
+  max-inline-size: calc(100% - 2rem);
+  min-inline-size: 10.5rem;
+  position: absolute;
+  text-align: left;
+  top: 0;
+  transform: translate(-50%, -50%);
+}
+
+button.is-network-overlay-node {
+  cursor: pointer;
+}
+
+.is-network-overlay-node.is-selected {
+  box-shadow: 0 0 0 1px rgba(246, 183, 60, 0.8);
+}
+
+.is-network-overlay-node.is-composite,
+.is-network-overlay-node.is-output {
+  opacity: 0.92;
+}
+
+.is-network-overlay-meta {
+  display: block;
+}
+
 .is-authoring-baseline-guide {
   background: rgba(255, 79, 79, 0.9);
   box-shadow: 0 0 0 1px rgba(255, 79, 79, 0.3);

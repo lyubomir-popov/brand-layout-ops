@@ -31,18 +31,18 @@ Useful focused checks: `npm run demo:overlay-layout`, `npm run demo:copy-to-poin
 - The working artifact is a local `.brand-layout-ops.json` file. Browser-local presets are gone from the live workflow.
 - `project.sceneFamilyGraphs` is now a sparse `Partial<Record<OverlaySceneFamilyKey, OverlayBackgroundGraph>>`. New documents only contain the active family; other families are created on demand when the user switches. Legacy files with all four families still load fine. `project.backgroundGraph` is a derived live active-family projection used by the preview runtime and is no longer written into new saved files. Legacy `sceneFamilyConfigs` remains load/apply compatibility only.
 - The live shell now uses a two-menu `bf-top-navigation`: `File` owns recent-file access, document setup, export settings, export commands, and source defaults through BF modal dialogs, while `View` owns overlay visibility, guide mode, and playback state. The current document name is shown in the top-navigation banner, the Parameters rail stays parameter-only, and it starts with a dedicated `Layers` palette.
+- The stage now has a toggleable network overlay layer. `View` and `N` can show a 50% black scrim plus a deterministic DAG autolayout of the active background graph, with pseudo-nodes for overlay layout, preview composite, and preview sink so operator flow is visible without committing to a spatial editor yet.
 - Document setup is now a table-driven workflow instead of the older choice-row modal. It shows saved sizes as radio rows with width/height columns, supports direct custom-size entry, and allows row-level removal without forcing the user to activate a size first. Custom dimensions flow through generated `custom_{width}x{height}` output-profile keys.
 - The shell uses the canonical `baseline-foundry` dark application, overlay, and resize contracts. The old local shell class layer is gone from source. The preview currently imports the valid exported `baseline-foundry/presets/app-tier.css` preset because the sibling repo's exported `presets/panel.css` artifact is malformed.
 - `main.ts` is now a composition root around extracted controllers. The remaining work is product-shape work, not more parity recovery.
 
 ## Active queue
 
-Lane L (sparse operator graph inclusion + node CRUD) is in progress.
+Lane M (stage network overlay + compositor seam) is active.
 
-- L1–L3 landed: sparse `OverlaySceneFamilyGraphs` type, single-family default creation, create-on-demand family switching.
-- L5 landed: `removeBackgroundNode()` with edge pruning and activeNodeId fallback, wired into the Layers palette with a hover-reveal × button.
-- L6–L8 verified no-op: existing source-default, legacy project files, and automation paths work unchanged under the sparse type.
-- Next up: Lane M (list-based network view) — show the DAG topology in the Layers palette, add-node CRUD, manifest-driven operator browsing.
+- M1–M3 landed: persisted network overlay visibility, `View`/`N` toggle, dedicated stage scrim layer, deterministic DAG autolayout, selectable nodes, and labeled edges.
+- Next up: M4 introduce a real preview composition seam for ordered render layers instead of hardcoded stage ownership.
+- After that: M5 model preview and export outputs as named sinks instead of baking sink assumptions into graph or stage code.
 - Content-format as a user-facing concept is retired. The document authoring model replaces it, with Houdini as the north star. See `docs/product-roadmap.md` → "Document/project model — the Houdini ROP analogy" for the full synthesis.
 
 ## Invariants that still matter
@@ -61,6 +61,7 @@ Lane L (sparse operator graph inclusion + node CRUD) is in progress.
 | Inspector rebuild + Layers palette | `apps/overlay-preview/src/config-editor-controller.ts` |
 | Overlay child editing | `apps/overlay-preview/src/overlay-editing-controller.ts` |
 | Shell bootstrap and keyboard shortcuts | `apps/overlay-preview/src/preview-shell-controller.ts` |
+| Stage network overlay rendering | `apps/overlay-preview/src/stage-network-overlay-controller.ts` |
 | Background graph selection and family switching | `apps/overlay-preview/src/background-graph-controller.ts` |
 | Preview document model and compatibility | `apps/overlay-preview/src/preview-document.ts` |
 | Document open/save orchestration | `apps/overlay-preview/src/document-workspace.ts` |

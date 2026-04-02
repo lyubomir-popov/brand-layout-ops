@@ -98,6 +98,10 @@ import {
   createPreviewShellController,
   type PreviewShellController
 } from "./preview-shell-controller.js";
+import {
+  createStageNetworkOverlayController,
+  type StageNetworkOverlayController
+} from "./stage-network-overlay-controller.js";
 import { buildFuzzyBoidsSection } from "./fuzzy-boids-section.js";
 import { buildGridSection } from "./grid-section.js";
 import { buildHaloConfigSection } from "./halo-config-section.js";
@@ -110,6 +114,7 @@ type ConfigSectionDefinition = ParameterSectionDefinition;
 const INITIAL_PROFILE_KEY = "instagram_1080x1350";
 const INITIAL_FORMAT_KEY = "generic_social";
 const OVERLAY_VISIBLE_STORAGE_KEY = "brand-layout-ops-overlay-visible-v1";
+const NETWORK_OVERLAY_VISIBLE_STORAGE_KEY = "brand-layout-ops-network-overlay-visible-v1";
 const GUIDE_MODE_STORAGE_KEY = "brand-layout-ops-guide-mode-v1";
 
 const persistedFormat = loadOutputFormatKeys();
@@ -138,6 +143,7 @@ const state: PreviewState = {
   selected: null,
   guideMode: normalizeGuideMode(localStorage.getItem(GUIDE_MODE_STORAGE_KEY) ?? "composition"),
   overlayVisible: localStorage.getItem(OVERLAY_VISIBLE_STORAGE_KEY) !== "0",
+  networkOverlayVisible: localStorage.getItem(NETWORK_OVERLAY_VISIBLE_STORAGE_KEY) === "1",
   pendingCsvDraftsByBucket: {},
   outputProfileKey: startProfileKey,
   contentFormatKey: startFormatKey,
@@ -178,6 +184,7 @@ const previewDocumentBridge = {
 };
 
 let previewShellController: PreviewShellController | null = null;
+let networkOverlayController: StageNetworkOverlayController | null = null;
 
 const documentWorkspaceController = createDocumentWorkspaceController<OverlayPreviewDocument>({
   untitledName: UNTITLED_DOCUMENT_NAME,
@@ -233,6 +240,10 @@ function getSvgOverlay(): SVGSVGElement | null {
 
 function getAuthoringLayerEl(): HTMLElement | null {
   return $("[data-authoring-layer]");
+}
+
+function getNetworkOverlayEl(): HTMLElement | null {
+  return $("[data-network-overlay]");
 }
 
 function getConfigEditor(): HTMLElement | null {
@@ -372,7 +383,9 @@ function normalizeSelectedOperatorId(
 }
 
 function setSelectedOperator(operatorId: string | null): boolean {
-  return backgroundGraphController.setSelectedOperator(operatorId);
+  const didChange = backgroundGraphController.setSelectedOperator(operatorId);
+  networkOverlayController?.render();
+  return didChange;
 }
 
 function getSelectedOperatorId(): SelectedOperatorId {
@@ -399,10 +412,13 @@ function updateSelectedBackgroundNode(
 
 function syncDocumentBackgroundGraph(): void {
   backgroundGraphController.syncDocumentBackgroundGraph();
+  networkOverlayController?.render();
 }
 
 function removeBackgroundNode(nodeId: string): boolean {
-  return backgroundGraphController.removeBackgroundNode(nodeId);
+  const didRemove = backgroundGraphController.removeBackgroundNode(nodeId);
+  networkOverlayController?.render();
+  return didRemove;
 }
 
 function getResolvedTextFieldText(field: TextFieldPlacementSpec): string {
@@ -522,9 +538,11 @@ function select(sel: Selection | null) {
   state.selected = sel;
   if (authoringController) {
     authoringController.handleSelectionChange();
+    networkOverlayController?.render();
     return;
   }
   buildConfigEditor();
+  networkOverlayController?.render();
 }
 
 function applyStagedCsvDraft() {
@@ -573,6 +591,7 @@ function removeActiveDocumentTarget(): boolean {
 
 function switchOutputProfile(profileKey: string) {
   profileStateController!.switchOutputProfile(profileKey);
+  networkOverlayController?.render();
 }
 
 function switchContentFormat(formatKey: string) {
@@ -593,16 +612,19 @@ function sanitizePreviewDocument(rawDocument: unknown): OverlayPreviewDocument |
 
 async function applyPreviewDocumentToState(previewDocument: OverlayPreviewDocument): Promise<void> {
   await documentStateController!.applyPreviewDocumentToState(previewDocument);
+  networkOverlayController?.render();
 }
 
 async function applyNewDocumentState(): Promise<void> {
   await documentStateController!.applyNewDocumentState();
+  networkOverlayController?.render();
 }
 
 function setOverlayVisible(nextVisible: boolean) {
   if (state.overlayVisible === nextVisible) {
     syncOverlayVisibilityUi();
     authoringController?.render();
+    networkOverlayController?.render();
     previewShellController?.updateViewUi();
     return;
   }
@@ -617,6 +639,22 @@ function setOverlayVisible(nextVisible: boolean) {
 
   syncOverlayVisibilityUi();
   authoringController?.render();
+  networkOverlayController?.render();
+  previewShellController?.updateViewUi();
+}
+
+function setNetworkOverlayVisible(nextVisible: boolean) {
+  if (state.networkOverlayVisible === nextVisible) {
+    networkOverlayController?.render();
+    previewShellController?.updateViewUi();
+    return;
+  }
+
+  state.networkOverlayVisible = nextVisible;
+
+  try { localStorage.setItem(NETWORK_OVERLAY_VISIBLE_STORAGE_KEY, nextVisible ? "1" : "0"); } catch { }
+
+  networkOverlayController?.render();
   previewShellController?.updateViewUi();
 }
 
@@ -641,6 +679,7 @@ function syncOverlayVisibilityUi() {
 
 function resizeRenderer() {
   stageRenderController.resizeRenderer();
+  networkOverlayController?.render();
 }
 
 function syncBackgroundRendererVisibility() {
@@ -753,6 +792,26 @@ const ctx: PreviewAppContext = {
   }
 };
 
+
+networkOverlayController = createStageNetworkOverlayController({
+  state,
+  getStageEl,
+  getOverlayEl: getNetworkOverlayEl,
+  getSelectedOperatorId,
+  getSceneFamilyLabel,
+  selectBackgroundNode(nodeId: string) {
+    const didChange = setSelectedOperator(nodeId);
+    if (didChange) {
+      buildConfigEditor();
+    }
+    networkOverlayController?.render();
+  },
+  selectOverlayLayout() {
+    setSelectedOperator(OVERLAY_LAYOUT_OPERATOR_SELECTION_ID);
+    select(null);
+    networkOverlayController?.render();
+  }
+});
 authoringController = createAuthoringInteractionController({
   ctx,
   getCurrentScene: () => stageRenderController.getCurrentScene(),
@@ -793,7 +852,7 @@ exportAutomationController = createExportAutomationController({
   normalizeSelectedBackgroundNodeId,
   buildCurrentDocumentPersistence,
   parsePreviewDocument: sanitizePreviewDocument,
-  applyPreviewDocument: applyPreviewDocumentToState
+    applyPreviewDocument: applyPreviewDocumentToState
 });
 
 csvDraftController = createCsvDraftController({
@@ -854,6 +913,7 @@ previewShellController = createPreviewShellController({
   ensurePlaybackLoop,
   updateExportSettings,
   setOverlayVisible,
+  setNetworkOverlayVisible,
   addDocumentTarget,
   removeActiveDocumentTarget,
   exportComposedFramePng: async () => {
@@ -915,6 +975,11 @@ function buildConfigEditor() {
 }
 const initPromise = previewShellController.init();
 exportAutomationController?.installAutomationApi(initPromise);
+void initPromise.then(() => {
+  networkOverlayController?.render();
+}).catch(() => {
+  // initPromise error is handled below.
+});
 
 initPromise.catch((error: unknown) => {
   console.error(error);
