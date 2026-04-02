@@ -102,25 +102,9 @@ npm run demo:spokes
 - `@brand-layout-ops/overlay-interaction`: snapped text/logo drag math for operator-facing overlay editing
 - `@brand-layout-ops/parameter-ui`: small DOM helpers for operator-facing control surfaces in preview apps
 
-## Resume Point
+## Live Status
 
-The repo is past parity rebuild and shell extraction.
-
-Current state:
-
-- Stage 1 parity is closed for the current rebuild scope: overlay text, logo placement, selected-element editing, document workflow, exports, and the geometry screenshot pass now match the reference closely enough to treat parity as complete.
-- Local `.brand-layout-ops.json` documents are the working artifact, not browser-local preset state.
-- Background scene families are document-owned through `project.sceneFamilyGraphs`, with `project.backgroundGraph` acting as the live active-family projection for halo, phyllotaxis, fuzzy-boids, and scatter inside the preview runtime.
-- The preview shell is largely controllerized; `apps/overlay-preview/src/main.ts` is now a composition root rather than the old monolith.
-
-Current active queue:
-
-- No approved execution lane is currently open. The repo is caught up through the selected-operator pane, baseline-foundry shell compliance, preset-residue removal, and graph-first family persistence.
-
-Most concrete next follow-ups:
-
-1. Decide whether serialized documents should omit `project.backgroundGraph` and derive it from `project.sceneFamilyGraphs` at load time.
-2. Revisit content-format versus project-variant ownership now that documents, not presets, are the working-state unit.
+Current implementation state intentionally lives in `llm-handoff-context.md` and `docs/TODO.md`, not in the README. Use the handoff file for the cold-start snapshot and the TODO for the active execution queue.
 
 ## Later additions
 

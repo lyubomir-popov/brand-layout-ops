@@ -22,9 +22,15 @@ export interface PreviewShellControllerDeps {
   markDocumentDirty(): void;
   loadLogoIntrinsicDimensions(assetPath: string): Promise<void>;
   buildConfigEditor(): void;
+  buildOutputProfileOptions(): void;
   renderStage(): Promise<void>;
+  resizeRenderer(): void;
   togglePlayback(): void;
   ensurePlaybackLoop(): void;
+  addDocumentTarget(): boolean;
+  removeActiveDocumentTarget(): boolean;
+  exportComposedFramePng(): Promise<void>;
+  exportPngSequence(): Promise<void>;
   initHaloRenderer(): void;
   initAuthoring(): void;
   handleAuthoringEditingKeyDown(event: KeyboardEvent): boolean;
@@ -86,6 +92,46 @@ export function createPreviewShellController(
     return $("[data-file-toolbar]");
   }
 
+  function getDocumentToolbarEl(): HTMLElement | null {
+    return $("[data-document-toolbar]");
+  }
+
+  function getSourceDefaultToolbarEl(): HTMLElement | null {
+    return $("[data-source-default-toolbar]");
+  }
+
+  function getExportToolbarEl(): HTMLElement | null {
+    return $("[data-export-toolbar]");
+  }
+
+  function getPlaybackToolbarEl(): HTMLElement | null {
+    return $("[data-playback-toolbar]");
+  }
+
+  function createToolbarButton(
+    label: string,
+    options: {
+      primary?: boolean;
+      dataAttribute?: string;
+      onClick: (button: HTMLButtonElement) => void | Promise<void>;
+      onError?: (error: unknown) => void;
+    }
+  ): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = options.primary ? "bf-button is-dense" : "bf-button is-base is-dense";
+    button.textContent = label;
+    if (options.dataAttribute) {
+      button.setAttribute(options.dataAttribute, "");
+    }
+    button.addEventListener("click", () => {
+      Promise.resolve(options.onClick(button)).catch((error: unknown) => {
+        options.onError?.(error);
+      });
+    });
+    return button;
+  }
+
   function refreshResizableAsidesRuntime(): void {
     destroyResizableAsides?.();
     destroyResizableAsides = initResizableAsides();
@@ -144,6 +190,134 @@ export function createPreviewShellController(
       });
       toolbar.append(button);
     }
+  }
+
+  function buildDocumentToolbar(): void {
+    const toolbar = getDocumentToolbarEl();
+    if (!toolbar) {
+      return;
+    }
+
+    toolbar.innerHTML = "";
+    toolbar.append(
+      createToolbarButton("Add Size", {
+        primary: true,
+        onClick: () => {
+          if (!deps.addDocumentTarget()) {
+            return;
+          }
+
+          deps.markDocumentDirty();
+          deps.buildOutputProfileOptions();
+          deps.buildConfigEditor();
+          void deps.renderStage();
+        }
+      }),
+      createToolbarButton("Remove Size", {
+        onClick: () => {
+          if (!deps.removeActiveDocumentTarget()) {
+            return;
+          }
+
+          deps.markDocumentDirty();
+          deps.buildOutputProfileOptions();
+          deps.buildConfigEditor();
+          void deps.renderStage();
+        }
+      })
+    );
+  }
+
+  function buildSourceDefaultToolbar(): void {
+    const toolbar = getSourceDefaultToolbarEl();
+    if (!toolbar) {
+      return;
+    }
+
+    toolbar.innerHTML = "";
+    toolbar.append(
+      createToolbarButton("Reset", {
+        onClick: () => {
+          deps.sourceDefaultController.applySourceDefaultSnapshot(deps.state.sourceDefaults);
+          deps.markDocumentDirty();
+          deps.state.playbackTimeSec = 0;
+          deps.resizeRenderer();
+          deps.buildOutputProfileOptions();
+          deps.buildConfigEditor();
+          deps.sourceDefaultController.setSourceDefaultStatus("Reset to source default.");
+          void deps.renderStage();
+        },
+        onError: (error) => {
+          const message = error instanceof Error ? error.message : "Source default reset failed.";
+          deps.sourceDefaultController.setSourceDefaultStatus(`Source default reset failed: ${message}`, "error");
+        }
+      }),
+      createToolbarButton("Save as Default", {
+        onClick: async (button) => {
+          button.disabled = true;
+          deps.sourceDefaultController.setSourceDefaultStatus("Saving source default...");
+          try {
+            const result = await deps.sourceDefaultController.writeCurrentAsSourceDefault();
+            deps.sourceDefaultController.setSourceDefaultStatus(result.message, "success");
+          } finally {
+            button.disabled = false;
+          }
+        },
+        onError: (error) => {
+          const message = error instanceof Error ? error.message : "Source default save failed.";
+          deps.sourceDefaultController.setSourceDefaultStatus(`Source default save failed: ${message}`, "error");
+        }
+      })
+    );
+  }
+
+  function buildExportToolbar(): void {
+    const toolbar = getExportToolbarEl();
+    if (!toolbar) {
+      return;
+    }
+
+    toolbar.innerHTML = "";
+    toolbar.append(
+      createToolbarButton("Export PNG", {
+        onClick: () => deps.exportComposedFramePng(),
+        onError: (error) => {
+          console.error("[export-toolbar] Export PNG failed:", error);
+        }
+      }),
+      createToolbarButton("Export Sequence", {
+        onClick: () => deps.exportPngSequence(),
+        onError: (error) => {
+          console.error("[export-toolbar] Export Sequence failed:", error);
+        }
+      })
+    );
+  }
+
+  function buildPlaybackToolbar(): void {
+    const toolbar = getPlaybackToolbarEl();
+    if (!toolbar) {
+      return;
+    }
+
+    toolbar.innerHTML = "";
+    toolbar.append(
+      createToolbarButton(deps.state.isPlaying ? "Pause Motion" : "Play Motion", {
+        primary: true,
+        dataAttribute: "data-playback-toggle",
+        onClick: () => {
+          deps.togglePlayback();
+        }
+      })
+    );
+  }
+
+  function buildShellChrome(): void {
+    buildFileToolbar();
+    buildDocumentToolbar();
+    buildSourceDefaultToolbar();
+    buildExportToolbar();
+    buildPlaybackToolbar();
   }
 
   function isControlPanelOpen(): boolean {
@@ -220,6 +394,18 @@ export function createPreviewShellController(
           deps.sourceDefaultController.setSourceDefaultStatus(`Source default save failed: ${message}`, "error");
         }
       })();
+      return;
+    }
+
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && (event.key === "n" || event.key === "N")) {
+      event.preventDefault();
+      deps.documentWorkspace.createNewDocument();
+      return;
+    }
+
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && (event.key === "o" || event.key === "O")) {
+      event.preventDefault();
+      void deps.documentWorkspace.openDocumentFromDisk();
       return;
     }
 
@@ -366,7 +552,7 @@ export function createPreviewShellController(
       await deps.loadLogoIntrinsicDimensions(logoPath);
     }
 
-    buildFileToolbar();
+    buildShellChrome();
     deps.buildConfigEditor();
 
     initPanelDrawers();

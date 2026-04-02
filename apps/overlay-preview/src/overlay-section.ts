@@ -1,5 +1,5 @@
 /**
- * overlay-section.ts — Selected Element accordion section builder.
+ * overlay-section.ts — Overlay layer accordion section builder.
  */
 import {
   getOverlayFieldDisplayLabel,
@@ -24,7 +24,7 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
   if (!state.selected) {
     const p = document.createElement("p");
     p.className = "bf-form-help";
-    p.textContent = "Click a text block or logo in the stage to select it, or use the text buttons above.";
+    p.textContent = "Overlay Layout is selected. Add text here, or pick a text or logo layer from the Layers palette to edit its parameters.";
     body.append(p);
     return root;
   }

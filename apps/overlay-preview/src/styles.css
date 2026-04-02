@@ -46,6 +46,32 @@ body.bf-theme.is-dark {
   width: 100%;
 }
 
+.is-authoring-navigation .bf-panel-header {
+  align-items: start;
+  gap: 1rem;
+}
+
+.is-authoring-nav-actions {
+  align-items: start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  justify-content: flex-end;
+}
+
+.is-authoring-nav-group {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.is-authoring-nav-group-label {
+  color: var(--bf-color-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .bf-application > .bf-main,
 .bf-application > .bf-aside {
   block-size: 100%;
@@ -264,6 +290,10 @@ body.bf-theme.is-dark {
 }
 
 @media (max-width: 720px) {
+  .is-authoring-nav-actions {
+    justify-content: start;
+  }
+
   .is-stage {
     width: min(100%, calc((100dvh - 1.5rem) * var(--stage-aspect-ratio)));
   }
@@ -287,18 +317,18 @@ body.bf-theme.is-dark {
   }
 }
 
-/* Operator selector between shell sections and operator panels */
-.is-operator-selector {
+/* Layers palette between shell sections and parameter panels */
+.is-layer-palette {
   border-bottom: 1px solid var(--bf-color-rule);
   padding: 0.5rem 1rem;
 }
 
-.is-operator-selector-heading {
+.is-layer-palette-heading {
   margin-bottom: 0.375rem;
 }
 
-.is-operator-selector-heading .bf-form-label,
-.is-operator-selector-subheading {
+.is-layer-palette-heading .bf-form-label,
+.is-layer-palette-subheading {
   color: var(--bf-color-muted);
   font-size: 0.6875rem;
   font-weight: 600;
@@ -306,21 +336,21 @@ body.bf-theme.is-dark {
   text-transform: uppercase;
 }
 
-.is-operator-selector-help {
+.is-layer-palette-help {
   margin-top: 0;
 }
 
-.is-operator-selector-section + .is-operator-selector-section {
+.is-layer-palette-section + .is-layer-palette-section {
   margin-top: 0.75rem;
 }
 
-.is-operator-selector-options {
+.is-layer-palette-options {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
 }
 
-.is-operator-selector-option {
+.is-layer-palette-option {
   align-items: center;
   cursor: pointer;
   display: flex;
@@ -329,22 +359,26 @@ body.bf-theme.is-dark {
   line-height: 1rem;
 }
 
-.is-operator-selector-option input[type="radio"] {
+.is-layer-palette-option input[type="radio"] {
   margin: 0;
 }
 
-.is-operator-selector-node {
+.is-layer-palette-row {
   align-items: start;
   grid-template-columns: auto minmax(0, 1fr);
 }
 
-.is-operator-selector-node-copy {
+.is-layer-palette-copy {
   display: grid;
   gap: 0.2rem;
   min-width: 0;
 }
 
-.is-operator-selector-node .bf-choice-row-meta {
+.is-layer-palette-row .bf-choice-row-meta {
   font-size: 0.72rem;
   line-height: 1.25;
+}
+
+.is-layer-palette-row.is-child {
+  padding-inline-start: 1rem;
 }

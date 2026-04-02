@@ -8,7 +8,7 @@ export function buildOutputFormatSection(): HTMLElement {
 
   const helpText = document.createElement("p");
   helpText.className = "bf-form-help bf-u-no-margin--bottom";
-  helpText.textContent = "Document sizes now live here. Switching the active size rebuilds the stage at that screen size and loads the per-size layout or export state stored in the document.";
+  helpText.textContent = "Document size details live here. Add or remove sizes from the top shell chrome, then use this panel to manage the saved size list and the active size settings.";
   body.append(helpText);
 
   const optionsContainer = document.createElement("div");

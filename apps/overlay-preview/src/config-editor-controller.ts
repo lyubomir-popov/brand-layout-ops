@@ -8,6 +8,7 @@
 import { initRangeControls } from "baseline-foundry";
 
 import {
+  getOverlayFieldDisplayLabel,
   getOverlaySceneFamilyKeyForBackgroundOperator,
   OVERLAY_BACKGROUND_FUZZY_SEED_NODE_ID,
   OVERLAY_BACKGROUND_HALO_OPERATOR_KEY,
@@ -24,7 +25,8 @@ import {
 
 import {
   OVERLAY_LAYOUT_OPERATOR_SELECTION_ID,
-  type PreviewState
+  type PreviewState,
+  type Selection
 } from "./preview-app-context.js";
 
 export interface ConfigEditorControllerDeps {
@@ -35,6 +37,7 @@ export interface ConfigEditorControllerDeps {
   getSelectedOperatorGroup(): string;
   getSceneFamilyLabel(key: OverlaySceneFamilyKey): string;
   setSelectedOperator(operatorId: string | null): boolean;
+  selectOverlayItem(selection: Selection | null): void;
   syncDocumentBackgroundGraph(): void;
   markDocumentDirty(): void;
   syncBackgroundRendererVisibility(): void;
@@ -48,6 +51,12 @@ export interface ConfigEditorController {
 interface RenderedSection {
   section: ParameterSectionDefinition;
   element: HTMLElement;
+}
+
+const OVERLAY_LOGO_LAYER_TOKEN = "overlay:logo";
+
+function getOverlayTextLayerToken(fieldId: string): string {
+  return `overlay:text:${fieldId}`;
 }
 
 export function createConfigEditorController(deps: ConfigEditorControllerDeps): ConfigEditorController {
@@ -111,36 +120,67 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
     return renderedSections.find((entry) => entry.section.key === key)?.element ?? null;
   }
 
-  function buildOperatorSelectorEl(): HTMLElement {
+  function selectionsMatch(left: Selection | null, right: Selection | null): boolean {
+    return left?.kind === right?.kind && left?.id === right?.id;
+  }
+
+  function getSelectedLayerToken(): string {
+    const selectedOperatorId = deps.getSelectedOperatorId();
+    if (selectedOperatorId !== OVERLAY_LAYOUT_OPERATOR_SELECTION_ID) {
+      return selectedOperatorId;
+    }
+
+    if (state.selected?.kind === "text") {
+      return getOverlayTextLayerToken(state.selected.id);
+    }
+
+    if (state.selected?.kind === "logo") {
+      return OVERLAY_LOGO_LAYER_TOKEN;
+    }
+
+    return OVERLAY_LAYOUT_OPERATOR_SELECTION_ID;
+  }
+
+  function activateOverlayLayer(selection: Selection | null): void {
+    const didChangeOperator = deps.setSelectedOperator(OVERLAY_LAYOUT_OPERATOR_SELECTION_ID);
+    if (!didChangeOperator && selectionsMatch(state.selected, selection)) {
+      return;
+    }
+
+    shouldAutoOpenNextOperatorSection = true;
+    deps.selectOverlayItem(selection);
+  }
+
+  function buildLayerPaletteEl(): HTMLElement {
     const section = document.createElement("li");
-    section.className = "bf-accordion-group is-operator-selector";
+    section.className = "bf-accordion-group is-layer-palette";
 
     const heading = document.createElement("div");
-    heading.className = "is-operator-selector-heading";
+    heading.className = "is-layer-palette-heading";
 
     const label = document.createElement("span");
     label.className = "bf-form-label";
-    label.textContent = "Operators";
+    label.textContent = "Layers";
     heading.append(label);
 
     const help = document.createElement("p");
-    help.className = "bf-form-help is-tight bf-u-no-margin--bottom is-operator-selector-help";
-    help.textContent = "Select one operator surface to edit. Rendered output chooses which saved background node feeds the preview.";
+    help.className = "bf-form-help is-tight bf-u-no-margin--bottom is-layer-palette-help";
+    help.textContent = "Select the rendered background and the authored layer you want to tune. The parameter pane follows this selection.";
 
     const outputSection = document.createElement("div");
-    outputSection.className = "is-operator-selector-section";
+    outputSection.className = "is-layer-palette-section";
 
     const outputLabel = document.createElement("div");
-    outputLabel.className = "is-operator-selector-subheading";
-    outputLabel.textContent = "Rendered Output";
+    outputLabel.className = "is-layer-palette-subheading";
+    outputLabel.textContent = "Rendered Background";
     outputSection.append(outputLabel);
 
     const radioGroup = document.createElement("div");
-    radioGroup.className = "is-operator-selector-options";
+    radioGroup.className = "is-layer-palette-options";
 
     for (const sceneFamilyKey of OVERLAY_SCENE_FAMILY_ORDER) {
       const radioLabel = document.createElement("label");
-      radioLabel.className = "is-operator-selector-option";
+      radioLabel.className = "is-layer-palette-option";
 
       const radio = document.createElement("input");
       radio.type = "radio";
@@ -174,59 +214,28 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
 
     outputSection.append(radioGroup);
 
-    const nodesSection = document.createElement("div");
-  nodesSection.className = "is-operator-selector-section";
+    const selectedLayerToken = getSelectedLayerToken();
 
-    const nodesLabel = document.createElement("div");
-  nodesLabel.className = "is-operator-selector-subheading";
-    nodesLabel.textContent = "Parameter Surface";
-    nodesSection.append(nodesLabel);
+    const backgroundSection = document.createElement("div");
+    backgroundSection.className = "is-layer-palette-section";
 
-    const nodeList = document.createElement("div");
-    nodeList.className = "bf-choice-list bf-stack is-compact-stack";
-    const selectedOperatorId = deps.getSelectedOperatorId();
+    const backgroundLabel = document.createElement("div");
+    backgroundLabel.className = "is-layer-palette-subheading";
+    backgroundLabel.textContent = "Background Graph";
+    backgroundSection.append(backgroundLabel);
 
-    const overlayRow = document.createElement("label");
-    overlayRow.className = "bf-choice-row is-operator-selector-node";
-
-    const overlayRadio = document.createElement("input");
-    overlayRadio.type = "radio";
-    overlayRadio.name = "parameter-operator-selector";
-    overlayRadio.value = OVERLAY_LAYOUT_OPERATOR_SELECTION_ID;
-    overlayRadio.checked = selectedOperatorId === OVERLAY_LAYOUT_OPERATOR_SELECTION_ID;
-    overlayRadio.addEventListener("change", () => {
-      if (!overlayRadio.checked || !deps.setSelectedOperator(OVERLAY_LAYOUT_OPERATOR_SELECTION_ID)) {
-        return;
-      }
-
-      shouldAutoOpenNextOperatorSection = true;
-      buildConfigEditor();
-    });
-
-    const overlayCopy = document.createElement("span");
-    overlayCopy.className = "is-operator-selector-node-copy";
-
-    const overlayName = document.createElement("span");
-    overlayName.className = "bf-choice-row-name";
-    overlayName.textContent = "Overlay Layout";
-
-    const overlayMeta = document.createElement("span");
-    overlayMeta.className = "bf-choice-row-meta";
-    overlayMeta.textContent = "Text, logo, guides, and selected element controls.";
-
-    overlayCopy.append(overlayName, overlayMeta);
-    overlayRow.append(overlayRadio, overlayCopy);
-    nodeList.append(overlayRow);
+    const backgroundList = document.createElement("div");
+    backgroundList.className = "bf-choice-list bf-stack is-compact-stack";
 
     for (const node of state.documentProject.backgroundGraph.nodes) {
       const row = document.createElement("label");
-      row.className = "bf-choice-row is-operator-selector-node";
+      row.className = "bf-choice-row is-layer-palette-row";
 
       const radio = document.createElement("input");
       radio.type = "radio";
-      radio.name = "parameter-operator-selector";
+      radio.name = "layer-selection";
       radio.value = node.id;
-      radio.checked = node.id === selectedOperatorId;
+      radio.checked = node.id === selectedLayerToken;
       radio.addEventListener("change", () => {
         if (!radio.checked || !deps.setSelectedOperator(node.id)) {
           return;
@@ -237,7 +246,7 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
       });
 
       const copy = document.createElement("span");
-      copy.className = "is-operator-selector-node-copy";
+      copy.className = "is-layer-palette-copy";
 
       const nameSpan = document.createElement("span");
       nameSpan.className = "bf-choice-row-name";
@@ -249,11 +258,122 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
 
       copy.append(nameSpan, metaSpan);
       row.append(radio, copy);
-      nodeList.append(row);
+      backgroundList.append(row);
     }
 
-    nodesSection.append(nodeList);
-    section.append(heading, help, outputSection, nodesSection);
+    backgroundSection.append(backgroundList);
+
+    const overlaySection = document.createElement("div");
+    overlaySection.className = "is-layer-palette-section";
+
+    const overlayLabel = document.createElement("div");
+    overlayLabel.className = "is-layer-palette-subheading";
+    overlayLabel.textContent = "Overlay Layers";
+    overlaySection.append(overlayLabel);
+
+    const overlayList = document.createElement("div");
+    overlayList.className = "bf-choice-list bf-stack is-compact-stack";
+
+    const overlayRow = document.createElement("label");
+    overlayRow.className = "bf-choice-row is-layer-palette-row";
+
+    const overlayRadio = document.createElement("input");
+    overlayRadio.type = "radio";
+    overlayRadio.name = "layer-selection";
+    overlayRadio.value = OVERLAY_LAYOUT_OPERATOR_SELECTION_ID;
+    overlayRadio.checked = selectedLayerToken === OVERLAY_LAYOUT_OPERATOR_SELECTION_ID;
+    overlayRadio.addEventListener("change", () => {
+      if (!overlayRadio.checked) {
+        return;
+      }
+
+      activateOverlayLayer(null);
+    });
+
+    const overlayCopy = document.createElement("span");
+    overlayCopy.className = "is-layer-palette-copy";
+
+    const overlayName = document.createElement("span");
+    overlayName.className = "bf-choice-row-name";
+    overlayName.textContent = "Overlay Layout";
+
+    const overlayMeta = document.createElement("span");
+    overlayMeta.className = "bf-choice-row-meta";
+    overlayMeta.textContent = "Root layer | text, logo, guides, and overlay document controls.";
+
+    overlayCopy.append(overlayName, overlayMeta);
+    overlayRow.append(overlayRadio, overlayCopy);
+    overlayList.append(overlayRow);
+
+    for (const field of state.params.textFields) {
+      const row = document.createElement("label");
+      row.className = "bf-choice-row is-layer-palette-row is-child";
+
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "layer-selection";
+      radio.value = getOverlayTextLayerToken(field.id);
+      radio.checked = selectedLayerToken === getOverlayTextLayerToken(field.id);
+      radio.addEventListener("change", () => {
+        if (!radio.checked) {
+          return;
+        }
+
+        activateOverlayLayer({ kind: "text", id: field.id });
+      });
+
+      const copy = document.createElement("span");
+      copy.className = "is-layer-palette-copy";
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "bf-choice-row-name";
+      nameSpan.textContent = `Text: ${getOverlayFieldDisplayLabel(state.params, field.id)}`;
+
+      const metaSpan = document.createElement("span");
+      metaSpan.className = "bf-choice-row-meta";
+      metaSpan.textContent = `Overlay text layer | ${field.id}`;
+
+      copy.append(nameSpan, metaSpan);
+      row.append(radio, copy);
+      overlayList.append(row);
+    }
+
+    if (state.params.logo) {
+      const row = document.createElement("label");
+      row.className = "bf-choice-row is-layer-palette-row is-child";
+
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "layer-selection";
+      radio.value = OVERLAY_LOGO_LAYER_TOKEN;
+      radio.checked = selectedLayerToken === OVERLAY_LOGO_LAYER_TOKEN;
+      radio.addEventListener("change", () => {
+        if (!radio.checked) {
+          return;
+        }
+
+        activateOverlayLayer({ kind: "logo", id: state.params.logo?.id ?? "brand-mark" });
+      });
+
+      const copy = document.createElement("span");
+      copy.className = "is-layer-palette-copy";
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "bf-choice-row-name";
+      nameSpan.textContent = "Logo";
+
+      const metaSpan = document.createElement("span");
+      metaSpan.className = "bf-choice-row-meta";
+      metaSpan.textContent = "Overlay brand mark layer.";
+
+      copy.append(nameSpan, metaSpan);
+      row.append(radio, copy);
+      overlayList.append(row);
+    }
+
+    overlaySection.append(overlayList);
+
+    section.append(heading, help, outputSection, backgroundSection, overlaySection);
     return section;
   }
 
@@ -328,7 +448,21 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
 
     const shellSections = sections.filter((section) => section.scope === "shell");
     const operatorSections = sections.filter((section) => section.scope !== "shell");
-    const selectedOperatorSections = operatorSections.filter((section) => section.group === activeGroup);
+    const selectedOperatorSections = operatorSections.filter((section) => {
+      if (section.group !== activeGroup) {
+        return false;
+      }
+
+      if (activeGroup !== OVERLAY_LAYOUT_OPERATOR_SELECTION_ID) {
+        return true;
+      }
+
+      if (!state.selected) {
+        return true;
+      }
+
+      return section.key === "overlay-layer";
+    });
     const renderedSections: RenderedSection[] = [];
 
     if (shellSections.length > 0) {
@@ -346,7 +480,7 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
     if (operatorSections.length > 0) {
       const operatorAccordion = buildSectionAccordion([], renderedSections);
       const operatorList = operatorAccordion.querySelector(".bf-accordion-list");
-      operatorList?.append(buildOperatorSelectorEl());
+      operatorList?.append(buildLayerPaletteEl());
 
       for (const section of selectedOperatorSections) {
         const element = section.factory();
@@ -359,7 +493,9 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
         buildInspectorRail(
           "Parameters",
           activeGroup === OVERLAY_LAYOUT_OPERATOR_SELECTION_ID
-            ? "Overlay Layout is selected. Only the overlay-layout parameter surface is shown here."
+            ? state.selected
+              ? "The parameter pane is following the selected overlay layer. Root overlay controls stay hidden until the overlay root is selected again."
+              : "Overlay Layout is selected. Root overlay controls are shown here."
             : "Only the selected saved background operator surface is shown here.",
           operatorAccordion
         )

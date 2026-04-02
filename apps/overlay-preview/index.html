@@ -7,12 +7,48 @@
   <title>Brand Layout Ops Preview</title>
 </head>
 <body class="bf-theme is-dark">
-  <div class="bf-application" data-aside-resize-storage-key="brand-layout-ops-control-panel-width-v1">
+  <div class="bf-application has-navigation" data-aside-resize-storage-key="brand-layout-ops-control-panel-width-v1">
+    <div class="bf-navigation-bar is-authoring-navigation">
+      <section class="bf-panel is-fill">
+        <div class="bf-panel-header">
+          <div class="bf-stack is-flush">
+            <h1 class="bf-panel-title">Brand Layout Ops</h1>
+            <p class="bf-form-help is-tight">File, document, defaults, export, and playback actions now live in the top shell chrome.</p>
+          </div>
+          <div class="is-authoring-nav-actions">
+            <div class="is-authoring-nav-group">
+              <span class="is-authoring-nav-group-label">File</span>
+              <nav class="bf-actions is-nowrap" aria-label="File actions" data-file-toolbar></nav>
+            </div>
+            <div class="is-authoring-nav-group">
+              <span class="is-authoring-nav-group-label">Document</span>
+              <nav class="bf-actions is-nowrap" aria-label="Document size actions" data-document-toolbar></nav>
+            </div>
+            <div class="is-authoring-nav-group">
+              <span class="is-authoring-nav-group-label">Defaults</span>
+              <nav class="bf-actions is-nowrap" aria-label="Source default actions" data-source-default-toolbar></nav>
+            </div>
+            <div class="is-authoring-nav-group">
+              <span class="is-authoring-nav-group-label">Export</span>
+              <nav class="bf-actions is-nowrap" aria-label="Export actions" data-export-toolbar></nav>
+            </div>
+            <div class="is-authoring-nav-group">
+              <span class="is-authoring-nav-group-label">Motion</span>
+              <nav class="bf-actions is-nowrap" aria-label="Playback actions" data-playback-toolbar></nav>
+            </div>
+            <div class="is-authoring-nav-group">
+              <span class="is-authoring-nav-group-label">Panel</span>
+              <div class="bf-actions is-nowrap">
+                <button class="bf-button is-base is-dense" type="button" data-control-panel-toggle data-panel-drawer-toggle aria-controls="control-drawer" aria-expanded="false">Parameters</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <main class="bf-main">
       <div class="bf-fixed-width bf-stage-shell">
-        <div class="bf-actions is-end is-stage-actions">
-          <button class="bf-panel-toggle" type="button" data-control-panel-toggle data-panel-drawer-toggle aria-controls="control-drawer" aria-expanded="false">Controls</button>
-        </div>
         <section class="is-stage" data-stage aria-label="Animated halo field">
           <canvas data-stage-canvas aria-hidden="true"></canvas>
           <canvas class="is-scene-preview" data-scene-preview aria-hidden="true"></canvas>
@@ -37,9 +73,8 @@
         aria-orientation="vertical"
       ></div>
       <div class="bf-panel is-fill">
-        <div class="bf-panel-header is-sticky">    
-          <h1 class="bf-panel-title">Brand Layout Ops</h1>
-          <nav class="bf-actions is-nowrap" aria-label="File actions" data-file-toolbar></nav>
+        <div class="bf-panel-header is-sticky">
+          <h2 class="bf-panel-title">Parameters</h2>
           <div class="bf-panel-controls">
             <button class="bf-panel-toggle" type="button" data-panel-drawer-close data-panel-drawer-autofocus aria-controls="control-drawer">Close</button>
           </div>

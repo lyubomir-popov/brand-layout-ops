@@ -29,6 +29,7 @@ Use this before and after substantial work so parity implementation keeps servin
 - The layout engine stays rigorous and document-owned. Do not let renderer adapters or preview-only helpers become the canonical home for layout semantics.
 - Preview code is an adapter, not the product core. If a rule must survive renderer changes, it belongs in shared types, layout kernels, operator outputs, or backend contracts.
 - Background graph execution should converge on one graph-shaped authority. `project.sceneFamilyGraphs` is the persisted per-family store, and `project.backgroundGraph` is the live active-family projection for `project.sceneFamilyKey`. Legacy `sceneFamilyConfigs` is now a load/apply compatibility bridge only. Do not re-introduce per-edit mirroring.
+- The authored document should keep one authoritative instance of each editable layer or operator. Selection UIs, parameter panes, and shell chrome may point at that state, but they must not create parallel editable shadow models.
 - UI work should reduce hardcoded preview ownership over time. Prefer section registration, manifests, and typed operator surfaces over adding more bespoke accordion builders indefinitely.
 - Do not let Ubuntu-specific render quirks calcify into permanent one-off features. If a need is really "multiple ordered visual planes" or "a compositor above and below text," move toward a layer-stack model rather than adding another special-case toggle.
 - Shell-level project actions belong in authoring chrome, not buried in operator panels.
@@ -235,8 +236,23 @@ These regressions were introduced during the document-model and shell extraction
 | I2 | Route family switching and automation apply through stored family graphs | I1 | **DONE** — family switches now reuse the stored graph for each family instead of rebuilding from config snapshots, and automation accepts both legacy config payloads and the new graph map |
 | I3 | Simplify document drift rules around graph authority | I2 | **DONE** — the canonical rules now treat `sceneFamilyGraphs` as the persisted family store and `backgroundGraph` as the live active-family projection |
 
+### Lane J — Docs audit and Houdini-style authoring shell (complete)
+
+Inbox-promoted work for the next cycle. This lane turned the stopgap shell into a more Houdini-like flow: one authoritative document graph, a layer-driven selection surface, a parameter pane that follows the current layer, and top-level navigation for file/workspace actions.
+
+J1-J5 are complete. The canonical docs now follow their stated roles again, the authored document graph or layer model remains the only editable authority, the Parameters rail starts with a dedicated Layers palette for background nodes and overlay layers, the overlay pane follows the current layer selection, and shell-level actions now live in top-level chrome instead of the inspector.
+
+| Step | Task | Depends on | Exit criteria |
+|------|------|------------|---------------|
+| J1 | Audit the canonical docs against their stated roles | I3 | **DONE** — `llm-handoff-context.md` is back to a short cold-start file, `docs/TODO.md` remains the active source of truth, `docs/history.md` carries completed work, and the README no longer duplicates the active queue |
+| J2 | Lock the one-source-of-truth authored model | J1 | **DONE** — the plan and live UI both treat the document graph plus authored overlay objects as the only editable authority; the Layers palette derives from that state instead of creating panel-only shadow data |
+| J3 | Add a list-first layer palette as the primary selection surface | J2 | **DONE** — users can now select background nodes, overlay root, text fields, and logo from a dedicated Layers palette without relying on direct canvas picks |
+| J4 | Collapse the inspector into a pure parameters pane | J3 | **DONE** — the Parameters rail now follows the selected overlay layer, hides root-only overlay controls while a text or logo layer is selected, and no longer carries the special `Selected Element` framing |
+| J5 | Move file, export, document-setup, and source-default actions into top-level navigation | J4 | **DONE** — file, document-size, source-default, export, and playback actions now live in top-level shell chrome, the playback inspector section is retired, and first-class file shortcuts include Ctrl/Cmd+N, Ctrl/Cmd+O, Ctrl/Cmd+S, and Ctrl/Cmd+Shift+S |
+
 ## Immediate next steps after the above is done
-- **Content-format vs project variants.** If file-backed variants replace content-format switching, current format UI can shrink later.
+- **Promote the next lane explicitly.** Lane J is complete, so the next pass should choose a new approved lane instead of drifting into opportunistic shell work.
+- **Keep the shell stable.** Treat the new top-level chrome plus Layers palette as the current authoring baseline and only reopen it for a concrete product need.
 - **Full compositor model.** Layer-stack direction is committed but the active queue should add parity-friendly seams first, not schedule a premature compositor rewrite.
 - **Timeline and clip model.** Belongs after parity, as a sequencing layer above the operator graph.
 - **Cross-operator transition choreography.** Future timeline/sequencing concern, not preview-local temporal glue.
@@ -251,7 +267,8 @@ These are optional spot checks, not Stage 1 parity gates and not part of the act
 
 Deferred until explicitly promoted. Each carries a working assumption.
 
-- **Broader graph persistence.** First background-chain persistence landed via `project.backgroundGraph`. Expand only after list-first network view proves out.
+- **Serialized-envelope cleanup.** `project.backgroundGraph` can later become a derived runtime projection if we want fully normalized saved files.
+- **Content-format vs project variants.** If document-backed variants replace format switching, the remaining format schema can shrink later.
 - **GPU/execution backends.** Keep moderate operators in TypeScript. Allow GPU paths only where profiling proves TypeScript insufficient.
 - **Spokes decomposition.** Keep `operator-spokes` coarse for parity. Later split toward wave, mask, and polar-field operators.
 

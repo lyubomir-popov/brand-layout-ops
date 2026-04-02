@@ -2,7 +2,7 @@
  * overlay-editing-controller.ts — Selected-element text and logo editing.
  *
  * Owns text-field CRUD, style updates, linked logo-title sizing, and the
- * Selected Element action row so main.ts stays focused on composition.
+ * overlay-layer action row so main.ts stays focused on composition.
  */
 
 import type {
@@ -128,12 +128,12 @@ export function createOverlayEditingController(deps: OverlayEditingControllerDep
 
   function getSelectedOverlaySectionTitle(): string {
     if (!state.selected) {
-      return "Selected Element";
+      return "Overlay Layout";
     }
 
     return state.selected.kind === "logo"
-      ? "Selected Logo"
-      : `Selected ${getOverlayFieldDisplayLabel(state.params, state.selected.id)}`;
+      ? "Logo"
+      : `Text: ${getOverlayFieldDisplayLabel(state.params, state.selected.id)}`;
   }
 
   function getSelectedTextField(): TextFieldPlacementSpec | null {
@@ -233,19 +233,6 @@ export function createOverlayEditingController(deps: OverlayEditingControllerDep
   function createOverlayItemActionRow(): HTMLElement {
     const actions = document.createElement("div");
     actions.className = "bf-cluster is-tight-cluster";
-
-    for (const field of state.params.textFields) {
-      const selectButton = document.createElement("button");
-      const isActive = state.selected?.kind === "text" && state.selected.id === field.id;
-      selectButton.className = isActive ? "bf-button is-dense" : "bf-button is-base is-dense";
-      selectButton.type = "button";
-      selectButton.textContent = getOverlayFieldDisplayLabel(state.params, field.id);
-      selectButton.disabled = isActive;
-      selectButton.addEventListener("click", () => {
-        deps.select({ kind: "text", id: field.id });
-      });
-      actions.append(selectButton);
-    }
 
     const addButton = document.createElement("button");
     addButton.className = "bf-button is-dense";

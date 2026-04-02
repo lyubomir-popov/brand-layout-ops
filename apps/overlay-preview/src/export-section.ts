@@ -11,24 +11,10 @@ export function buildExportSection(ctx: PreviewAppContext): HTMLElement {
   const { root, body } = buildAccordionSectionEl("Export");
   const { state } = ctx;
 
-  const row = document.createElement("div");
-  row.className = "bf-actions is-nowrap";
-
-  const exportBtn = document.createElement("button");
-  exportBtn.className = "bf-button is-base is-dense";
-  exportBtn.type = "button";
-  exportBtn.textContent = "Export PNG";
-  exportBtn.addEventListener("click", () => { void ctx.exportComposedFramePng(); });
-  row.append(exportBtn);
-
-  const seqBtn = document.createElement("button");
-  seqBtn.className = "bf-button is-base is-dense";
-  seqBtn.type = "button";
-  seqBtn.textContent = "Export Sequence";
-  seqBtn.addEventListener("click", () => { void ctx.exportPngSequence(); });
-  row.append(seqBtn);
-
-  body.append(row);
+  const help = document.createElement("p");
+  help.className = "bf-form-help is-tight bf-u-no-margin--bottom";
+  help.textContent = "Export actions now live in the top shell chrome. Keep export-specific settings here.";
+  body.append(help);
 
   body.append(createCheckboxFormGroup(
     "Transparent PNG background",

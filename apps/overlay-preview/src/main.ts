@@ -106,7 +106,6 @@ import { buildHaloConfigSection } from "./halo-config-section.js";
 import { buildOutputFormatSection } from "./output-format-section.js";
 import { buildOverlaySection } from "./overlay-section.js";
 import { buildPhyllotaxisSection } from "./phyllotaxis-section.js";
-import { buildPlaybackSection } from "./playback-section.js";
 import { buildScatterSection } from "./scatter-section.js";
 import { buildSourceDefaultSection } from "./source-default-section.js";
 
@@ -846,9 +845,19 @@ previewShellController = createPreviewShellController({
   markDocumentDirty,
   loadLogoIntrinsicDimensions,
   buildConfigEditor,
+  buildOutputProfileOptions,
   renderStage,
+  resizeRenderer,
   togglePlayback,
   ensurePlaybackLoop,
+  addDocumentTarget,
+  removeActiveDocumentTarget,
+  exportComposedFramePng: async () => {
+    await exportAutomationController?.exportComposedFramePng();
+  },
+  exportPngSequence: async () => {
+    await exportAutomationController?.exportPngSequence();
+  },
   initHaloRenderer: () => {
     stageRenderController.initHaloRenderer();
   },
@@ -864,12 +873,11 @@ previewShellController = createPreviewShellController({
 });
 
 const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
-  { key: "playback", scope: "shell", order: 90, factory: () => buildPlaybackSection(ctx), afterRender: updatePlaybackToggleUi },
   { key: "export", scope: "shell", order: 100, factory: () => buildExportSection(ctx) },
   { key: "source-default", scope: "shell", order: 110, factory: () => buildSourceDefaultSection(ctx) },
   { key: "output-format", scope: "shell", order: 200, factory: () => buildOutputFormatSection(), afterRender: buildOutputProfileOptions },
   { key: "document", scope: "shell", order: 250, factory: () => buildDocumentSection(ctx), afterRender: updateDocumentUi },
-  { key: "selected-overlay", scope: "operator", group: OVERLAY_LAYOUT_OPERATOR_SELECTION_ID, order: 500, factory: () => buildOverlaySection(ctx) },
+  { key: "overlay-layer", scope: "operator", group: OVERLAY_LAYOUT_OPERATOR_SELECTION_ID, order: 500, factory: () => buildOverlaySection(ctx) },
   { key: "layout-grid", scope: "operator", group: OVERLAY_LAYOUT_OPERATOR_SELECTION_ID, order: 700, factory: () => buildGridSection(ctx), afterRender: syncOverlayVisibilityUi },
   { key: "halo-config", scope: "operator", order: 800, group: "halo", factory: () => buildHaloConfigSection(ctx) },
   { key: "fuzzy-boids", scope: "operator", order: 810, group: "fuzzy-boids", factory: () => buildFuzzyBoidsSection(ctx) },
@@ -885,6 +893,7 @@ configEditorController = createConfigEditorController({
   getSelectedOperatorGroup,
   getSceneFamilyLabel,
   setSelectedOperator,
+  selectOverlayItem: select,
   syncDocumentBackgroundGraph,
   markDocumentDirty,
   syncBackgroundRendererVisibility,

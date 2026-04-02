@@ -159,7 +159,7 @@ export interface PreviewAppContext {
   updateSelectedTextValue(id: string, value: string): void;
   /** Get the selected text field, or null if no text is selected. */
   getSelectedTextField(): TextFieldPlacementSpec | null;
-  /** Get the title string for the Selected Element accordion section. */
+  /** Get the title string for the current overlay-layer accordion section. */
   getSelectedOverlaySectionTitle(): string;
   /** Create the Add Text / Delete Text action row for the overlay section. */
   createOverlayItemActionRow(): HTMLElement;

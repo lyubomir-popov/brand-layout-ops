@@ -82,6 +82,29 @@ All initial first splits complete: grid, text, overlay composition, overlay inte
 - Older document and source-default files still load: `document-schema.ts` now normalizes legacy `sceneFamilyConfigs` into per-family graphs and lets any saved active `backgroundGraph` override the current family entry during migration.
 - Validation: `npm run typecheck` and `npm run preview:build`.
 
+## Lane J1/J2/J3 — docs-role audit, authored authority, and layer palette (2026-04-02)
+
+- Shortened `llm-handoff-context.md` back to a real cold-start file and removed active-queue duplication from `README.md`, so status now lives only in the canonical docs.
+- Kept the authored model explicit: the document graph plus overlay-authored objects remain the only editable authority, and the new palette or pane work reads that state instead of introducing shell-only shadow models.
+- Replaced the old parameter-surface selector with a dedicated `Layers` palette in the Parameters rail. It now lists background nodes, the overlay root, text fields, and the logo so selection no longer depends on direct canvas picking alone.
+- Reduced the old `Selected Element` action row to add/delete actions only, so the new palette is the primary selection surface for overlay children.
+- Validation: `npm run typecheck` and `npm run preview:build`.
+
+## Lane J4 — pure overlay parameters pane (2026-04-02)
+
+- Removed the special `Selected Element` framing from the overlay parameter surface. The overlay section now reads as `Overlay Layout`, `Text: ...`, or `Logo` depending on the current layer selection.
+- The Parameters rail now follows the selected overlay layer more strictly: when a text or logo layer is selected, root-only overlay controls such as the layout grid stay hidden until the overlay root is selected again from the Layers palette.
+- Cleaned up the last stale `selected-overlay` naming in the source tree so the code now reflects the overlay-layer model directly.
+- Validation: `npm run typecheck` and `npm run preview:build`.
+
+## Lane J5 — top-level shell chrome for workspace actions (2026-04-02)
+
+- Added a top `bf-navigation-bar` action chrome to the live preview and moved file, document-size, source-default, export, and playback actions into grouped top-level toolbars.
+- Retired the Playback accordion from the live workspace rail and removed the dead `playback-section.ts` file.
+- Removed duplicate action rows from the Export, Source Defaults, and Output Format panels so the inspector now keeps settings and status while shell actions live in top chrome.
+- Added first-class file shortcuts for `Ctrl/Cmd+N` and `Ctrl/Cmd+O` alongside the existing save shortcuts so keyboard workflow still matches the promoted file actions.
+- Validation: `npm run typecheck` and `npm run preview:build`.
+
 ## Completed Execution Queue
 
 - EQ-1 through EQ-12 are complete.

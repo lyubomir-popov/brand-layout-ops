@@ -246,42 +246,6 @@ export function createDocumentTargetController(
     help.className = "bf-form-help is-tight bf-u-no-margin--bottom";
     container.append(help);
 
-    const toolbar = document.createElement("div");
-    toolbar.className = "bf-cluster is-tight-cluster";
-
-    const addButton = document.createElement("button");
-    addButton.type = "button";
-    addButton.className = "bf-button is-dense";
-    addButton.textContent = "Add Size";
-    addButton.disabled = getUnusedDocumentTargetProfileKeys().length === 0;
-    addButton.addEventListener("click", () => {
-      if (!addDocumentTarget()) {
-        return;
-      }
-
-      deps.markDocumentDirty();
-      deps.buildConfigEditor();
-      void deps.renderStage();
-    });
-
-    const removeButton = document.createElement("button");
-    removeButton.type = "button";
-    removeButton.className = "bf-button is-base is-dense";
-    removeButton.textContent = "Remove Size";
-    removeButton.disabled = state.documentProject.targets.length <= 1;
-    removeButton.addEventListener("click", () => {
-      if (!removeActiveDocumentTarget()) {
-        return;
-      }
-
-      deps.markDocumentDirty();
-      deps.buildConfigEditor();
-      void deps.renderStage();
-    });
-
-    toolbar.append(addButton, removeButton);
-    container.append(toolbar);
-
     const list = document.createElement("div");
     list.className = "bf-choice-list bf-stack is-compact-stack";
 

@@ -118,8 +118,8 @@ Goal:
 Deliverables:
 
 - operator mode for graph and parameter tuning
-- contextual parameter panels driven by the selected operator or graph node instead of one monolithic document accordion
-- a list-first network-view or operator-selection workflow that lets the layout operator, scene operator, and future generators expose their own scoped controls, with a graphical node editor later if needed
+- contextual parameter panels driven by the selected operator, layer, or graph node instead of one monolithic document accordion
+- a list-first layer or network palette that lets the document root, background operators, overlay root, and overlay child objects expose their own scoped controls, with a graphical node editor later if needed
 - the network view reads the persisted operator graph from the document model instead of introducing a second source of truth
 - dedicated shell navigation for project and export actions so file operations do not stay mixed into the operator parameter stack
 - stakeholder mode for template, row, and format selection
