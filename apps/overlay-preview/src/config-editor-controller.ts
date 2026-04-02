@@ -203,6 +203,29 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
       field.append(heading);
 
       if (options.length === 0) {
+        const controls = document.createElement("div");
+        controls.className = "is-layer-connection-controls";
+
+        if (existingEdge) {
+          const disconnectButton = document.createElement("button");
+          disconnectButton.type = "button";
+          disconnectButton.className = "bf-button is-base is-dense is-layer-connection-disconnect";
+          disconnectButton.textContent = "Disconnect";
+          disconnectButton.addEventListener("click", () => {
+            if (!deps.disconnectBackgroundInput(node.id, inputPort.key)) {
+              return;
+            }
+
+            deps.setSelectedOperator(node.id);
+            shouldAutoOpenNextOperatorSection = true;
+            deps.markDocumentDirty();
+            buildConfigEditor();
+            void deps.renderStage();
+          });
+          controls.append(disconnectButton);
+        }
+
+        field.append(controls);
         return [field];
       }
 
@@ -262,6 +285,26 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
       syncConnectButtonState();
 
       controls.append(select, connectButton);
+
+      if (existingEdge) {
+        const disconnectButton = document.createElement("button");
+        disconnectButton.type = "button";
+        disconnectButton.className = "bf-button is-base is-dense is-layer-connection-disconnect";
+        disconnectButton.textContent = "Disconnect";
+        disconnectButton.addEventListener("click", () => {
+          if (!deps.disconnectBackgroundInput(node.id, inputPort.key)) {
+            return;
+          }
+
+          deps.setSelectedOperator(node.id);
+          shouldAutoOpenNextOperatorSection = true;
+          deps.markDocumentDirty();
+          buildConfigEditor();
+          void deps.renderStage();
+        });
+        controls.append(disconnectButton);
+      }
+
       field.append(controls);
       return [field];
     });
