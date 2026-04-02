@@ -1,5 +1,7 @@
 import { topologicallySortGraph } from "@brand-layout-ops/graph-runtime";
 import {
+  findOverlayBackgroundInputPort,
+  findOverlayBackgroundOutputPort,
   getOverlaySceneFamilyKeyForBackgroundOperator,
   OVERLAY_BACKGROUND_FUZZY_SEED_NODE_ID,
   OVERLAY_BACKGROUND_HALO_OPERATOR_KEY,
@@ -204,9 +206,11 @@ export function createStageNetworkOverlayController(
     const edges: NetworkOverlayEdge[] = backgroundGraph.edges.map((edge) => {
       const fromNode = nodesById.get(edge.fromNodeId);
       const toNode = nodesById.get(edge.toNodeId);
-      const label = fromNode && toNode
-        ? `${edge.fromPortKey} → ${edge.toPortKey}`
-        : edge.toPortKey;
+      const fromPort = fromNode ? findOverlayBackgroundOutputPort(fromNode.operatorKey, edge.fromPortKey) : null;
+      const toPort = toNode ? findOverlayBackgroundInputPort(toNode.operatorKey, edge.toPortKey) : null;
+      const label = fromPort && toPort
+        ? `${fromPort.label} → ${toPort.label}`
+        : (toPort?.label ?? edge.toPortKey);
 
       return {
         fromId: edge.fromNodeId,
