@@ -15,6 +15,7 @@ import {
   OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY,
   OVERLAY_SCENE_FAMILY_ORDER,
   type OverlayBackgroundNode,
+  type OverlayBackgroundOperatorKey,
   type OverlaySceneFamilyKey
 } from "@brand-layout-ops/operator-overlay-layout";
 import {
@@ -36,6 +37,8 @@ export interface ConfigEditorControllerDeps {
   getSelectedOperatorId(): string;
   getSelectedOperatorGroup(): string;
   getSceneFamilyLabel(key: OverlaySceneFamilyKey): string;
+  getAvailableBackgroundOperatorKeys(): OverlayBackgroundOperatorKey[];
+  addBackgroundNode(operatorKey: OverlayBackgroundOperatorKey): string | null;
   setSelectedOperator(operatorId: string | null): boolean;
   selectOverlayItem(selection: Selection | null): void;
   syncDocumentBackgroundGraph(): void;
@@ -79,6 +82,14 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
     }
 
     return deps.getSceneFamilyLabel(getOverlaySceneFamilyKeyForBackgroundOperator(node.operatorKey));
+  }
+
+  function getBackgroundOperatorLabel(operatorKey: OverlayBackgroundOperatorKey): string {
+    if (operatorKey === OVERLAY_BACKGROUND_HALO_OPERATOR_KEY) {
+      return "Halo Field";
+    }
+
+    return deps.getSceneFamilyLabel(getOverlaySceneFamilyKeyForBackgroundOperator(operatorKey));
   }
 
   function getBackgroundNodeStatus(node: OverlayBackgroundNode): string {
@@ -288,6 +299,31 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
     }
 
     backgroundSection.append(backgroundList);
+
+    const addActions = document.createElement("div");
+    addActions.className = "is-layer-palette-actions";
+
+    for (const operatorKey of deps.getAvailableBackgroundOperatorKeys()) {
+      const addButton = document.createElement("button");
+      addButton.type = "button";
+      addButton.className = "bf-button is-base is-dense";
+      addButton.textContent = `Add ${getBackgroundOperatorLabel(operatorKey)}`;
+      addButton.addEventListener("click", () => {
+        const nextNodeId = deps.addBackgroundNode(operatorKey);
+        if (!nextNodeId) {
+          return;
+        }
+
+        deps.setSelectedOperator(nextNodeId);
+        shouldAutoOpenNextOperatorSection = true;
+        deps.markDocumentDirty();
+        buildConfigEditor();
+        void deps.renderStage();
+      });
+      addActions.append(addButton);
+    }
+
+    backgroundSection.append(addActions);
 
     const overlaySection = document.createElement("div");
     overlaySection.className = "is-layer-palette-section";

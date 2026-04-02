@@ -637,6 +637,13 @@ button.is-network-overlay-node {
   line-height: 1.25;
 }
 
+.is-layer-palette-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 .is-layer-palette-row.is-child {
   padding-inline-start: 1rem;
 }

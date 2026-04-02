@@ -17,6 +17,7 @@ import {
 } from "@brand-layout-ops/operator-overlay-layout";
 import type {
   OverlayBackgroundNode,
+  OverlayBackgroundOperatorKey,
   OverlayContentSource,
   OverlayDocumentProject,
   OverlayLayoutOperatorParams,
@@ -382,6 +383,10 @@ function normalizeSelectedOperatorId(
   return backgroundGraphController.normalizeSelectedOperatorId(preferredOperatorId);
 }
 
+function getAvailableBackgroundOperatorKeys(): OverlayBackgroundOperatorKey[] {
+  return backgroundGraphController.getAvailableBackgroundOperatorKeys();
+}
+
 function setSelectedOperator(operatorId: string | null): boolean {
   const didChange = backgroundGraphController.setSelectedOperator(operatorId);
   networkOverlayController?.render();
@@ -419,6 +424,12 @@ function removeBackgroundNode(nodeId: string): boolean {
   const didRemove = backgroundGraphController.removeBackgroundNode(nodeId);
   networkOverlayController?.render();
   return didRemove;
+}
+
+function addBackgroundNode(operatorKey: OverlayBackgroundOperatorKey): string | null {
+  const nextNodeId = backgroundGraphController.addBackgroundNode(operatorKey);
+  networkOverlayController?.render();
+  return nextNodeId;
 }
 
 function getResolvedTextFieldText(field: TextFieldPlacementSpec): string {
@@ -951,6 +962,8 @@ configEditorController = createConfigEditorController({
   getSelectedOperatorId,
   getSelectedOperatorGroup,
   getSceneFamilyLabel,
+  getAvailableBackgroundOperatorKeys,
+  addBackgroundNode,
   setSelectedOperator,
   selectOverlayItem: select,
   syncDocumentBackgroundGraph,

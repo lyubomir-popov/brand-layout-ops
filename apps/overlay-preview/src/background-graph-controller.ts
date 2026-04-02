@@ -1,10 +1,22 @@
 import {
   cloneOverlayBackgroundGraph,
   createDefaultOverlayBackgroundGraph,
+  createDefaultOverlayFuzzyBoidsConfig,
+  createDefaultOverlayPhyllotaxisConfig,
   createDefaultOverlaySceneFamilyConfigs,
+  createDefaultOverlayScatterConfig,
   getOverlaySceneFamilyKeyForBackgroundOperator,
   getOverlaySceneFamilyKeyForBackgroundGraph,
+  OVERLAY_BACKGROUND_FUZZY_BOIDS_NODE_ID,
+  OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY,
+  OVERLAY_BACKGROUND_HALO_NODE_ID,
+  OVERLAY_BACKGROUND_HALO_OPERATOR_KEY,
+  OVERLAY_BACKGROUND_PHYLLOTAXIS_NODE_ID,
+  OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY,
+  OVERLAY_BACKGROUND_SCATTER_NODE_ID,
+  OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY,
   type OverlayBackgroundNode,
+  type OverlayBackgroundOperatorKey,
   type OverlaySceneFamilyKey
 } from "@brand-layout-ops/operator-overlay-layout";
 
@@ -21,6 +33,8 @@ export interface BackgroundGraphControllerOptions {
 export interface BackgroundGraphController {
   normalizeSelectedBackgroundNodeId(preferredNodeId?: string | null): string | null;
   normalizeSelectedOperatorId(preferredOperatorId?: string | null): SelectedOperatorId;
+  getAvailableBackgroundOperatorKeys(): OverlayBackgroundOperatorKey[];
+  addBackgroundNode(operatorKey: OverlayBackgroundOperatorKey): string | null;
   setSelectedOperator(operatorId: string | null): boolean;
   getSelectedOperatorId(): SelectedOperatorId;
   setSelectedBackgroundNode(nodeId: string | null): boolean;
@@ -36,6 +50,12 @@ export function createBackgroundGraphController(
   options: BackgroundGraphControllerOptions
 ): BackgroundGraphController {
   const { state } = options;
+  const AVAILABLE_BACKGROUND_OPERATOR_KEYS: OverlayBackgroundOperatorKey[] = [
+    OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY,
+    OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY,
+    OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY,
+    OVERLAY_BACKGROUND_HALO_OPERATOR_KEY
+  ];
 
   function getFallbackSceneFamilyGraph(sceneFamilyKey: OverlaySceneFamilyKey) {
     return createDefaultOverlayBackgroundGraph(
@@ -55,6 +75,79 @@ export function createBackgroundGraphController(
         [state.documentProject.sceneFamilyKey]: cloneOverlayBackgroundGraph(clonedGraph)
       }
     };
+  }
+
+  function getAvailableBackgroundOperatorKeys(): OverlayBackgroundOperatorKey[] {
+    return [...AVAILABLE_BACKGROUND_OPERATOR_KEYS];
+  }
+
+  function getBackgroundNodeBaseId(operatorKey: OverlayBackgroundOperatorKey): string {
+    switch (operatorKey) {
+      case OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY:
+        return OVERLAY_BACKGROUND_PHYLLOTAXIS_NODE_ID;
+      case OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY:
+        return OVERLAY_BACKGROUND_FUZZY_BOIDS_NODE_ID;
+      case OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY:
+        return OVERLAY_BACKGROUND_SCATTER_NODE_ID;
+      default:
+        return OVERLAY_BACKGROUND_HALO_NODE_ID;
+    }
+  }
+
+  function createUniqueBackgroundNodeId(operatorKey: OverlayBackgroundOperatorKey): string {
+    const baseId = getBackgroundNodeBaseId(operatorKey);
+    const existingIds = new Set(state.documentProject.backgroundGraph.nodes.map((node) => node.id));
+    if (!existingIds.has(baseId)) {
+      return baseId;
+    }
+
+    let suffix = 2;
+    while (existingIds.has(`${baseId}-${suffix}`)) {
+      suffix += 1;
+    }
+
+    return `${baseId}-${suffix}`;
+  }
+
+  function createDefaultBackgroundNode(operatorKey: OverlayBackgroundOperatorKey, nodeId: string): OverlayBackgroundNode {
+    switch (operatorKey) {
+      case OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY:
+        return {
+          id: nodeId,
+          operatorKey,
+          params: createDefaultOverlayPhyllotaxisConfig(state.outputProfileKey)
+        };
+      case OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY:
+        return {
+          id: nodeId,
+          operatorKey,
+          params: createDefaultOverlayFuzzyBoidsConfig(state.outputProfileKey)
+        };
+      case OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY:
+        return {
+          id: nodeId,
+          operatorKey,
+          params: createDefaultOverlayScatterConfig(state.outputProfileKey)
+        };
+      default:
+        return {
+          id: nodeId,
+          operatorKey: OVERLAY_BACKGROUND_HALO_OPERATOR_KEY,
+          params: {}
+        };
+    }
+  }
+
+  function addBackgroundNode(operatorKey: OverlayBackgroundOperatorKey): string | null {
+    const nextNodeId = createUniqueBackgroundNodeId(operatorKey);
+    const nextNode = createDefaultBackgroundNode(operatorKey, nextNodeId);
+
+    setCurrentSceneFamilyGraph({
+      ...state.documentProject.backgroundGraph,
+      nodes: [...state.documentProject.backgroundGraph.nodes, nextNode]
+    });
+    normalizeSelectedBackgroundNodeId(nextNodeId);
+    return nextNodeId;
   }
 
   function normalizeSelectedBackgroundNodeId(
@@ -213,6 +306,8 @@ export function createBackgroundGraphController(
   return {
     normalizeSelectedBackgroundNodeId,
     normalizeSelectedOperatorId,
+    getAvailableBackgroundOperatorKeys,
+    addBackgroundNode,
     setSelectedOperator,
     getSelectedOperatorId,
     setSelectedBackgroundNode,

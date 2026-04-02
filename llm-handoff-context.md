@@ -33,6 +33,7 @@ Useful focused checks: `npm run demo:overlay-layout`, `npm run demo:copy-to-poin
 - The live shell now uses a two-menu `bf-top-navigation`: `File` owns recent-file access, document setup, export settings, export commands, and source defaults through BF modal dialogs, while `View` owns overlay visibility, guide mode, and playback state. The current document name is shown in the top-navigation banner, the Parameters rail stays parameter-only, and it starts with a dedicated `Layers` palette.
 - The stage now has a toggleable network overlay layer. `View` and `N` can show a 50% black scrim plus a deterministic DAG autolayout of the active background graph, with pseudo-nodes for overlay layout, preview composite, and output sinks so operator flow is visible without committing to a spatial editor yet.
 - `preview-composition.ts` is now the shared preview compositor seam. Stage canvas visibility, SVG overlay visibility, export composition, automation state, and the network overlay all use the same ordered layer and sink model instead of carrying separate hardcoded assumptions.
+- The Layers palette can now add background operators directly. New nodes get unique IDs and default params, are selected immediately for editing, and do not become the graph output until later edge or active-node authoring says so.
 - Document setup is now a table-driven workflow instead of the older choice-row modal. It shows saved sizes as radio rows with width/height columns, supports direct custom-size entry, and allows row-level removal without forcing the user to activate a size first. Custom dimensions flow through generated `custom_{width}x{height}` output-profile keys.
 - The shell uses the canonical `baseline-foundry` dark application, overlay, and resize contracts. The old local shell class layer is gone from source. The preview currently imports the valid exported `baseline-foundry/presets/app-tier.css` preset because the sibling repo's exported `presets/panel.css` artifact is malformed.
 - `main.ts` is now a composition root around extracted controllers. The remaining work is product-shape work, not more parity recovery.
@@ -42,8 +43,8 @@ Useful focused checks: `npm run demo:overlay-layout`, `npm run demo:copy-to-poin
 Lane N (graph authoring CRUD) is next.
 
 - Lane M is complete: network overlay, deterministic autolayout, selection, composition seam, and named output sinks are all in place.
-- Next up: N1 add-node authoring from the registered background operators.
-- After that: N2 or N3 for edge create or disconnect, keeping DAG validity and typed-port constraints explicit.
+- N1 landed: Layers palette add-node authoring now works for the supported background operators.
+- Next up: N2 edge creation for compatible typed ports, then N3 disconnect or edge removal without forcing whole-node deletion.
 - Content-format as a user-facing concept is retired. The document authoring model replaces it, with Houdini as the north star. See `docs/product-roadmap.md` → "Document/project model — the Houdini ROP analogy" for the full synthesis.
 
 ## Invariants that still matter

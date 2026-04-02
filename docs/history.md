@@ -15,6 +15,13 @@ Items moved here from `docs/TODO.md` to keep the active backlog lean.
 - The current preview seam now explicitly models composed outputs as sinks: `Frame Preview`, `PNG Still`, `Image Sequence`, `Automation Frame`, with `SVG` and `PDF` carried as planned sink slots instead of implied future work.
 - Validation: `npm run typecheck` and `npm run preview:build`.
 
+## Lane N1 — add-node graph authoring (2026-04-02)
+
+- Added `getAvailableBackgroundOperatorKeys()` and `addBackgroundNode()` to `background-graph-controller.ts` so graph mutation stays centralized instead of the inspector hand-editing document graph arrays directly.
+- New background nodes derive from shared default operator configs, receive unique IDs (`background-scatter-2`, etc.), and do not steal `activeNodeId` just by being added, so the live preview does not unexpectedly jump outputs before edge wiring exists.
+- Added Layers-palette `Add ...` buttons for the supported background operators. Clicking one adds the node, marks the document dirty, selects the new node, and opens its parameter section immediately.
+- Validation: `npm run typecheck` and `npm run preview:build`.
+
 ## Lane L — Sparse operator graph inclusion + node CRUD
 
 - Changed `OverlaySceneFamilyGraphs` from a fixed interface with all four families to a sparse `Partial<Record<OverlaySceneFamilyKey, OverlayBackgroundGraph>>`. New documents start with only the active family's graph.

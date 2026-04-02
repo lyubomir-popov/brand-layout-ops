@@ -103,13 +103,13 @@ Goal: Documents only persist operator graphs for families the user has explicitl
 | L5 | Done | `removeBackgroundNode()` — removes node, prunes edges, falls back `activeNodeId`, refuses to remove last node. Wired into Layers palette with hover-reveal × button |
 | L6 | Verified | Source-default, legacy files, and automation all work unchanged under sparse type |
 
-### Lane N — Graph authoring CRUD (next)
+### Lane N — Graph authoring CRUD (active)
 
 Goal: Move from graph inspection to graph authoring. The saved background graph should support add-node and edge CRUD without requiring manual spatial editing. The network overlay stays a read or select-first surface unless an editing affordance clearly improves the model instead of coupling it to the stage.
 
 | Step | Status | Summary |
 |------|--------|---------|
-| N1 | Not started | Add-node action: browse the registered background operators for the active family and insert a new node into `backgroundGraph` with default params |
+| N1 | Done | Added Layers-palette add-node actions for the supported background operators. New nodes get unique IDs, default params, stay non-active until explicitly wired, and immediately focus the parameter pane |
 | N2 | Not started | Edge-create action: connect compatible typed ports while preserving DAG validity and rejecting cycles |
 | N3 | Not started | Edge-remove and disconnect affordances so the graph can be edited without deleting entire nodes |
 | N4 | Not started | Keep Layers palette, network overlay selection, and parameter pane focus synchronized after graph edits |
