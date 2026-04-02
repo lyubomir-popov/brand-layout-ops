@@ -108,8 +108,66 @@ export const OUTPUT_PROFILES: Readonly<Record<string, OutputProfile>> = {
 
 export const DEFAULT_OUTPUT_PROFILE_KEY = "landscape_1280x720";
 
+const CUSTOM_OUTPUT_PROFILE_KEY_PATTERN = /^custom_(\d+)x(\d+)$/i;
+
+function normalizeOutputProfileDimension(value: number): number {
+  return Math.max(1, Math.round(value));
+}
+
+export function createCustomOutputProfileKey(widthPx: number, heightPx: number): string {
+  return `custom_${normalizeOutputProfileDimension(widthPx)}x${normalizeOutputProfileDimension(heightPx)}`;
+}
+
+export function parseCustomOutputProfileKey(profileKey: string): FrameSize | null {
+  const match = CUSTOM_OUTPUT_PROFILE_KEY_PATTERN.exec(profileKey);
+  if (!match) {
+    return null;
+  }
+
+  const widthPx = Number.parseInt(match[1] ?? "", 10);
+  const heightPx = Number.parseInt(match[2] ?? "", 10);
+  if (!Number.isFinite(widthPx) || !Number.isFinite(heightPx) || widthPx <= 0 || heightPx <= 0) {
+    return null;
+  }
+
+  return { widthPx, heightPx };
+}
+
+export function findBuiltInOutputProfileKeyByDimensions(widthPx: number, heightPx: number): string | null {
+  const safeWidthPx = normalizeOutputProfileDimension(widthPx);
+  const safeHeightPx = normalizeOutputProfileDimension(heightPx);
+
+  for (const profileKey of OUTPUT_PROFILE_ORDER) {
+    const profile = OUTPUT_PROFILES[profileKey];
+    if (profile && profile.widthPx === safeWidthPx && profile.heightPx === safeHeightPx) {
+      return profileKey;
+    }
+  }
+
+  return null;
+}
+
 export function getOutputProfile(profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY): OutputProfile {
-  return OUTPUT_PROFILES[profileKey] ?? OUTPUT_PROFILES[DEFAULT_OUTPUT_PROFILE_KEY];
+  const builtInProfile = OUTPUT_PROFILES[profileKey];
+  if (builtInProfile) {
+    return builtInProfile;
+  }
+
+  const customFrame = parseCustomOutputProfileKey(profileKey);
+  if (customFrame) {
+    return {
+      key: profileKey,
+      label: `${customFrame.widthPx}×${customFrame.heightPx}`,
+      widthPx: customFrame.widthPx,
+      heightPx: customFrame.heightPx,
+      defaultFrameRate: 24,
+      kind: "custom",
+      platforms: "Custom",
+      safeArea: { top: 0, right: 0, bottom: 0, left: 0 }
+    };
+  }
+
+  return OUTPUT_PROFILES[DEFAULT_OUTPUT_PROFILE_KEY];
 }
 
 export function getOutputProfileMetrics(profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY): OutputProfile & { aspectRatio: number; centerXPx: number; centerYPx: number } {

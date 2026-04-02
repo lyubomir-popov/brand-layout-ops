@@ -28,7 +28,7 @@ Use this before and after substantial work so parity implementation keeps servin
 - A scene family must be swappable. New motion work should move toward a world where halo, boids, phyllotaxis, and later generators can sit behind the same document, layout, and export stack.
 - The layout engine stays rigorous and document-owned. Do not let renderer adapters or preview-only helpers become the canonical home for layout semantics.
 - Preview code is an adapter, not the product core. If a rule must survive renderer changes, it belongs in shared types, layout kernels, operator outputs, or backend contracts.
-- Background graph execution should converge on one graph-shaped authority. `project.sceneFamilyGraphs` is the persisted per-family store, and `project.backgroundGraph` is the live active-family projection for `project.sceneFamilyKey`. New saved files should derive that runtime projection on load instead of serializing it separately. Legacy `sceneFamilyConfigs` is now a load/apply compatibility bridge only. Do not re-introduce per-edit mirroring.
+- Background graph execution should converge on one graph-shaped authority. `project.sceneFamilyGraphs` is a sparse per-family store — new documents only contain the active family, others are created on demand. `project.backgroundGraph` is the live active-family projection for `project.sceneFamilyKey`. New saved files should derive that runtime projection on load instead of serializing it separately. Legacy `sceneFamilyConfigs` is now a load/apply compatibility bridge only. Do not re-introduce per-edit mirroring.
 - The authored document should keep one authoritative instance of each editable layer or operator. Selection UIs, parameter panes, and shell chrome may point at that state, but they must not create parallel editable shadow models.
 - UI work should reduce hardcoded preview ownership over time. Prefer section registration, manifests, and typed operator surfaces over adding more bespoke accordion builders indefinitely.
 - Do not let Ubuntu-specific render quirks calcify into permanent one-off features. If a need is really "multiple ordered visual planes" or "a compositor above and below text," move toward a layer-stack model rather than adding another special-case toggle.
@@ -36,76 +36,14 @@ Use this before and after substantial work so parity implementation keeps servin
 - Export targets stay backend-driven. PNG, MP4, SVG, PDF, and EPS should share scene or document authority rather than each inventing their own semantics.
 - Product direction is a Houdini-like operator app for branded documents, not a freeform-design-first clone. Template CRUD, document sizes, and stakeholder flows matter, but only in ways that preserve deterministic layout and operator composability.
 - Parity is still the gate. If a task does not close parity, reduce future drift, or unblock backend separation, it needs a stronger reason.
+- Content-format as a user-facing concept is retired. The document authoring model replaces it. Each document carries its own authored state, and the Houdini-like operator graph is the north star for how content, layout, and export relate.
 
-## Where To Inspect Open Parity Gaps
-
-Use this map before changing code so parity work stays anchored to the reference behavior.
-
-- Output profiles, document persistence, content-format compatibility, and source-default persistence:
-	- Reference repo: `c:\Users\lyubo\work\repos\racoon-anim\src\app\config-schema.js`, `default-config-source.js`, `editor-constants.js`, `index.js`
-	- Current repo: `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/preview-document.ts`, `apps/overlay-preview/src/sample-document.ts`, `packages/operator-overlay-layout/src/index.ts`
-- Motion look, halo-field masks, mascot composition, and guide geometry:
-	- Reference repo: `c:\Users\lyubo\work\repos\racoon-anim\src\app\rendering.js`, `halo-field.js`
-	- Current repo: `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/sample-motion.ts`, `packages/operator-orbits/src/index.ts`, `packages/operator-spokes/src/index.ts`
-- Seed content, field mapping, logo assets, and mascot assets:
-	- Reference repo: `c:\Users\lyubo\work\repos\racoon-anim\assets\content.csv`, `content-speaker-highlight.csv`, `UbuntuTagLogo.svg`, `racoon-mascot-face.svg`, `racoon-mascot-halo.svg`
-	- Current repo: `apps/overlay-preview/src/sample-document.ts`, `packages/operator-overlay-layout/src/index.ts`, `apps/overlay-preview/public/assets/`
-- Layout or export geometry questions:
-	- Reference repo: `c:\Users\lyubo\work\repos\racoon-anim\src\app\rendering.js`
-	- Current repo: `packages/operator-overlay-layout/src/index.ts`, `packages/layout-engine/src/index.ts`
-
-If the gap is visual, run both apps and compare screenshots before editing.
-
-## Phase Status
-
-Phases 1–6 are complete (see `docs/history.md` for details). Phase 7 (feature work) is now unblocked.
-
-### Phase 6. Verify parity (complete)
-
-- [x] Overlay text layout.
-- [x] Baseline and composition guides.
-- [x] Overlay logo placement semantics. (Code audit: fields, defaults, linked scaling, safe-area origin all match reference.)
-- [x] Selected-element editor behavior. (Code audit: text field controls, style palette, inline editing, logo controls all at parity.)
-- [x] Current animation background look.
-- [x] Export-relevant geometry consistency. (Closed on 2026-04-01 after stabilizing rebuild automation around full preview-document snapshots, refreshing the authored instagram source-default bucket to match current reference defaults, fixing halo transparent export mode, and re-running a fresh side-by-side screenshot pass against a regenerated `racoon-anim` reference frame.)
-- [x] Export workflow parity. (Single PNG with auto-versioned directory export and PNG sequence with directory picker.)
-- [x] Document and source-default workflow parity. (Local document open/save/save-as/duplicate/reopen plus source-default load/reset/write all working.)
-
-## Remaining Parity Gaps
-
-Consolidated from the 2026-03-27 cross-repo audit and subsequent delta passes.
-
-No blocking parity gaps remain.
-
-### Scene-family status
-
-Halo parity is treated as complete for the current rebuild scope per user direction. The separate vignette overlay pass was removed because it introduced gradient banding in video exports, and no further halo fidelity work remains scheduled. Fuzzy-boids parity is done, scatter now includes an operator-side deterministic relax/repulsion pass so the field distributes across the frame instead of clumping around the initial random samples, and the WebGL2 fuzzy-boids spike is now treated as research-only opt-in rather than the default backend.
-
-### Overlay, layout, and document
-
-| # | Gap | Status | Remaining work |
-|---|-----|--------|----------------|
-| 1 | Output profiles scene ownership | PARTIAL | Per-profile overlay buckets, export settings, halo config, content-format selection all persist. Missing: profile-owned motion and mascot defaults at reference completeness. |
-| 2 | Linked title-to-logo sizing | DONE | Helper in `layout-engine`, normalization in `operator-overlay-layout`, UI toggle in logo panel. Code audit confirmed matching behavior with reference. |
-| 3 | Document workflow | DONE | File-backed local documents now replace preset CRUD as the working-state unit: open/save/save-as/duplicate/reopen with dirty-state tracking. |
-| 4 | Source-default writeback | DONE | Load, reset, write, CSV flush, shared normalization. Orchestration extracted to `source-default-controller.ts`. |
-| 5 | Export pipeline | DONE | Single PNG with auto-versioned `output/{dims}/` directory export, PNG sequence with directory picker, headless Playwright, FFmpeg MP4 encode, transparent BG. |
-| 6 | Keyboard shortcuts | PARTIAL | All major shortcuts landed. Missing: block shortcuts during future export modal. |
-
-### Architectural note
-
-Item 18 from the original audit (Three.js vs SVG renderer difference) is an intentional architectural choice, not a parity gap. Visual output parity is the goal, not renderer parity.
-
-### Principled parity rules
+### Standing rules
 
 1. Keep halo stable and closed unless a concrete regression appears.
 2. Keep label orientation in adapters, not kernels — the operator emits spoke angle and label-slot data.
 3. Keep mascot composition adapter-side until reuse is concrete.
-4. Finish profile/content/document authority and export seams before reopening renderer-specific polish.
-
-## Package split status
-
-All initial splits complete. Mask operators remain deferred.
+4. Three.js vs SVG renderer difference is an intentional architectural choice. Visual output parity is the goal, not renderer parity.
 
 ## Drift Signals — 2026-04-02
 
@@ -114,46 +52,7 @@ Active architectural risks requiring attention during the next work cycle.
 | Signal | Severity | Detail |
 |--------|----------|--------|
 | `main.ts` at ~833 lines | **Medium** | CSV draft, playback, source-default, authoring, export, overlay editing, stage rendering/composition, inspector section registration, document target CRUD, profile/content switching, preview-document/workspace state orchestration, and background-graph selection or sync are all extracted from the former monolith. Remaining: DOM query helpers, overlay-visibility shell glue, and the final controller/bootstrap composition root. |
-| `project.backgroundGraph` vs `sceneFamilyGraphs` | **Resolved** | New persisted documents now store `sceneFamilyGraphs` only. `backgroundGraph` is rebuilt as the live active-family runtime projection during normalization or load, while older files that still contain it remain supported. |
-| `operator-overlay-layout/src/index.ts` at 262 lines (was 2,031) | **Resolved** | Decomposed into `document-schema.ts`, `background-graph.ts`, `field-defaults.ts`, `csv-resolution.ts`, `overlay-internals.ts`. Barrel re-exports only. |
 | `scene-family-preview.ts` at 724 lines | **Medium** | Graph orchestration now uses preview operators registered with the shared graph runtime, which is the right direction. Remaining cleanup should extract preview operator wrappers or draw adapters only when reuse is concrete, not as a file-split exercise. |
-| `halo-config-section.ts` at 62 lines | **Resolved** | Converted to schema-driven rendering via `renderSchemaPanel(HALO_FIELD_CONFIG_SCHEMA, ...)`. |
-
-## Preview Shell Extraction — Current Status
-
-### What is done
-
-- Form helpers extracted to `parameter-ui/src/accordion-form-helpers.ts`.
-- SVG overlay extracted to `svg-overlay-adapter.ts`.
-- State-sharing protocol in `preview-app-context.ts`.
-- 11 live section builders extracted (halo-config, grid, playback, export, source-default, document, output-format, overlay, fuzzy-boids, phyllotaxis, scatter). `paragraph-styles-section.ts`, `presets-section.ts`, and the legacy `playback-export-section.ts` were removed as dead code; `content-format-section.ts` remains out of live registration for compatibility-only follow-up work.
-- Document workspace in `document-workspace.ts`, document bridge in `preview-document-bridge.ts`.
-- Halo rendering in `halo-renderer.ts`, scene-family preview in `scene-family-preview.ts`.
-- Authoring interaction extracted to `authoring-controller.ts`; `main.ts` now delegates authoring init/render/reset/selection/keyboard behavior there and no longer carries the old inline interaction block.
-- Export plus automation extracted to `export-controller.ts`; `main.ts` now delegates single-frame export, PNG sequence export, composed-frame generation, and `window.__layoutOpsAutomation` wiring there instead of carrying the old inline export block.
-- CSV draft staging, committing, and flushing extracted to `csv-draft-controller.ts`.
-- Playback loop (rAF timing, play/pause, step) extracted to `playback-controller.ts`.
-- Selected-element text and logo editing extracted to `overlay-editing-controller.ts`; `main.ts` now delegates text CRUD, linked logo-title sizing, and the action-row builder there, and `overlay-section.ts` now marks inspector-driven edits dirty.
-- Inspector section registry, operator selector UI, accordion restore behavior, and config-editor rebuild logic extracted to `config-editor-controller.ts`.
-- Document size target CRUD plus Output Format subpanel rebuilding extracted to `document-target-controller.ts`.
-- Stage rendering and background composition extracted to `stage-render-controller.ts`; `main.ts` now delegates overlay-graph evaluation, halo and scene-family canvas routing, SVG overlay assembly, and the stage render pipeline there.
-- Shell bootstrap and workspace chrome extracted to `preview-shell-controller.ts`; it now owns document workspace UI rendering, file-toolbar construction, drawer open/close behavior, docked resize bootstrap, keyboard shortcuts, and preview init sequencing. `npm run typecheck` and `npm run preview:build` both pass after the split.
-- Profile and content-format switching extracted to `profile-state-controller.ts`; `main.ts` now delegates per-profile bucket persistence, export/halo profile state, output-profile switching, and content-format switching there.
-- Preview-document build/apply/reset orchestration extracted to `preview-document-state-controller.ts`; `main.ts` now delegates persisted preview-document serialization, parse/apply/reset flows, and post-load refresh sequencing there.
-- Background-node selection, scene-family label formatting, and graph rebuild sync extracted to `background-graph-controller.ts`; `main.ts` now delegates selected-node normalization, graph-node updates, and family-label formatting there.
-- The real overlay preview now consumes the canonical `baseline-foundry` surface classes for stage shell, fill-height panel shell, choice rows, option cards, tight helper text, compact color input, and nowrap action rows; the local alias layer for those patterns has been removed from `apps/overlay-preview/src/styles.css`.
-- The real overlay preview now also uses shipped `baseline-foundry` drawer and pinned-aside runtime: overlay close/backdrop behavior comes from `initPanelDrawers()`, pinned resize behavior comes from `initResizableAsides()`, and the mobile shell now has a real `Controls` toggle instead of relying only on local close-state bookkeeping.
-- Inspector rows in the live preview now resolve through the canonical `bf-grid` surface, with `bf-grid-scope` applied at `bf-panel-content` and `bf-accordion-panel` so local parameter sections keep the same keyline contract as the surrounding shell instead of using a separate dense control-grid abstraction.
-- The inspector overlay panel now has a working internal scroll chain (`.bf-panel.is-fill` constrained inside the aside), and the local shell toggle moved off `Tab` to `P` so normal keyboard form navigation works again.
-
-### Extraction checklist
-
-1. [x] **Authoring interaction** → dedicated controller module. Landed in `authoring-controller.ts`; selection, drag, resize, hit testing, and inline editing now route through the controller.
-2. [x] **Export + automation** → dedicated controller module. Landed in `export-controller.ts`; export modal, composed-frame helpers, PNG sequence, and automation API now route through the controller.
-3. [x] **Source-default orchestration** → extracted to `apps/overlay-preview/src/source-default-controller.ts`.
-4. [x] **Dead panel cleanup** → `paragraph-styles-section.ts` removed (never imported); preset UI and preset-controller residue removed after document save/open fully replaced preset CRUD; `content-format-section.ts` remains out of live registration.
-5. [x] **Halo config merge helpers** → extracted `getHaloConfigForProfile` and `mergeHaloConfigWithBaseConfig` from `main.ts` to `operator-halo-field`.
-6. [x] Goal: `main.ts` is now a thin composition root wiring state and controllers. Current: ~833 lines after moving background-node selection and graph sync to `background-graph-controller.ts`; remaining DOM-query and overlay-visibility cleanup is optional follow-up, not an active extraction lane.
 
 ## Houdini-Like Parameter Pane — Architectural North Star
 
@@ -188,88 +87,43 @@ The product direction is a Houdini-like operator application for branded documen
 
 This does not need to land all at once. The extraction work above is the prerequisite: once section builders are out of `main.ts` and operators own their panels, the switch from "show all sections" to "show selected operator" is a composition-root change, not a rewrite.
 
-## Approved Execution Queue — Active Only
+## Approved Execution Queue
 
-Concrete, dependency-ordered steps. Work top-down.
+Lanes A–K are complete. See `docs/history.md` for the closed parity, shell-reduction, authoring-shell, and serialization work.
 
-Lanes A-D are complete. See `docs/history.md` for the closed parity, shell-reduction, and authoring-shell work.
+### Lane L — Sparse operator graph inclusion + node CRUD
 
-### Lane E — Selected-operator pane
+Goal: Documents only persist operator graphs for families the user has explicitly configured. The graph supports add and remove of operator nodes, not just editing existing ones.
 
-Lane E is complete: workspace-level controls now render in a dedicated shell rail, the inspector uses one selected-operator model for overlay-layout plus saved background nodes, and the parameter pane now renders only the selected operator surface instead of the earlier mixed multi-accordion stack.
+| Step | Status | Summary |
+|------|--------|---------|
+| L1 | Done | `OverlaySceneFamilyGraphs` → `Partial<Record<OverlaySceneFamilyKey, OverlayBackgroundGraph>>` |
+| L2 | Done | `createDefaultOverlaySceneFamilyGraphs` creates only the active family |
+| L3 | Done | Family switching creates on demand via `syncDocumentBackgroundGraph` fallback + explicit map write |
+| L5 | Done | `removeBackgroundNode()` — removes node, prunes edges, falls back `activeNodeId`, refuses to remove last node. Wired into Layers palette with hover-reveal × button |
+| L6 | Verified | Source-default, legacy files, and automation all work unchanged under sparse type |
 
-| Step | Task | Depends on | Exit criteria |
-|------|------|------------|---------------|
-| E2 | Introduce a unified selected-operator model for `operator-overlay-layout` plus saved background nodes | E1 | **DONE** — the inspector now switches between overlay-layout and saved background operators through one selected-operator state model rather than the earlier background-only selector |
-| E3 | Render only the selected operator surface in the parameter pane | E2 | **DONE** — the config editor now renders only the selected operator surface in the parameter rail instead of the earlier mixed overlay-plus-background stack |
+### Lane M — List-based network view (next)
 
-### Lane F — Baseline-Foundry shell compliance (complete)
+Goal: Replace the flat node list in the Layers palette with a DAG-aware list showing connection topology. Add node CRUD (add operator from registry). This is the list-first prerequisite before a spatial graph editor.
 
-| Step | Task | Depends on | Exit criteria |
-|------|------|------------|---------------|
-| F1 | Align the preview shell with the latest `baseline-foundry` dark panel contract | E3 | **DONE** — the live shell now uses the canonical `bf-theme is-dark` root plus canonical application overlay and resize-handle classes instead of the older local dark-theme wrappers |
-| F2 | Remove local shell class contracts and data-attribute styling | F1 | **DONE** — overlay-preview shell markup now uses `bf-*` plus `is-*` state classes only, and `apps/overlay-preview/src/styles.css` no longer styles `[data-*]` selectors |
-| F3 | Finish the shipped drawer or pinned-aside integration without local shell policy chrome | F2 | **DONE** — the live shell now starts desktop pinned-open and mobile drawer-closed, while relying on `initPanelDrawers()` plus `initResizableAsides()` with canonical `bf-application` / `bf-aside` structure and no custom panel-card layer |
-
-### Lane G — Document-model regression fixes (closed 2026-04-01)
-
-These regressions were introduced during the document-model and shell extraction work. They are now closed, so feature work can continue on optional follow-ups or later roadmap work.
-
-| Step | Task | Status | Detail |
-|------|------|--------|--------|
-| G1 | File toolbar buttons (New/Open/Save/Save As/Duplicate) broken in Chrome | **DONE** | User later confirmed the toolbar works in Chrome incognito, so the original normal-profile failure was likely extension or profile interference rather than a current repo regression. The document picker still uses the safer `.json` filter plus fallback path, but no further toolbar bug work remains queued. |
-| G2 | Remove remaining localStorage presets/content-format persistence | **DONE** | Presets section removed from config editor. localStorage read/write for presets and output-format stubbed to no-ops. Presets and content-format are legacy; only file-based document save and source-default writeback should persist state. |
-| G3 | Remove content-format section from config editor | **DONE** | The dedicated Content Format accordion is no longer registered in the live inspector. Content-format remains a document/source-default concern in the data model, but it is no longer presented as a localStorage-era shell toggle. |
-| G4 | Verify source-default writeback round-trips all operator settings | **DONE** | User re-checked the regression during this session and confirmed source-default writeback still works; the earlier failure report was a false alarm. |
-
-### Lane H — Document-first persistence cleanup (complete)
-
-| Step | Task | Depends on | Exit criteria |
-|------|------|------------|---------------|
-| H1 | Remove remaining preset runtime and preview-document residue | G4 | **DONE** — preset state, preset controller code, preset preview-document fields, preset export path, and preset-local UI hooks are removed; file-backed documents and source-defaults are the only shipped persistence paths |
-
-### Lane I — Graph-first family persistence (complete)
-
-| Step | Task | Depends on | Exit criteria |
-|------|------|------------|---------------|
-| I1 | Replace `sceneFamilyConfigs` envelope persistence with per-family graph persistence | H1 | **DONE** — saved documents now persist `sceneFamilyGraphs`, and older documents still load through the legacy `sceneFamilyConfigs` bridge |
-| I2 | Route family switching and automation apply through stored family graphs | I1 | **DONE** — family switches now reuse the stored graph for each family instead of rebuilding from config snapshots, and automation accepts both legacy config payloads and the new graph map |
-| I3 | Simplify document drift rules around graph authority | I2 | **DONE** — the canonical rules now treat `sceneFamilyGraphs` as the persisted family store and `backgroundGraph` as the live active-family projection |
-
-### Lane J — Docs audit and Houdini-style authoring shell (complete)
-
-Inbox-promoted work for the next cycle. This lane turned the stopgap shell into a more Houdini-like flow: one authoritative document graph, a layer-driven selection surface, a parameter pane that follows the current layer, and top-level navigation for file/workspace actions.
-
-J1-J5 are complete. The canonical docs now follow their stated roles again, the authored document graph or layer model remains the only editable authority, the Parameters rail starts with a dedicated Layers palette for background nodes and overlay layers, the overlay pane follows the current layer selection, and shell-level actions now live in top-level chrome instead of the inspector.
-
-| Step | Task | Depends on | Exit criteria |
-|------|------|------------|---------------|
-| J1 | Audit the canonical docs against their stated roles | I3 | **DONE** — `llm-handoff-context.md` is back to a short cold-start file, `docs/TODO.md` remains the active source of truth, `docs/history.md` carries completed work, and the README no longer duplicates the active queue |
-| J2 | Lock the one-source-of-truth authored model | J1 | **DONE** — the plan and live UI both treat the document graph plus authored overlay objects as the only editable authority; the Layers palette derives from that state instead of creating panel-only shadow data |
-| J3 | Add a list-first layer palette as the primary selection surface | J2 | **DONE** — users can now select background nodes, overlay root, text fields, and logo from a dedicated Layers palette without relying on direct canvas picks |
-| J4 | Collapse the inspector into a pure parameters pane | J3 | **DONE** — the Parameters rail now follows the selected overlay layer, hides root-only overlay controls while a text or logo layer is selected, and no longer carries the special `Selected Element` framing |
-| J5 | Move file, export, document-setup, and source-default actions into top-level navigation | J4 | **DONE** — file, document-size, source-default, export, and playback actions now live in top-level navigation, the playback inspector section is retired, the current shell uses baseline-foundry's `bf-top-navigation` dropdown pattern instead of a custom grouped toolbar slab, and first-class file shortcuts include Ctrl/Cmd+N, Ctrl/Cmd+O, Ctrl/Cmd+S, and Ctrl/Cmd+Shift+S |
-
-### Lane K — Serialized-envelope cleanup (complete)
-
-Lane K is complete. Persisted preview documents and source-default writes now keep `project.sceneFamilyGraphs` as the authored family authority and treat `project.backgroundGraph` as a runtime-only projection rebuilt during load or normalization.
-
-| Step | Task | Depends on | Exit criteria |
-|------|------|------------|---------------|
-| K1 | Add shared persisted-document normalizers that omit the active-family runtime graph from disk | J5 | **DONE** — `document-schema.ts` now exposes persistence helpers that clone the document envelope without serializing `project.backgroundGraph` |
-| K2 | Route preview-document and source-default serialization through the persisted normalizer | K1 | **DONE** — preview-document save payloads and source-default writeback now serialize through the shared persisted-document helper instead of cloning the runtime project verbatim |
-| K3 | Verify backward compatibility and runtime reconstruction | K2 | **DONE** — `npm run typecheck`, `npm run preview:build`, and a direct `tsx` smoke test confirmed new persisted files omit `backgroundGraph` while normalize/load restores the live runtime graph |
+| Step | Status | Summary |
+|------|--------|---------|
+| M1 | Not started | Topological sort of `backgroundGraph.nodes` using `edges` |
+| M2 | Not started | Render DAG-aware list with indent or connection indicators |
+| M3 | Not started | Add-node action: browse registered operators, insert into graph |
+| M4 | Not started | Edge CRUD: connect/disconnect ports between nodes |
 
 ## Immediate next steps after the above is done
 - **Promote the next lane explicitly.** Lane K is complete, so the next pass should choose a new approved lane instead of drifting into opportunistic shell work.
-- **Keep the shell stable.** Treat the baseline-foundry `bf-top-navigation` plus Layers palette as the current authoring baseline and only reopen it for a concrete product need.
+- **Keep the shell stable.** Treat the File/View `bf-top-navigation`, shell-level BF modals, dedicated Layers palette, and parameter-only rail as the current authoring baseline and only reopen it for a concrete product need.
 - **Full compositor model.** Layer-stack direction is committed but the active queue should add parity-friendly seams first, not schedule a premature compositor rewrite.
 - **Timeline and clip model.** Belongs after parity, as a sequencing layer above the operator graph.
 - **Cross-operator transition choreography.** Future timeline/sequencing concern, not preview-local temporal glue.
 
 ### Non-blocking follow-ups
 
-No non-blocking follow-ups are currently open. The carried halo scale and release-label seam spot checks were re-verified on 2026-04-01 and moved to `docs/history.md`.
+- Revisit the exported preset import once `baseline-foundry/presets/panel.css` is rebuilt upstream. The preview is temporarily using the valid exported `app-tier` preset because the current panel artifact in the sibling repo is malformed.
 
 These are optional spot checks, not Stage 1 parity gates and not part of the active execution lane.
 
@@ -277,12 +131,23 @@ These are optional spot checks, not Stage 1 parity gates and not part of the act
 
 Deferred until explicitly promoted. Each carries a working assumption.
 
-- **Content-format vs project variants.** If document-backed variants replace format switching, the remaining format schema can shrink later.
+- **Document and source-default discoverability.** The File/View shell moved source-default writeback and document-size editing out of the Parameters rail, but the workflow is not yet self-evident. Clarify that Document Setup changes persist when the current document is saved, and verify the save path is obvious to new users.
+- **Content-format retirement.** Content-format as a user-facing concept is dead. The remaining `contentFormatKey` state in the profile bucket machine is internal plumbing that can be simplified or removed in a later pass. No new UI surface is needed for it.
 - **GPU/execution backends.** Keep moderate operators in TypeScript. Allow GPU paths only where profiling proves TypeScript insufficient.
 - **Spokes decomposition.** Keep `operator-spokes` coarse for parity. Later split toward wave, mask, and polar-field operators.
-
 - **Arbitrary output-size authoring.** Custom sizes stay below parity-critical work.
-- **Paragraph-style set authoring.** Wait for stable project model and operator-scoped parameter surfaces.
+- **Paragraph-style set authoring.** Wait for stable project model and operator-scoped parameter surfaces. When this is promoted, include per-style text-color authoring and a dedicated paragraph-styles modal with an InDesign-like workflow instead of treating style editing as scattered inline controls.
+
+### Candidate next shell follow-up
+
+Inbox-promoted shell ergonomics request to keep in view when the next lane is chosen. This is a concrete product need, but it is not yet an approved execution lane.
+
+1. Audit the stage shell contract. Confirm whether a `baseline-foundry` stage-shell primitive exists or whether the current preview stage is still local CSS, then decide whether the behavior should stay local or become an upstream request.
+2. Treat the preview surround like a document canvas. The stage background should read more like Photoshop or Lightroom: a neutral light-gray surround around the document so the document edges are visually obvious instead of blending into the app shell.
+3. Remove forced stage overflow caused by canvas-shell padding. The preview stage should not show a gratuitous scrollbar when the fitted document still conceptually fits in view.
+4. Keep fit-to-viewport as the default stage behavior, but add a `100%` zoom action so authored output can be inspected at real pixels.
+5. Evaluate panning for oversized documents while holding `Space`, matching the expected canvas-hand interaction for inspection.
+6. Replace the current playback shortcut before `Space` is reassigned to pan. Choose a playback shortcut that does not conflict with canvas navigation and document-shell text inputs.
 
 ### Splits to not get bogged down with
 
@@ -298,41 +163,3 @@ Deferred until explicitly promoted. Each carries a working assumption.
 - operator packages expose typed inputs and outputs
 - parameter UI reads operator manifests and schemas instead of hardcoding control panels indefinitely
 - background generation and layout remain separable so a later live Three scene can sit behind the same layout engine
-
-
-## Baseline-Foundry Latest Release Pressure Test (2026-03-30)
-
-Status:
-
-- Complete. The live overlay-preview inspector now renders credibly against the current `baseline-foundry` panel preset.
-
-Root cause:
-
-- The breakage was mostly downstream rename fallout, not baseline math and not a missing upstream primitive.
-- The real blockers were hybrid class names that current `baseline-foundry` no longer styles, including `bf-panel__header`/`bf-panel__title`/`bf-panel__content`, `bf-accordion__*`, `bf-form__label`, `bf-button--base`, `bf-field--checkbox`, `bf-checkbox__*`, `bf-slider__input`, and `bf-modal__*`.
-- Old `p-*` selectors were not the primary failure mode because the current upstream preset still ships compatibility selectors for them; the larger issue was mixing old structure with new `bf-*` prefixes.
-
-Changes landed:
-
-- `apps/overlay-preview/index.html` now uses the canonical panel header, title, content, actions, and toggle classes from the current preset.
-- `packages/parameter-ui/src/accordion-form-helpers.ts` now emits canonical label, checkbox, slider, and accordion classes.
-- The live panel builders in `apps/overlay-preview/src/main.ts`, `content-format-section.ts`, `overlay-section.ts`, `playback-section.ts`, `export-section.ts`, `source-default-section.ts`, `document-section.ts`, `document-workspace.ts`, `presets-section.ts`, and `halo-config-section.ts` now use canonical Foundry base-button, form-help, choice-row, option-card, color-input, and modal classes.
-- `apps/overlay-preview/src/styles.css` now targets the current canonical panel-content, checkbox, and choice-row selectors. The custom `operator-selector` strip remains local policy/layout CSS rather than an upstream primitive gap.
-- `apps/overlay-preview/vite.config.ts` now allow-lists the sibling `baseline-foundry` repo so dev-time pressure tests can load the shipped IBM Plex font assets instead of tripping Vite's fs guard.
-
-Verification:
-
-- `npm run typecheck`
-- `npm run preview:dev`
-- Headless Playwright inspection against the live preview after opening `Content Format` in CSV mode:
-  - `hybridSelectorCount: 0`
-  - `choiceRowCount: 6`
-  - `optionCardCount: 3`
-  - `baseButtonCount: 15`
-  - computed styles confirmed `bf-panel-header` as sticky flex, `bf-panel-content` as padded scroll container, and `bf-accordion-tab` as styled flex control
-- Local screenshot captured during verification for visual sanity-checking
-
-Remaining blockers versus panel parity:
-
-- No missing upstream primitive blocker was found in this slice.
-- Remaining variance is now mostly downstream shell-compliance debt, not an upstream primitive gap: overlay-preview still carries local shell classes such as `.mascot-app`, `.stage*`, and `.operator-selector*`, plus one remaining data-attribute style hook (`body.editor-docked [data-panel-drawer-close]`). Queue this cleanup behind Lane E instead of diverging from the selected-operator work.

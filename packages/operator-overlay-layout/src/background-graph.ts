@@ -209,12 +209,11 @@ export interface OverlaySceneFamilyConfigs {
   scatter: OverlayScatterConfig;
 }
 
-export interface OverlaySceneFamilyGraphs {
-  halo: OverlayBackgroundGraph;
-  phyllotaxis: OverlayBackgroundGraph;
-  "fuzzy-boids": OverlayBackgroundGraph;
-  scatter: OverlayBackgroundGraph;
-}
+/**
+ * Sparse map of scene-family graphs. Only families the user has configured
+ * carry an entry. Missing keys mean "not yet added to this document."
+ */
+export type OverlaySceneFamilyGraphs = Partial<Record<OverlaySceneFamilyKey, OverlayBackgroundGraph>>;
 
 function getOverlaySceneFrame(profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY): FrameSize {
   const profile = getOutputProfile(profileKey);
@@ -495,13 +494,11 @@ export function createDefaultOverlayBackgroundGraph(
 
 export function createDefaultOverlaySceneFamilyGraphs(
   sceneFamilyConfigs: OverlaySceneFamilyConfigs = createDefaultOverlaySceneFamilyConfigs(),
-  profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY
+  profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY,
+  activeSceneFamilyKey: OverlaySceneFamilyKey = DEFAULT_OVERLAY_SCENE_FAMILY_KEY
 ): OverlaySceneFamilyGraphs {
   return {
-    halo: createDefaultOverlayBackgroundGraph("halo", sceneFamilyConfigs, profileKey),
-    phyllotaxis: createDefaultOverlayBackgroundGraph("phyllotaxis", sceneFamilyConfigs, profileKey),
-    "fuzzy-boids": createDefaultOverlayBackgroundGraph("fuzzy-boids", sceneFamilyConfigs, profileKey),
-    scatter: createDefaultOverlayBackgroundGraph("scatter", sceneFamilyConfigs, profileKey)
+    [activeSceneFamilyKey]: createDefaultOverlayBackgroundGraph(activeSceneFamilyKey, sceneFamilyConfigs, profileKey)
   };
 }
 
@@ -696,24 +693,35 @@ export function normalizeOverlaySceneFamilyConfigs(
 export function normalizeOverlaySceneFamilyGraphs(
   rawGraphs: unknown,
   profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY,
-  rawLegacyConfigs: unknown = undefined
+  rawLegacyConfigs: unknown = undefined,
+  activeSceneFamilyKey: OverlaySceneFamilyKey = DEFAULT_OVERLAY_SCENE_FAMILY_KEY
 ): OverlaySceneFamilyGraphs {
   const legacySceneFamilyConfigs = normalizeOverlaySceneFamilyConfigs(rawLegacyConfigs, profileKey);
-  const defaults = createDefaultOverlaySceneFamilyGraphs(legacySceneFamilyConfigs, profileKey);
   if (!isRecord(rawGraphs)) {
-    return defaults;
+    return createDefaultOverlaySceneFamilyGraphs(legacySceneFamilyConfigs, profileKey, activeSceneFamilyKey);
   }
 
-  return {
-    halo: normalizeOverlayBackgroundGraph(rawGraphs.halo, "halo", legacySceneFamilyConfigs),
-    phyllotaxis: normalizeOverlayBackgroundGraph(rawGraphs.phyllotaxis, "phyllotaxis", legacySceneFamilyConfigs),
-    "fuzzy-boids": normalizeOverlayBackgroundGraph(
-      rawGraphs["fuzzy-boids"] ?? rawGraphs.fuzzyBoids,
-      "fuzzy-boids",
-      legacySceneFamilyConfigs
-    ),
-    scatter: normalizeOverlayBackgroundGraph(rawGraphs.scatter, "scatter", legacySceneFamilyConfigs)
-  };
+  // Only normalize keys that exist in the incoming data (sparse)
+  const result: OverlaySceneFamilyGraphs = {};
+  for (const key of OVERLAY_SCENE_FAMILY_ORDER) {
+    const rawEntry = key === "fuzzy-boids"
+      ? (rawGraphs["fuzzy-boids"] ?? rawGraphs.fuzzyBoids)
+      : rawGraphs[key];
+    if (rawEntry !== undefined) {
+      result[key] = normalizeOverlayBackgroundGraph(rawEntry, key, legacySceneFamilyConfigs);
+    }
+  }
+
+  // Ensure at least the active family has a graph
+  if (!result[activeSceneFamilyKey]) {
+    result[activeSceneFamilyKey] = createDefaultOverlayBackgroundGraph(
+      activeSceneFamilyKey,
+      legacySceneFamilyConfigs,
+      profileKey
+    );
+  }
+
+  return result;
 }
 
 function normalizeOverlayBackgroundOperatorKey(rawOperatorKey: unknown): OverlayBackgroundOperatorKey | null {

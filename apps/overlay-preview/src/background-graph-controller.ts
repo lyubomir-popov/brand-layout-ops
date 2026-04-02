@@ -27,6 +27,7 @@ export interface BackgroundGraphController {
   getSelectedBackgroundNode(): OverlayBackgroundNode | null;
   getSelectedOperatorGroup(): string;
   updateSelectedBackgroundNode(updater: (node: OverlayBackgroundNode) => OverlayBackgroundNode): boolean;
+  removeBackgroundNode(nodeId: string): boolean;
   syncDocumentBackgroundGraph(): void;
   getSceneFamilyLabel(sceneFamilyKey: OverlaySceneFamilyKey): string;
 }
@@ -153,6 +154,30 @@ export function createBackgroundGraphController(
     return true;
   }
 
+  function removeBackgroundNode(nodeId: string): boolean {
+    const graph = state.documentProject.backgroundGraph;
+    const nodeIndex = graph.nodes.findIndex((node) => node.id === nodeId);
+    if (nodeIndex === -1 || graph.nodes.length <= 1) {
+      return false;
+    }
+
+    const nextNodes = graph.nodes.filter((node) => node.id !== nodeId);
+    const nextEdges = graph.edges.filter(
+      (edge) => edge.fromNodeId !== nodeId && edge.toNodeId !== nodeId
+    );
+    const nextActiveNodeId = graph.activeNodeId === nodeId
+      ? nextNodes[nextNodes.length - 1].id
+      : graph.activeNodeId;
+
+    setCurrentSceneFamilyGraph({
+      activeNodeId: nextActiveNodeId,
+      nodes: nextNodes,
+      edges: nextEdges
+    });
+    normalizeSelectedBackgroundNodeId();
+    return true;
+  }
+
   function syncDocumentBackgroundGraph(): void {
     const currentGraphSceneFamilyKey = getOverlaySceneFamilyKeyForBackgroundGraph(
       state.documentProject.backgroundGraph,
@@ -166,6 +191,8 @@ export function createBackgroundGraphController(
       nextSceneFamilyGraphs[state.documentProject.sceneFamilyKey]
       ?? getFallbackSceneFamilyGraph(state.documentProject.sceneFamilyKey)
     );
+    // Ensure the active family is always present in the sparse map
+    nextSceneFamilyGraphs[state.documentProject.sceneFamilyKey] = cloneOverlayBackgroundGraph(nextBackgroundGraph);
 
     state.documentProject = {
       ...state.documentProject,
@@ -192,6 +219,7 @@ export function createBackgroundGraphController(
     getSelectedBackgroundNode,
     getSelectedOperatorGroup,
     updateSelectedBackgroundNode,
+    removeBackgroundNode,
     syncDocumentBackgroundGraph,
     getSceneFamilyLabel
   };

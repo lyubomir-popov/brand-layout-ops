@@ -56,8 +56,8 @@ export function buildOverlaySection(ctx: PreviewAppContext): HTMLElement {
       const csvNote = document.createElement("p");
       csvNote.className = "bf-form-help is-tight bf-u-no-margin--bottom";
       csvNote.textContent = ctx.hasStagedCsvDraft()
-        ? "CSV-backed field. Staged CSV edits are pending for the active row; apply them from Content Format to update this field."
-        : "CSV-backed field. Text comes from the active CSV row; use Content Format to stage CSV changes for this field.";
+        ? "CSV-backed field. Staged CSV edits are pending for the active row."
+        : "CSV-backed field. Text comes from the active CSV row.";
       body.append(csvNote);
     }
 

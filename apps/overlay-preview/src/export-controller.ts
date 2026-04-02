@@ -178,6 +178,7 @@ export function createExportAutomationController(
     const dialog = document.createElement("dialog");
     dialog.id = "export-options-modal";
     dialog.className = "bf-modal";
+    dialog.setAttribute("data-shell-modal", "");
 
     dialog.innerHTML = `
       <div class="bf-modal-dialog" role="dialog" aria-labelledby="export-modal-title">
@@ -527,7 +528,8 @@ export function createExportAutomationController(
         sceneFamilyGraphs: normalizeOverlaySceneFamilyGraphs(
           payload.document_scene_family_graphs,
           ctx.state.outputProfileKey,
-          payload.document_scene_family_configs
+          payload.document_scene_family_configs,
+          ctx.state.documentProject.sceneFamilyKey
         )
       };
       shouldRebuildConfigEditor = true;
@@ -540,7 +542,8 @@ export function createExportAutomationController(
         sceneFamilyGraphs: normalizeOverlaySceneFamilyGraphs(
           ctx.state.documentProject.sceneFamilyGraphs,
           ctx.state.outputProfileKey,
-          payload.document_scene_family_configs
+          payload.document_scene_family_configs,
+          ctx.state.documentProject.sceneFamilyKey
         )
       };
       shouldRebuildConfigEditor = true;

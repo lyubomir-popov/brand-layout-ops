@@ -1,4 +1,4 @@
-import "baseline-foundry/presets/panel.css";
+import "baseline-foundry/presets/app-tier.css";
 import "./styles.css";
 
 import type {
@@ -98,16 +98,12 @@ import {
   createPreviewShellController,
   type PreviewShellController
 } from "./preview-shell-controller.js";
-import { buildDocumentSection } from "./document-section.js";
-import { buildExportSection } from "./export-section.js";
 import { buildFuzzyBoidsSection } from "./fuzzy-boids-section.js";
 import { buildGridSection } from "./grid-section.js";
 import { buildHaloConfigSection } from "./halo-config-section.js";
-import { buildOutputFormatSection } from "./output-format-section.js";
 import { buildOverlaySection } from "./overlay-section.js";
 import { buildPhyllotaxisSection } from "./phyllotaxis-section.js";
 import { buildScatterSection } from "./scatter-section.js";
-import { buildSourceDefaultSection } from "./source-default-section.js";
 
 type ConfigSectionDefinition = ParameterSectionDefinition;
 
@@ -405,6 +401,10 @@ function syncDocumentBackgroundGraph(): void {
   backgroundGraphController.syncDocumentBackgroundGraph();
 }
 
+function removeBackgroundNode(nodeId: string): boolean {
+  return backgroundGraphController.removeBackgroundNode(nodeId);
+}
+
 function getResolvedTextFieldText(field: TextFieldPlacementSpec): string {
   return resolveOverlayTextValue(getEffectiveParams(), field);
 }
@@ -603,6 +603,7 @@ function setOverlayVisible(nextVisible: boolean) {
   if (state.overlayVisible === nextVisible) {
     syncOverlayVisibilityUi();
     authoringController?.render();
+    previewShellController?.updateViewUi();
     return;
   }
 
@@ -616,6 +617,7 @@ function setOverlayVisible(nextVisible: boolean) {
 
   syncOverlayVisibilityUi();
   authoringController?.render();
+  previewShellController?.updateViewUi();
 }
 
 function syncOverlayVisibilityUi() {
@@ -850,6 +852,8 @@ previewShellController = createPreviewShellController({
   resizeRenderer,
   togglePlayback,
   ensurePlaybackLoop,
+  updateExportSettings,
+  setOverlayVisible,
   addDocumentTarget,
   removeActiveDocumentTarget,
   exportComposedFramePng: async () => {
@@ -873,12 +877,8 @@ previewShellController = createPreviewShellController({
 });
 
 const CORE_CONFIG_SECTION_DEFINITIONS: ConfigSectionDefinition[] = [
-  { key: "export", scope: "shell", order: 100, factory: () => buildExportSection(ctx) },
-  { key: "source-default", scope: "shell", order: 110, factory: () => buildSourceDefaultSection(ctx) },
-  { key: "output-format", scope: "shell", order: 200, factory: () => buildOutputFormatSection(), afterRender: buildOutputProfileOptions },
-  { key: "document", scope: "shell", order: 250, factory: () => buildDocumentSection(ctx), afterRender: updateDocumentUi },
   { key: "overlay-layer", scope: "operator", group: OVERLAY_LAYOUT_OPERATOR_SELECTION_ID, order: 500, factory: () => buildOverlaySection(ctx) },
-  { key: "layout-grid", scope: "operator", group: OVERLAY_LAYOUT_OPERATOR_SELECTION_ID, order: 700, factory: () => buildGridSection(ctx), afterRender: syncOverlayVisibilityUi },
+  { key: "layout-grid", scope: "operator", group: OVERLAY_LAYOUT_OPERATOR_SELECTION_ID, order: 700, factory: () => buildGridSection(ctx) },
   { key: "halo-config", scope: "operator", order: 800, group: "halo", factory: () => buildHaloConfigSection(ctx) },
   { key: "fuzzy-boids", scope: "operator", order: 810, group: "fuzzy-boids", factory: () => buildFuzzyBoidsSection(ctx) },
   { key: "phyllotaxis", scope: "operator", order: 820, group: "phyllotaxis", factory: () => buildPhyllotaxisSection(ctx) },
@@ -895,6 +895,7 @@ configEditorController = createConfigEditorController({
   setSelectedOperator,
   selectOverlayItem: select,
   syncDocumentBackgroundGraph,
+  removeBackgroundNode,
   markDocumentDirty,
   syncBackgroundRendererVisibility,
   renderStage

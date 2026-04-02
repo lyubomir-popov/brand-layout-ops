@@ -2,6 +2,22 @@
 
 Items moved here from `docs/TODO.md` to keep the active backlog lean.
 
+## Lane L — Sparse operator graph inclusion + node CRUD
+
+- Changed `OverlaySceneFamilyGraphs` from a fixed interface with all four families to a sparse `Partial<Record<OverlaySceneFamilyKey, OverlayBackgroundGraph>>`. New documents start with only the active family's graph.
+- `createDefaultOverlaySceneFamilyGraphs` now accepts `activeSceneFamilyKey` and only creates that one family.
+- `normalizeOverlaySceneFamilyGraphs` now accepts `activeSceneFamilyKey`, iterates only over keys present in input, and ensures the active key always has a graph.
+- `syncDocumentBackgroundGraph` creates families on demand when the user switches, with explicit write-back to the sparse map.
+- Added `removeBackgroundNode(nodeId)` to `BackgroundGraphController`: removes the node, prunes all edges referencing it, falls back `activeNodeId` to the last remaining node, refuses to remove the last node.
+- Wired a hover-reveal × button per background node row in the Layers palette. Hidden when only one node exists.
+- Verified: existing source-default config (all four families), legacy project files (`ubuntuSummit26.04.json`), and the automation/export controller all work unchanged under the sparse type.
+
+## Audit pass — dead code cleanup (2026-04-02)
+
+- Deleted orphaned `apps/overlay-preview/src/content-format-section.ts` (never imported anywhere after the content-format accordion was retired).
+- Removed dead `loadOutputFormatKey()` export from `apps/overlay-preview/src/sample-document.ts` (exported but never imported).
+- Validated: `npm run typecheck` passes cleanly after both removals.
+
 ## Completed Phases
 
 **Phase 1 — Lock the operator boundaries:** Done. 10 initial packages established. Spoke math kept coarse.
@@ -119,6 +135,23 @@ All initial first splits complete: grid, text, overlay composition, overlay inte
 - Added the small local styling needed for this shell: a compact brand tag and button resets for dropdown command items, while removing the older grouped-toolbar-specific header styles.
 - Follow-up cleanup fixed the shell grid wiring: the preview no longer uses `bf-application.has-navigation` without a real side navigation rail. It now uses a dedicated top-navigation shell layout so the BF menu bar spans the full app width while the resizable `480px` inline width only applies to the Parameters aside.
 - Validation: `npm run typecheck` and `npm run preview:build`.
+
+## File/View menu consolidation (2026-04-02)
+
+- Collapsed the top navigation from fragmented `File` / `Document` / `Defaults` / `Export` / `Motion` menus down to a desktop-style `File` + `View` model. `File` now owns document, output-profile, export-settings, and source-default workflows plus direct export commands; `View` now owns overlay visibility, guide mode, and play/pause.
+- Moved the remaining shell-level surfaces out of the Parameters rail and into baseline-foundry modal dialogs mounted by `preview-shell-controller.ts`: `Document`, `Output Profiles`, `Export Settings`, and `Source Defaults`.
+- Removed the old shell accordion builders (`document-section.ts`, `export-section.ts`, `output-format-section.ts`, `source-default-section.ts`) so the Parameters rail stays parameter-only instead of duplicating file workflow state.
+- Removed overlay visibility and guide-mode controls from `grid-section.ts` so preview-state controls live in one place instead of being split between the parameter surface and the nav.
+- Switched the preview stylesheet import to the valid exported `baseline-foundry/presets/app-tier.css` preset because the sibling repo's current exported `presets/panel.css` artifact is malformed and was returning Vite/PostCSS errors.
+- Validation: `npm run typecheck`, `npm run preview:build`, and Playwright DOM checks against a clean dev server confirming `File` and `View` menus, a single `Parameters` rail, mounted BF dialogs, and a working `Export Settings...` menu-to-modal path.
+
+## Document setup UX follow-up (2026-04-02)
+
+- Reworked the old `Output Profiles` modal into a real `Document Setup` workflow: existing sizes now render in a `bf-table` with radio selection, title, width, height, and row-level remove actions instead of the earlier repeated choice rows and active-only delete flow.
+- Added direct custom-size entry through the final table row. New sizes are created from width and height inputs without forcing a preset selection first, and the runtime now supports generated `custom_{width}x{height}` output-profile keys so those dimensions survive the existing profile/document pipeline.
+- Removed the standalone document-rename field from the shell modal. Recent-file access now lives in `Open Recent...`, while the current document name is shown in the top-navigation banner and truncates through the BF logo-title slot.
+- Added right-aligned menu shortcut labels for the core File and View actions and wired the shell shortcuts that make sense in the browser authoring surface (`^N`, `^O`, `^S`, `^Shift+S`, `D`, `E`, `O`, `Space`).
+- Validation: `npm run typecheck`, `npm run preview:build`, and Playwright checks confirming the top-nav file title, Document Setup table headings, custom-size add/remove flow without active-size switching, and working `D` / `E` keyboard shortcuts for `Document Setup...` and `Export Settings...`.
 
 ## Completed Execution Queue
 
@@ -267,3 +300,25 @@ All initial first splits complete: grid, text, overlay composition, overlay inte
 - Resolved the TODO contradiction where Lane C was marked complete but the extraction checklist still left `main.ts` as an open goal; the composition-root goal is now treated as complete for this phase, with only optional cleanup remaining.
 - Replaced the vague "multiple next directions" wording with a single active Phase 7 execution lane: the selected-operator pane (Lane E1-E3).
 - Fixed the halo panel fallback message so it reflects the current operator-selector behavior, and halo inspector edits now mark the document dirty like the other scene-family panels.
+
+## TODO cleanup — archiving completed lanes (2026-04-02)
+
+Moved the following completed sections from `docs/TODO.md` to this archive:
+
+- **Phases 1–6:** All parity verification complete. No blocking parity gaps remain. Halo, fuzzy-boids, scatter, overlay, layout, document workflow, export pipeline, keyboard shortcuts — all closed at the current rebuild scope.
+- **Package split status:** All initial splits complete. Mask operators remain deferred.
+- **Preview Shell Extraction:** All extraction checklist items done. `main.ts` is a composition root (~833 lines). Form helpers, SVG overlay, state protocol, document workspace, halo rendering, scene-family preview, authoring controller, export controller, CSV draft, playback, overlay editing, config editor, document targets, stage rendering, shell bootstrap, profile/content state, preview-document state, and background-graph controller are all in dedicated modules.
+- **Lane E (selected-operator pane):** Complete. Workspace vs parameter rails split, unified selected-operator model, parameter pane follows selection.
+- **Lane F (BF shell compliance):** Complete. Canonical dark panel contract, `bf-*`/`is-*` state classes only, shipped drawer/pinned-aside integration.
+- **Lane G (document-model regression fixes):** Closed. File toolbar Chrome issue was profile-specific, localStorage presets removed, content-format section removed from config editor, source-default writeback confirmed working.
+- **Lane H (document-first persistence):** Complete. All preset runtime and preview-document residue removed.
+- **Lane I (graph-first family persistence):** Complete. `sceneFamilyGraphs` replaces `sceneFamilyConfigs` as the persisted envelope. Legacy load bridge preserved.
+- **Lane J (docs audit + Houdini-style authoring shell):** Complete. Canonical docs follow stated roles, authored model locked, Layers palette, parameter pane follows layer selection, top-navigation with File/View menus.
+- **Lane K (serialized-envelope cleanup):** Complete. Persisted documents omit `backgroundGraph`; runtime projection rebuilt on load.
+- **Baseline-Foundry pressure test:** Complete. Live inspector renders credibly against current BF panel preset. All hybrid class names fixed.
+- **Parity gap map and reference-repo cross-references:** Archived. No longer needed now that parity is closed.
+
+Also:
+- Deleted `docs/baseline-foundry-modal-feature-request.md` (already passed to baseline-foundry agent).
+- Removed stale "Content Format" copy from `overlay-section.ts` CSV help text.
+- Updated anti-drift checklist and discussion items to reflect content-format retirement.

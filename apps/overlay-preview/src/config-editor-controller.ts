@@ -39,6 +39,7 @@ export interface ConfigEditorControllerDeps {
   setSelectedOperator(operatorId: string | null): boolean;
   selectOverlayItem(selection: Selection | null): void;
   syncDocumentBackgroundGraph(): void;
+  removeBackgroundNode(nodeId: string): boolean;
   markDocumentDirty(): void;
   syncBackgroundRendererVisibility(): void;
   renderStage(): Promise<void>;
@@ -227,6 +228,8 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
     const backgroundList = document.createElement("div");
     backgroundList.className = "bf-choice-list bf-stack is-compact-stack";
 
+    const canRemoveNodes = state.documentProject.backgroundGraph.nodes.length > 1;
+
     for (const node of state.documentProject.backgroundGraph.nodes) {
       const row = document.createElement("label");
       row.className = "bf-choice-row is-layer-palette-row";
@@ -258,6 +261,29 @@ export function createConfigEditorController(deps: ConfigEditorControllerDeps): 
 
       copy.append(nameSpan, metaSpan);
       row.append(radio, copy);
+
+      if (canRemoveNodes) {
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "bf-choice-row-action is-remove-node";
+        removeBtn.textContent = "×";
+        removeBtn.title = `Remove ${getBackgroundNodeLabel(node)}`;
+        removeBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (!deps.removeBackgroundNode(node.id)) {
+            return;
+          }
+
+          deps.setSelectedOperator(state.documentProject.backgroundGraph.activeNodeId);
+          shouldAutoOpenNextOperatorSection = true;
+          deps.markDocumentDirty();
+          buildConfigEditor();
+          void deps.renderStage();
+        });
+        row.append(removeBtn);
+      }
+
       backgroundList.append(row);
     }
 

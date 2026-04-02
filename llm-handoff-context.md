@@ -29,18 +29,21 @@ Useful focused checks: `npm run demo:overlay-layout`, `npm run demo:copy-to-poin
 
 - Stage 1 parity is closed for the current rebuild scope. Document workflow, overlay editing, guides, source-default writeback, and the current export path are all working.
 - The working artifact is a local `.brand-layout-ops.json` file. Browser-local presets are gone from the live workflow.
-- `project.sceneFamilyGraphs` is the persisted per-family store. `project.backgroundGraph` is a derived live active-family projection used by the preview runtime and is no longer written into new saved files. Legacy `sceneFamilyConfigs` remains load/apply compatibility only.
-- The live inspector is split into a `Workspace` rail and a `Parameters` rail. The Parameters rail now starts with a dedicated `Layers` palette that can select background nodes, the overlay root, text fields, and the logo.
-- The shell uses the canonical `baseline-foundry` dark application, overlay, and resize contracts. The old local shell class layer is gone from source.
+- `project.sceneFamilyGraphs` is now a sparse `Partial<Record<OverlaySceneFamilyKey, OverlayBackgroundGraph>>`. New documents only contain the active family; other families are created on demand when the user switches. Legacy files with all four families still load fine. `project.backgroundGraph` is a derived live active-family projection used by the preview runtime and is no longer written into new saved files. Legacy `sceneFamilyConfigs` remains load/apply compatibility only.
+- The live shell now uses a two-menu `bf-top-navigation`: `File` owns recent-file access, document setup, export settings, export commands, and source defaults through BF modal dialogs, while `View` owns overlay visibility, guide mode, and playback state. The current document name is shown in the top-navigation banner, the Parameters rail stays parameter-only, and it starts with a dedicated `Layers` palette.
+- Document setup is now a table-driven workflow instead of the older choice-row modal. It shows saved sizes as radio rows with width/height columns, supports direct custom-size entry, and allows row-level removal without forcing the user to activate a size first. Custom dimensions flow through generated `custom_{width}x{height}` output-profile keys.
+- The shell uses the canonical `baseline-foundry` dark application, overlay, and resize contracts. The old local shell class layer is gone from source. The preview currently imports the valid exported `baseline-foundry/presets/app-tier.css` preset because the sibling repo's exported `presets/panel.css` artifact is malformed.
 - `main.ts` is now a composition root around extracted controllers. The remaining work is product-shape work, not more parity recovery.
 
 ## Active queue
 
-No approved lane is currently open in `docs/TODO.md`.
+Lane L (sparse operator graph inclusion + node CRUD) is in progress.
 
-- Lane K is complete.
-- The current authoring baseline is: a dedicated full-width `bf-top-navigation` shell for workspace actions, a dedicated Layers palette, and a Parameters rail that follows the current layer selection. Do not use `bf-application.has-navigation` here unless a real BF side navigation rail is present; that class adds a desktop navigation column.
-- The next pass should promote a new lane explicitly rather than drifting into unscheduled shell polish.
+- L1–L3 landed: sparse `OverlaySceneFamilyGraphs` type, single-family default creation, create-on-demand family switching.
+- L5 landed: `removeBackgroundNode()` with edge pruning and activeNodeId fallback, wired into the Layers palette with a hover-reveal × button.
+- L6–L8 verified no-op: existing source-default, legacy project files, and automation paths work unchanged under the sparse type.
+- Next up: Lane M (list-based network view) — show the DAG topology in the Layers palette, add-node CRUD, manifest-driven operator browsing.
+- Content-format as a user-facing concept is retired. The document authoring model replaces it, with Houdini as the north star. See `docs/product-roadmap.md` → "Document/project model — the Houdini ROP analogy" for the full synthesis.
 
 ## Invariants that still matter
 

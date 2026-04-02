@@ -32,6 +32,65 @@ The preferred document analogy is closer to draw.io or local Canva-style project
 
 It should not try to become a full freeform design tool first.
 
+## Document/project model — the Houdini ROP analogy
+
+The working unit in this product is a **document-project hybrid**: one `.brand-layout-ops.json` file that carries authored layout state, operator graphs, content bindings, and target-size definitions together — more like a Houdini `.hip` than a single-page InDesign document.
+
+### Multi-size documents
+
+A single document can define multiple output sizes through Document Setup. This is intentional and maps directly to the Houdini ROP model:
+
+| Houdini concept | brand-layout-ops equivalent |
+|-----------------|---------------------------|
+| `.hip` file | `.brand-layout-ops.json` document |
+| SOPs (geometry operators) | `sceneFamilyGraphs` — per-family operator graphs |
+| Display flag / current ROP | `backgroundGraph` — runtime projection of the active family |
+| Multiple ROP outputs | Multiple document target sizes |
+| Render to disk from ROPs | Export PNG / PNG sequence per target size |
+
+**How Document Setup persists:**
+
+1. User opens `File → Document Setup...` and adds, removes, or modifies target sizes.
+2. Those sizes live in the document's `project.targets` array (runtime state).
+3. When the user saves (`Ctrl+S` or `File → Save`), the full document including all target sizes is written to disk.
+4. If the document is **not saved**, target changes exist only in runtime memory and are lost on reload — same as unsaved edits in any file-based editor.
+5. Source defaults (`File → Source Defaults → Save Defaults`) provides a separate persistence path: the default set of sizes for **new** documents. Modifying source defaults does not retroactively change existing saved documents.
+
+**Benefits of multi-size per document:**
+
+- Bulk export: one document can emit `1080×1350` (Instagram), `1920×1080` (YouTube), `1080×1080` (square) sequences in a single export pass, like Houdini rendering multiple ROP outputs from the same scene.
+- The layout engine re-evaluates per target size, so responsive text wrapping and grid behavior are document-driven rather than requiring separate files per format.
+- Scene families, operator graphs, content bindings, and authored overlay objects are shared across all sizes. Only the layout evaluation differs.
+
+**Risks and best practices:**
+
+- **Not every project needs multiple sizes.** A single 1080×1350 document for one campaign is perfectly valid. Multi-size is opt-in via Document Setup, not the default complexity.
+- **Target sizes should stay within the same campaign intent.** A single document should not try to be a Swiss Army file for every possible brand deliverable. If the content, scene family, or operator graph would differ significantly between sizes, use separate documents.
+- **The active preview shows one size at a time.** The radio selection in Document Setup controls which target drives the live preview. Export can target all sizes or a selection.
+- **Source defaults are the template mechanism.** When a team standardizes on a set of sizes (e.g., "Ubuntu Summit 2026 social pack"), those sizes should be saved as source defaults so every `File → New` starts from that baseline. This is the equivalent of a Houdini project template.
+
+### Persistence architecture summary
+
+```
+sceneFamilyGraphs     ← persisted, carries ALL operator graphs per family
+backgroundGraph       ← runtime-only, rebuilt from sceneFamilyGraphs[sceneFamilyKey]
+project.targets       ← persisted, the document's output size definitions
+project.sceneFamilyKey ← persisted, which family is active
+params (overlay)      ← persisted, authored text, logo, layout state
+exportSettings        ← persisted, per-profile export config
+contentFormatKey      ← internal plumbing (retired concept, no UI surface)
+```
+
+The file on disk carries everything needed to reconstruct the full runtime state. Runtime-only projections like `backgroundGraph` are rebuilt during normalization/load — the same way Houdini rebuilds display-flag geometry from SOPs on scene open rather than caching the viewport mesh.
+
+### Content-format retirement
+
+Content-format as a user-facing concept is dead. The document authoring model replaces it:
+
+- Each document **is** its own content variant. Instead of switching formats within one document, you save separate documents or rely on CSV row selection for per-row content.
+- The remaining `contentFormatKey` plumbing in the profile bucket system is legacy internal state. It can be simplified or removed in a future cleanup pass, but it does not need a replacement UI surface.
+- The Houdini north star reinforces this: a `.hip` file does not have "content modes" — it has authored state, operator graphs, and outputs. So should this product.
+
 ## Roadmap
 
 ### Stage 0. Kernel extraction

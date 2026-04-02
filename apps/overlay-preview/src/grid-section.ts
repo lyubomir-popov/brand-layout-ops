@@ -2,17 +2,16 @@
  * grid-section.ts — Layout Grid accordion section builder.
  *
  * Extracted from main.ts. Builds the grid parameter panel
- * (baseline, columns, margins, safe area, guide mode).
+ * (baseline, columns, margins, safe area).
  * Receives all dependencies via PreviewAppContext.
  */
 
-import type { PreviewAppContext, GuideMode } from "./preview-app-context.js";
+import type { PreviewAppContext } from "./preview-app-context.js";
 import {
   buildAccordionSectionEl,
   createCheckboxFormGroup,
   createFormGroup,
   createNumberInput,
-  createSelectInput,
   wrapCol
 } from "@brand-layout-ops/parameter-ui";
 
@@ -24,19 +23,7 @@ export function buildGridSection(ctx: PreviewAppContext): HTMLElement {
   const displayFields = document.createElement("div");
   displayFields.className = "bf-grid";
 
-  displayFields.append(wrapCol(1, createCheckboxFormGroup(
-    "Show Overlay",
-    state.overlayVisible,
-    (visible) => {
-      ctx.setOverlayVisible(visible);
-      void ctx.renderStage();
-    },
-    (input) => {
-      input.setAttribute("data-overlay-visibility", "");
-    }
-  )));
-
-  displayFields.append(wrapCol(1, createCheckboxFormGroup(
+  displayFields.append(wrapCol(2, createCheckboxFormGroup(
     "Fit Safe Area",
     grid.fitWithinSafeArea ?? true,
     (fitWithinSafeArea) => {
@@ -44,14 +31,6 @@ export function buildGridSection(ctx: PreviewAppContext): HTMLElement {
       ctx.buildConfigEditor();
       void ctx.renderStage();
     }
-  )));
-
-  displayFields.append(wrapCol(2, createFormGroup(
-    "Guides",
-    createSelectInput(state.guideMode,
-      [{ label: "Off", value: "off" }, { label: "Composition Grid", value: "composition" }, { label: "Baseline Grid", value: "baseline" }],
-      (v) => { state.guideMode = v as GuideMode; try { localStorage.setItem("brand-layout-ops-guide-mode-v1", v); } catch { /* quota */ } ctx.buildConfigEditor(); void ctx.renderStage(); }
-    )
   )));
 
   body.append(displayFields);

@@ -177,7 +177,7 @@ export interface SanitizeOverlayDocumentFileOptions<
 // ---------- Private helpers ----------
 
 function getOverlayDocumentTargetLabel(outputProfileKey: string): string {
-  return OUTPUT_PROFILES[outputProfileKey]?.label ?? outputProfileKey;
+  return getOutputProfile(outputProfileKey).label;
 }
 
 function getOverlayDocumentTargetId(outputProfileKey: string): string {
@@ -274,7 +274,7 @@ export function normalizeOverlayDocumentProject<
       activeTargetId,
       targets: fallbackTargets,
       sceneFamilyGraphs,
-      backgroundGraph: cloneOverlayBackgroundGraph(sceneFamilyGraphs[DEFAULT_OVERLAY_SCENE_FAMILY_KEY])
+      backgroundGraph: cloneOverlayBackgroundGraph(sceneFamilyGraphs[DEFAULT_OVERLAY_SCENE_FAMILY_KEY]!)
     };
   }
 
@@ -340,17 +340,19 @@ export function normalizeOverlayDocumentProject<
   let sceneFamilyGraphs = normalizeOverlaySceneFamilyGraphs(
     rawProject.sceneFamilyGraphs,
     snapshot.outputProfileKey,
-    rawProject.sceneFamilyConfigs
+    rawProject.sceneFamilyConfigs,
+    sceneFamilyKey
   );
+  const activeFamilyGraph = sceneFamilyGraphs[sceneFamilyKey]!;
   const hasRawBackgroundGraph = Object.prototype.hasOwnProperty.call(rawProject, "backgroundGraph")
     && typeof rawProject.backgroundGraph !== "undefined";
   const backgroundGraph = hasRawBackgroundGraph
     ? normalizeOverlayBackgroundGraph(
       rawProject.backgroundGraph,
       sceneFamilyKey,
-      extractOverlaySceneFamilyConfigsFromGraph(sceneFamilyGraphs[sceneFamilyKey], legacySceneFamilyConfigs)
+      extractOverlaySceneFamilyConfigsFromGraph(activeFamilyGraph, legacySceneFamilyConfigs)
     )
-    : cloneOverlayBackgroundGraph(sceneFamilyGraphs[sceneFamilyKey]);
+    : cloneOverlayBackgroundGraph(activeFamilyGraph);
   sceneFamilyGraphs = {
     ...sceneFamilyGraphs,
     [sceneFamilyKey]: cloneOverlayBackgroundGraph(backgroundGraph)

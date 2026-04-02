@@ -12,10 +12,6 @@ export function cloneOverlayParams(params: OverlayLayoutOperatorParams): Overlay
   return cloneJson(params);
 }
 
-export function loadOutputFormatKey(): string | null {
-  return null;
-}
-
 export function saveOutputFormatKey(_profileKey: string, _formatKey: string): void {
   // No-op: output format localStorage persistence removed.
 }
