@@ -36,6 +36,14 @@ Items moved here from `docs/TODO.md` to keep the active backlog lean.
 - Moved the playback shortcut from `Space` to `K` in `preview-shell-controller.ts` and the `View` menu so future canvas-hand or pan work can claim `Space` without colliding with transport controls.
 - Validation: `npm run typecheck`.
 
+## Lane O1–O3 — stage shell surround + fit sizing (2026-04-02)
+
+- Audited the shell contract and confirmed `baseline-foundry` already ships a canonical `bf-stage-shell`; the follow-up stayed local to the preview's stage sizing and surround instead of becoming an upstream request.
+- Updated `apps/overlay-preview/index.html` so the stage now sits inside a real `bf-stage-shell` wrapper with a nested `bf-fixed-width` frame, matching the canonical sample structure instead of combining both responsibilities on one element.
+- Added a neutral gray worksurface treatment plus a clearer stage edge in `apps/overlay-preview/src/styles.css` so the document reads like a canvas on a work surface instead of blending into the dark app shell.
+- Replaced the old `100dvh` stage-width heuristic with measured stage-shell sizing. `stage-render-controller.ts` now publishes live shell block metrics, and shell or aside resize paths refresh authoring and network overlay positioning through `main.ts` and `preview-shell-controller.ts`.
+- Validation: `npm run typecheck` and `npm run preview:build`.
+
 ## Lane L — Sparse operator graph inclusion + node CRUD
 
 - Changed `OverlaySceneFamilyGraphs` from a fixed interface with all four families to a sparse `Partial<Record<OverlaySceneFamilyKey, OverlayBackgroundGraph>>`. New documents start with only the active family's graph.

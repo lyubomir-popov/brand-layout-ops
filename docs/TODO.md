@@ -115,8 +115,20 @@ Goal: Move from graph inspection to graph authoring. The saved background graph 
 | N4 | Done | Graph edits keep the target node selected, rebuild the Layers palette, rerender the network overlay, and keep the parameter pane focused on the edited operator |
 | N5 | Done | The first authoring surface is now explicitly the Layers palette. Shared port metadata and controller validation stay surface-agnostic so future overlay or network affordances can reuse them |
 
+### Lane O — Stage shell ergonomics
+
+Goal: Make the preview stage feel like a document canvas instead of an app-colored hole. Keep fit-to-viewport behavior, but align the shell with the canonical `bf-stage-shell` contract, make the document edge legible, and stop the stage from forcing gratuitous scrollbars when it should fit cleanly inside the viewport.
+
+| Step | Status | Summary |
+|------|--------|---------|
+| O1 | Done | Audited the shell contract: `baseline-foundry` already ships a canonical `bf-stage-shell`, so the follow-up should stay local to the preview's stage sizing and surround rather than becoming an upstream request |
+| O2 | Done | Added a neutral stage worksurface plus a clearer document edge treatment so the authored frame now reads like a canvas on a work surface instead of blending into the dark app chrome |
+| O3 | Done | Replaced the brittle `100dvh` stage-width heuristic with shell-measured fit sizing; shell, dock, and aside resizes now refresh stage metrics and keep authoring or network overlays aligned |
+| O4 | Planned | Add a `100%` zoom action while keeping fit-to-viewport the default |
+| O5 | Planned | Evaluate `Space`-to-pan only after O4 lands and oversized-document inspection is real rather than speculative |
+
 ## Immediate next steps after the above is done
-- **Promote the next lane explicitly.** Lane N is complete, so the next pass should choose a new approved lane instead of drifting into opportunistic shell work.
+- **Decide whether Lane O should continue.** O1-O3 are landed; the next pass should either take O4/O5 explicitly or retire the lane and promote a different one on purpose.
 - **Keep the shell stable.** Treat the File/View `bf-top-navigation`, shell-level BF modals, dedicated Layers palette, and parameter-only rail as the current authoring baseline and only reopen it for a concrete product need.
 - **Full compositor model.** Layer-stack direction is committed but the active queue should add parity-friendly seams first, not schedule a premature compositor rewrite.
 - **Timeline and clip model.** Belongs after parity, as a sequencing layer above the operator graph.
@@ -138,17 +150,6 @@ Deferred until explicitly promoted. Each carries a working assumption.
 - **Spokes decomposition.** Keep `operator-spokes` coarse for parity. Later split toward wave, mask, and polar-field operators.
 - **Arbitrary output-size authoring.** Custom sizes stay below parity-critical work.
 - **Paragraph-style set authoring.** Wait for stable project model and operator-scoped parameter surfaces. When this is promoted, include per-style text-color authoring and a dedicated paragraph-styles modal with an InDesign-like workflow instead of treating style editing as scattered inline controls.
-
-### Candidate next shell follow-up
-
-Inbox-promoted shell ergonomics request to keep in view when the next lane is chosen. This is a concrete product need, but it is not yet an approved execution lane.
-
-1. Audit the stage shell contract. Confirm whether a `baseline-foundry` stage-shell primitive exists or whether the current preview stage is still local CSS, then decide whether the behavior should stay local or become an upstream request.
-2. Treat the preview surround like a document canvas. The stage background should read more like Photoshop or Lightroom: a neutral light-gray surround around the document so the document edges are visually obvious instead of blending into the app shell.
-3. Remove forced stage overflow caused by canvas-shell padding. The preview stage should not show a gratuitous scrollbar when the fitted document still conceptually fits in view.
-4. Keep fit-to-viewport as the default stage behavior, but add a `100%` zoom action so authored output can be inspected at real pixels.
-5. Evaluate panning for oversized documents while holding `Space`, matching the expected canvas-hand interaction for inspection.
-6. Done: playback now uses `K`, so `Space` is free for a future pan-hand interaction without conflicting with document-shell text inputs.
 
 ### Splits to not get bogged down with
 

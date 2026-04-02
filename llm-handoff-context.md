@@ -32,6 +32,8 @@ Useful focused checks: `npm run demo:overlay-layout`, `npm run demo:copy-to-poin
 - `project.sceneFamilyGraphs` is now a sparse `Partial<Record<OverlaySceneFamilyKey, OverlayBackgroundGraph>>`. New documents only contain the active family; other families are created on demand when the user switches. Legacy files with all four families still load fine. `project.backgroundGraph` is a derived live active-family projection used by the preview runtime and is no longer written into new saved files. Legacy `sceneFamilyConfigs` remains load/apply compatibility only.
 - The live shell now uses a two-menu `bf-top-navigation`: `File` owns recent-file access, document setup, export settings, export commands, and source defaults through BF modal dialogs, while `View` owns overlay visibility, guide mode, and playback state. The current document name is shown in the top-navigation banner, the Parameters rail stays parameter-only, and it starts with a dedicated `Layers` palette.
 - Playback now uses `K` instead of `Space`, reserving `Space` for future canvas-hand or pan work without conflicting with the existing shell shortcuts.
+- The preview stage now sits inside the canonical `bf-stage-shell` wrapper instead of treating `bf-fixed-width` and stage shell as the same element. The main worksurface reads as a neutral gray document surround, and the stage edge now stays visually distinct from the app chrome.
+- Fit-to-viewport stage sizing now comes from measured stage-shell height instead of the older `100dvh` heuristic. Dock-mode changes, aside resizing, and shell resizes refresh the stage metrics and rerender authoring or network overlays so the fitted frame does not force gratuitous scrollbars when it should still fit.
 - The stage now has a toggleable network overlay layer. `View` and `N` can show a 50% black scrim plus a deterministic DAG autolayout of the active background graph, with pseudo-nodes for overlay layout, preview composite, and output sinks so operator flow is visible without committing to a spatial editor yet.
 - `preview-composition.ts` is now the shared preview compositor seam. Stage canvas visibility, SVG overlay visibility, export composition, automation state, and the network overlay all use the same ordered layer and sink model instead of carrying separate hardcoded assumptions.
 - The Layers palette now owns the first graph-authoring surface. It can add background operators, connect compatible typed ports per input, and disconnect occupied inputs without deleting nodes. New nodes get unique IDs and default params, are selected immediately for editing, and do not become the graph output until later edge or active-node authoring says so.
@@ -43,11 +45,12 @@ Useful focused checks: `npm run demo:overlay-layout`, `npm run demo:copy-to-poin
 
 ## Active queue
 
-Lane N is complete.
+Lane O is active.
 
 - Lane M is complete: network overlay, deterministic autolayout, selection, composition seam, and named output sinks are all in place.
 - Lane N is complete: Layers-palette graph CRUD now covers add-node, connect, disconnect, shared typed-port validation, and synchronized parameter-pane focus.
-- Next chat should promote a new approved lane explicitly instead of extending graph authoring opportunistically.
+- Lane O is active: O1-O3 are landed, covering the stage-shell contract audit, neutral worksurface surround, and shell-measured fit sizing.
+- Next chat should decide explicitly whether to continue Lane O with zoom or pan work, or retire it and promote a different approved lane.
 - Content-format as a user-facing concept is retired. The document authoring model replaces it, with Houdini as the north star. See `docs/product-roadmap.md` → "Document/project model — the Houdini ROP analogy" for the full synthesis.
 
 ## Invariants that still matter
@@ -77,4 +80,4 @@ Lane N is complete.
 
 ## Fresh chat prompt
 
-Continue work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\lyubo\work\repos\racoon-anim` as the read-only reference app. Read `AGENTS.md`, `llm-handoff-context.md`, `docs/TODO.md`, `docs/product-roadmap.md`, and `README.md` first. Treat `docs/TODO.md` as the canonical active queue. Stage 1 parity, the selected-operator pane, the baseline-foundry shell cleanup, the preset-residue cleanup, the graph-first family-persistence migration, Lane J1-J5, and Lane K1-K3 are complete. The current baseline is a `bf-top-navigation` action shell plus a dedicated Layers palette and a layer-following Parameters rail, with persisted documents now storing `sceneFamilyGraphs` without serializing `backgroundGraph`. Promote a new lane explicitly before starting another large refactor.
+Continue work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\lyubo\work\repos\racoon-anim` as the read-only reference app. Read `AGENTS.md`, `llm-handoff-context.md`, `docs/TODO.md`, `docs/product-roadmap.md`, and `README.md` first. Treat `docs/TODO.md` as the canonical active queue. Stage 1 parity, the selected-operator pane, the baseline-foundry shell cleanup, the preset-residue cleanup, the graph-first family-persistence migration, Lane J1-J5, and Lane K1-K3 are complete. The current baseline is a `bf-top-navigation` action shell plus a dedicated Layers palette and a layer-following Parameters rail, with persisted documents now storing `sceneFamilyGraphs` without serializing `backgroundGraph`. Lane O is the active shell-follow-up lane; decide explicitly whether to continue it with zoom or pan work before starting another large refactor.
