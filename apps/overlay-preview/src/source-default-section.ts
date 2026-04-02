@@ -21,7 +21,6 @@ export function buildSourceDefaultSection(ctx: PreviewAppContext): HTMLElement {
     state.playbackTimeSec = 0;
     ctx.resizeRenderer();
     ctx.buildOutputProfileOptions();
-    ctx.buildPresetTabs();
     ctx.buildConfigEditor();
     ctx.setSourceDefaultStatus("Reset to source default.");
     void ctx.renderStage();

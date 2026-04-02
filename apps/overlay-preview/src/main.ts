@@ -32,8 +32,7 @@ import {
   createDefaultExportSettings,
   loadOutputFormatKeys,
   saveOutputFormatKey,
-  type ExportSettings,
-  type Preset
+  type ExportSettings
 } from "./sample-document.js";
 import { type PersistedOverlayPreviewDocument } from "./preview-document.js";
 import {
@@ -87,10 +86,6 @@ import {
   type PreviewDocumentStateController
 } from "./preview-document-state-controller.js";
 import {
-  createPresetController,
-  type PresetController
-} from "./preset-controller.js";
-import {
   createProfileStateController,
   type ProfileStateController
 } from "./profile-state-controller.js";
@@ -112,7 +107,6 @@ import { buildOutputFormatSection } from "./output-format-section.js";
 import { buildOverlaySection } from "./overlay-section.js";
 import { buildPhyllotaxisSection } from "./phyllotaxis-section.js";
 import { buildPlaybackSection } from "./playback-section.js";
-// Presets section removed — document save/open replaces preset persistence.
 import { buildScatterSection } from "./scatter-section.js";
 import { buildSourceDefaultSection } from "./source-default-section.js";
 
@@ -160,8 +154,6 @@ const state: PreviewState = {
   contentFormatKeyByProfile: {
     [startProfileKey]: startFormatKey
   },
-  presets: [],
-  activePresetId: null,
   exportSettings: createDefaultExportSettings(startProfileKey),
   exportSettingsByProfile: {
     [startProfileKey]: createDefaultExportSettings(startProfileKey)
@@ -215,7 +207,6 @@ let playbackController: PlaybackController | null = null;
 let overlayEditingController: OverlayEditingController | null = null;
 let configEditorController: ConfigEditorController | null = null;
 let documentTargetController: DocumentTargetController | null = null;
-let presetController: PresetController | null = null;
 let profileStateController: ProfileStateController | null = null;
 let documentStateController: PreviewDocumentStateController | null = null;
 
@@ -255,10 +246,6 @@ function getConfigEditor(): HTMLElement | null {
 
 function getOutputProfileOptions(): HTMLElement | null {
   return $("[data-output-profile-options]");
-}
-
-function getPresetTabs(): HTMLElement | null {
-  return $("[data-preset-tabs]");
 }
 
 function getOverlayVisibilityInput(): HTMLInputElement | null {
@@ -613,34 +600,6 @@ async function applyNewDocumentState(): Promise<void> {
   await documentStateController!.applyNewDocumentState();
 }
 
-function getActivePreset(): Preset | undefined {
-  return presetController!.getActivePreset();
-}
-
-function saveCurrentAsPreset(name?: string) {
-  presetController!.saveCurrentAsPreset(name);
-}
-
-function updateActivePreset() {
-  presetController!.updateActivePreset();
-}
-
-async function exportPreset(preset: Preset) {
-  await presetController!.exportPreset(preset);
-}
-
-async function importPresetsFromFiles(files: FileList | null): Promise<boolean> {
-  return presetController!.importPresetsFromFiles(files);
-}
-
-function loadPreset(preset: Preset) {
-  presetController!.loadPreset(preset);
-}
-
-function deletePreset(presetId: string) {
-  presetController!.deletePreset(presetId);
-}
-
 function setOverlayVisible(nextVisible: boolean) {
   if (state.overlayVisible === nextVisible) {
     syncOverlayVisibilityUi();
@@ -709,10 +668,6 @@ function buildOutputProfileOptions() {
   documentTargetController!.buildOutputProfileOptions();
 }
 
-function buildPresetTabs() {
-  presetController!.buildPresetTabs();
-}
-
 function getSelectedOverlaySectionTitle(): string {
   return overlayEditingController!.getSelectedOverlaySectionTitle();
 }
@@ -730,7 +685,6 @@ const ctx: PreviewAppContext = {
   renderStage,
   buildConfigEditor,
   buildOutputProfileOptions,
-  buildPresetTabs,
   resizeRenderer,
   syncOverlayVisibilityUi,
   updatePlaybackToggleUi,
@@ -766,13 +720,6 @@ const ctx: PreviewAppContext = {
   getContentSource,
   getEffectiveParams,
   switchOutputProfile,
-  saveCurrentAsPreset,
-  updateActivePreset,
-  getActivePreset,
-  exportPreset,
-  importPresetsFromFiles,
-  deletePreset,
-  loadPreset,
   applySourceDefaultSnapshot(snapshot) {
     sourceDefaultController?.applySourceDefaultSnapshot(snapshot);
   },
@@ -951,30 +898,6 @@ documentTargetController = createDocumentTargetController({
   markDocumentDirty,
   buildConfigEditor,
   renderStage
-});
-
-presetController = createPresetController({
-  state,
-  initialFormatKey: INITIAL_FORMAT_KEY,
-  getEffectiveParams,
-  normalizeParamsTextFieldOffsets,
-  getOrCreateProfileFormatParams,
-  getOrCreateExportSettingsForProfile,
-  persistActiveProfileBuckets,
-  persistActiveExportSettings,
-  persistActiveHaloConfig,
-  normalizeSelection,
-  syncHaloConfigToProfile,
-  syncDocumentProjectToCurrentOutputProfile,
-  getPresetTabs,
-  markDocumentDirty,
-  buildOutputProfileOptions,
-  buildConfigEditor,
-  resizeRenderer,
-  renderStage,
-  setStatusMessage: (message, severity) => {
-    sourceDefaultController?.setSourceDefaultStatus(message, severity);
-  }
 });
 
 function buildConfigEditor() {

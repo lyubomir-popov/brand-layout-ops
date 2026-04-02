@@ -301,10 +301,6 @@ export function createPreviewShellController(
         return;
       }
 
-      if (target instanceof HTMLInputElement && target.hasAttribute("data-preset-name-input")) {
-        return;
-      }
-
       if (target instanceof HTMLInputElement && target.hasAttribute("data-document-name-input")) {
         deps.documentWorkspace.setName(target.value);
         return;

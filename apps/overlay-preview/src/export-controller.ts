@@ -112,33 +112,6 @@ async function getNextVersionedPngFileName(
   return `${baseName}-v${highestVersion + 1}.png`;
 }
 
-export async function getNextVersionedPresetFileName(
-  dirHandle: FileSystemDirectoryHandle,
-  slug: string
-): Promise<string> {
-  const pattern = new RegExp(`^v(\\d+)\\.(\\d+)-${escapeRegExp(slug)}\\.json$`, "i");
-  let highestMajor = 0;
-  let highestMinor = 0;
-
-  for await (const [entryName, entryHandle] of (dirHandle as any).entries()) {
-    if (entryHandle.kind !== "file") continue;
-    const match = entryName.match(pattern);
-    if (!match) continue;
-    const major = Number(match[1]);
-    const minor = Number(match[2]);
-    if (major > highestMajor || (major === highestMajor && minor > highestMinor)) {
-      highestMajor = major;
-      highestMinor = minor;
-    }
-  }
-
-  if (highestMajor === 0) {
-    return `v0.1-${slug}.json`;
-  }
-
-  return `v${highestMajor}.${highestMinor + 1}-${slug}.json`;
-}
-
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();

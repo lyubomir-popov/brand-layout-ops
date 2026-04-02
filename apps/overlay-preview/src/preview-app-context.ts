@@ -17,14 +17,14 @@ import type {
 } from "@brand-layout-ops/core-types";
 import type {
   OverlayBackgroundNode,
-  OverlayDocumentProject,
   OverlayContentSource,
+  OverlayDocumentProject,
   OverlayLayoutOperatorParams,
   OverlaySceneFamilyKey,
   OverlaySourceDefaultSnapshot
 } from "@brand-layout-ops/operator-overlay-layout";
 import type { HaloFieldConfig } from "@brand-layout-ops/operator-halo-field";
-import type { ExportSettings, Preset } from "./sample-document.js";
+import type { ExportSettings } from "./sample-document.js";
 import type { OverlayPreviewDocument as OverlayPreviewDocumentModel } from "./preview-document.js";
 import type { DocumentWorkspaceController } from "./document-workspace.js";
 import type { SceneFamilyPreviewMode } from "./scene-family-preview.js";
@@ -64,8 +64,6 @@ export interface PreviewState {
   contentFormatKey: string;
   profileFormatBuckets: import("@brand-layout-ops/operator-overlay-layout").ProfileFormatBuckets;
   contentFormatKeyByProfile: import("@brand-layout-ops/operator-overlay-layout").ProfileContentFormatMap;
-  presets: Preset[];
-  activePresetId: string | null;
   exportSettings: ExportSettings;
   exportSettingsByProfile: Record<string, ExportSettings>;
   haloConfig: HaloFieldConfig;
@@ -107,8 +105,6 @@ export interface PreviewAppContext {
   buildConfigEditor(): void;
   /** Rebuild the output-profile options sub-panel. */
   buildOutputProfileOptions(): void;
-  /** Rebuild the preset tabs list. */
-  buildPresetTabs(): void;
   /** Resize the Three.js renderer to match current frame dimensions. */
   resizeRenderer(): void;
   /** Sync overlay visibility checkbox and layer display. */
@@ -187,24 +183,10 @@ export interface PreviewAppContext {
   /** Get effective params with any staged CSV draft applied. */
   getEffectiveParams(): OverlayLayoutOperatorParams;
 
-  // — Preset / profile / document actions —
+  // — Profile / document actions —
 
   /** Switch to a different output profile. */
   switchOutputProfile(key: string): void;
-  /** Save the current state as a new preset. */
-  saveCurrentAsPreset(name?: string): void;
-  /** Update the active preset with current state. */
-  updateActivePreset(): void;
-  /** Get the currently active preset, or undefined. */
-  getActivePreset(): Preset | undefined;
-  /** Export a preset to a JSON file download. */
-  exportPreset(preset: Preset): void;
-  /** Import presets from file input. Returns true if any were imported. */
-  importPresetsFromFiles(files: FileList | null): Promise<boolean>;
-  /** Delete a preset by ID. */
-  deletePreset(id: string): void;
-  /** Load a preset (apply its state). */
-  loadPreset(preset: Preset): void;
 
   // — Source defaults —
 

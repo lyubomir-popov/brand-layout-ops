@@ -40,7 +40,7 @@ Use this before and after substantial work so parity implementation keeps servin
 
 Use this map before changing code so parity work stays anchored to the reference behavior.
 
-- Output profiles, presets, content formats, and source-default persistence:
+- Output profiles, document persistence, content-format compatibility, and source-default persistence:
 	- Reference repo: `c:\Users\lyubo\work\repos\racoon-anim\src\app\config-schema.js`, `default-config-source.js`, `editor-constants.js`, `index.js`
 	- Current repo: `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/preview-document.ts`, `apps/overlay-preview/src/sample-document.ts`, `packages/operator-overlay-layout/src/index.ts`
 - Motion look, halo-field masks, mascot composition, and guide geometry:
@@ -67,8 +67,8 @@ Phases 1–6 are complete (see `docs/history.md` for details). Phase 7 (feature 
 - [x] Selected-element editor behavior. (Code audit: text field controls, style palette, inline editing, logo controls all at parity.)
 - [x] Current animation background look.
 - [x] Export-relevant geometry consistency. (Closed on 2026-04-01 after stabilizing rebuild automation around full preview-document snapshots, refreshing the authored instagram source-default bucket to match current reference defaults, fixing halo transparent export mode, and re-running a fresh side-by-side screenshot pass against a regenerated `racoon-anim` reference frame.)
-- [x] Export workflow parity. (Single PNG with auto-versioned directory export, PNG sequence with directory picker, preset export to `presets/{dims}/v{n}-{slug}.json`.)
-- [x] Preset and source-default workflow parity. (Save/update/delete/import/export/directory-based export all working.)
+- [x] Export workflow parity. (Single PNG with auto-versioned directory export and PNG sequence with directory picker.)
+- [x] Document and source-default workflow parity. (Local document open/save/save-as/duplicate/reopen plus source-default load/reset/write all working.)
 
 ## Remaining Parity Gaps
 
@@ -86,7 +86,7 @@ Halo parity is treated as complete for the current rebuild scope per user direct
 |---|-----|--------|----------------|
 | 1 | Output profiles scene ownership | PARTIAL | Per-profile overlay buckets, export settings, halo config, content-format selection all persist. Missing: profile-owned motion and mascot defaults at reference completeness. |
 | 2 | Linked title-to-logo sizing | DONE | Helper in `layout-engine`, normalization in `operator-overlay-layout`, UI toggle in logo panel. Code audit confirmed matching behavior with reference. |
-| 3 | Preset workflow | DONE | Save/update/delete/import/export with directory-based `presets/{dims}/v{n}-{slug}.json` versioned naming, file-backed documents, dirty-state tracking. |
+| 3 | Document workflow | DONE | File-backed local documents now replace preset CRUD as the working-state unit: open/save/save-as/duplicate/reopen with dirty-state tracking. |
 | 4 | Source-default writeback | DONE | Load, reset, write, CSV flush, shared normalization. Orchestration extracted to `source-default-controller.ts`. |
 | 5 | Export pipeline | DONE | Single PNG with auto-versioned `output/{dims}/` directory export, PNG sequence with directory picker, headless Playwright, FFmpeg MP4 encode, transparent BG. |
 | 6 | Keyboard shortcuts | PARTIAL | All major shortcuts landed. Missing: block shortcuts during future export modal. |
@@ -100,7 +100,7 @@ Item 18 from the original audit (Three.js vs SVG renderer difference) is an inte
 1. Keep halo stable and closed unless a concrete regression appears.
 2. Keep label orientation in adapters, not kernels — the operator emits spoke angle and label-slot data.
 3. Keep mascot composition adapter-side until reuse is concrete.
-4. Finish profile/content/preset authority and export seams before reopening renderer-specific polish.
+4. Finish profile/content/document authority and export seams before reopening renderer-specific polish.
 
 ## Package split status
 
@@ -112,7 +112,7 @@ Active architectural risks requiring attention during the next work cycle.
 
 | Signal | Severity | Detail |
 |--------|----------|--------|
-| `main.ts` at ~833 lines | **Medium** | CSV draft, playback, source-default, authoring, export, overlay editing, stage rendering/composition, inspector section registration, document target CRUD, preset lifecycle, profile/content switching, preview-document/workspace state orchestration, and background-graph selection or sync are all extracted from the former monolith. Remaining: DOM query helpers, overlay-visibility shell glue, and the final controller/bootstrap composition root. |
+| `main.ts` at ~833 lines | **Medium** | CSV draft, playback, source-default, authoring, export, overlay editing, stage rendering/composition, inspector section registration, document target CRUD, profile/content switching, preview-document/workspace state orchestration, and background-graph selection or sync are all extracted from the former monolith. Remaining: DOM query helpers, overlay-visibility shell glue, and the final controller/bootstrap composition root. |
 | `project.backgroundGraph` vs `sceneFamilyConfigs` | **Medium** | Per-edit mirroring is removed. Section panels read from graph nodes; `sceneFamilyConfigs` only updates at family-switch boundaries. Remaining cleanup: the saved document still serializes both; consider dropping `sceneFamilyConfigs` from the serialized envelope once all consumers use graph nodes. |
 | `operator-overlay-layout/src/index.ts` at 262 lines (was 2,031) | **Resolved** | Decomposed into `document-schema.ts`, `background-graph.ts`, `field-defaults.ts`, `csv-resolution.ts`, `overlay-internals.ts`. Barrel re-exports only. |
 | `scene-family-preview.ts` at 724 lines | **Medium** | Graph orchestration now uses preview operators registered with the shared graph runtime, which is the right direction. Remaining cleanup should extract preview operator wrappers or draw adapters only when reuse is concrete, not as a file-split exercise. |
@@ -125,7 +125,7 @@ Active architectural risks requiring attention during the next work cycle.
 - Form helpers extracted to `parameter-ui/src/accordion-form-helpers.ts`.
 - SVG overlay extracted to `svg-overlay-adapter.ts`.
 - State-sharing protocol in `preview-app-context.ts`.
-- 13 section builders extracted (halo-config, grid, playback, export, source-default, document, output-format, presets, content-format, overlay, fuzzy-boids, phyllotaxis, scatter). `paragraph-styles-section.ts` and the legacy `playback-export-section.ts` were removed as dead code.
+- 11 live section builders extracted (halo-config, grid, playback, export, source-default, document, output-format, overlay, fuzzy-boids, phyllotaxis, scatter). `paragraph-styles-section.ts`, `presets-section.ts`, and the legacy `playback-export-section.ts` were removed as dead code; `content-format-section.ts` remains out of live registration for compatibility-only follow-up work.
 - Document workspace in `document-workspace.ts`, document bridge in `preview-document-bridge.ts`.
 - Halo rendering in `halo-renderer.ts`, scene-family preview in `scene-family-preview.ts`.
 - Authoring interaction extracted to `authoring-controller.ts`; `main.ts` now delegates authoring init/render/reset/selection/keyboard behavior there and no longer carries the old inline interaction block.
@@ -135,7 +135,6 @@ Active architectural risks requiring attention during the next work cycle.
 - Selected-element text and logo editing extracted to `overlay-editing-controller.ts`; `main.ts` now delegates text CRUD, linked logo-title sizing, and the action-row builder there, and `overlay-section.ts` now marks inspector-driven edits dirty.
 - Inspector section registry, operator selector UI, accordion restore behavior, and config-editor rebuild logic extracted to `config-editor-controller.ts`.
 - Document size target CRUD plus Output Format subpanel rebuilding extracted to `document-target-controller.ts`.
-- Preset save/update/delete, import/export, active-preset loading, and preset tabs rebuilding extracted to `preset-controller.ts`.
 - Stage rendering and background composition extracted to `stage-render-controller.ts`; `main.ts` now delegates overlay-graph evaluation, halo and scene-family canvas routing, SVG overlay assembly, and the stage render pipeline there.
 - Shell bootstrap and workspace chrome extracted to `preview-shell-controller.ts`; it now owns document workspace UI rendering, file-toolbar construction, drawer open/close behavior, docked resize bootstrap, keyboard shortcuts, and preview init sequencing. `npm run typecheck` and `npm run preview:build` both pass after the split.
 - Profile and content-format switching extracted to `profile-state-controller.ts`; `main.ts` now delegates per-profile bucket persistence, export/halo profile state, output-profile switching, and content-format switching there.
@@ -151,7 +150,7 @@ Active architectural risks requiring attention during the next work cycle.
 1. [x] **Authoring interaction** → dedicated controller module. Landed in `authoring-controller.ts`; selection, drag, resize, hit testing, and inline editing now route through the controller.
 2. [x] **Export + automation** → dedicated controller module. Landed in `export-controller.ts`; export modal, composed-frame helpers, PNG sequence, and automation API now route through the controller.
 3. [x] **Source-default orchestration** → extracted to `apps/overlay-preview/src/source-default-controller.ts`.
-4. [x] **Dead panel cleanup** → `paragraph-styles-section.ts` removed (never imported); `presets-section.ts` removed from config-editor registration (preset/localStorage persistence replaced by document save/open).
+4. [x] **Dead panel cleanup** → `paragraph-styles-section.ts` removed (never imported); preset UI and preset-controller residue removed after document save/open fully replaced preset CRUD; `content-format-section.ts` remains out of live registration.
 5. [x] **Halo config merge helpers** → extracted `getHaloConfigForProfile` and `mergeHaloConfigWithBaseConfig` from `main.ts` to `operator-halo-field`.
 6. [x] Goal: `main.ts` is now a thin composition root wiring state and controllers. Current: ~833 lines after moving background-node selection and graph sync to `background-graph-controller.ts`; remaining DOM-query and overlay-visibility cleanup is optional follow-up, not an active extraction lane.
 
@@ -164,7 +163,7 @@ The product direction is a Houdini-like operator application for branded documen
 - The document's active operator graph is visible as a list or simple node graph (list first, graph later).
 - Each operator node shows its key, display name, and connection state.
 - Selecting an operator in the network view shows only that operator's parameters in the parameter pane.
-- Document-level concerns (output profiles, document metadata, presets) remain in a separate top-level section or header.
+- Document-level concerns (output profiles, document metadata, source defaults) remain in a separate top-level section or header.
 - The saved document must own the operator nodes, active operator selection, and connection data before a graphical network editor is built in the preview shell.
 - Typed graph payloads such as `PointField` should remain first-order citizens so one operator can seed another, for example phyllotaxis or halo-derived point layouts feeding fuzzy-boids today and future point-consuming solvers later.
 
@@ -221,6 +220,20 @@ These regressions were introduced during the document-model and shell extraction
 | G2 | Remove remaining localStorage presets/content-format persistence | **DONE** | Presets section removed from config editor. localStorage read/write for presets and output-format stubbed to no-ops. Presets and content-format are legacy; only file-based document save and source-default writeback should persist state. |
 | G3 | Remove content-format section from config editor | **DONE** | The dedicated Content Format accordion is no longer registered in the live inspector. Content-format remains a document/source-default concern in the data model, but it is no longer presented as a localStorage-era shell toggle. |
 | G4 | Verify source-default writeback round-trips all operator settings | **DONE** | User re-checked the regression during this session and confirmed source-default writeback still works; the earlier failure report was a false alarm. |
+
+### Lane H — Document-first persistence cleanup (complete)
+
+| Step | Task | Depends on | Exit criteria |
+|------|------|------------|---------------|
+| H1 | Remove remaining preset runtime and preview-document residue | G4 | **DONE** — preset state, preset controller code, preset preview-document fields, preset export path, and preset-local UI hooks are removed; file-backed documents and source-defaults are the only shipped persistence paths |
+
+### Lane I — Graph-first family persistence
+
+| Step | Task | Depends on | Exit criteria |
+|------|------|------------|---------------|
+| I1 | Replace `sceneFamilyConfigs` envelope persistence with per-family graph persistence | H1 | Saved documents no longer need a config-shadow map to preserve inactive family edits; backward-compatible load of older docs remains intact |
+| I2 | Route family switching and automation apply through stored family graphs | I1 | Family switches reuse the saved graph for each family instead of rebuilding from config snapshots, and automation can still apply older config payloads through a compatibility bridge |
+| I3 | Simplify document drift rules around graph authority | I2 | Canonical docs and runtime rules describe one graph-shaped persistence authority instead of the current graph-plus-config compromise |
 
 ## Immediate next steps after the above is done
 - **Content-format vs project variants.** If file-backed variants replace content-format switching, current format UI can shrink later.

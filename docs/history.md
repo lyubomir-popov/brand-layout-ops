@@ -66,6 +66,14 @@ All initial first splits complete: grid, text, overlay composition, overlay inte
 - Re-checked the release-label seam behavior in exported frames and confirmed the left-side fold seam still fades the oldest labels behind the newest spoke instead of drawing them on top.
 - Validation: temporary `window.__layoutOpsAutomation` probe plus exported frame inspection.
 
+## Lane H1 — preset residue removal (2026-04-02)
+
+- Removed the remaining preset subsystem from the live preview runtime now that file-backed documents are the only working-state unit: `preset-controller.ts` and `presets-section.ts` were deleted, `PreviewState` no longer carries `presets` or `activePresetId`, and `main.ts` no longer wires preset actions into the app context.
+- Preview documents no longer persist preset payloads or active-preset IDs. Legacy preview-document migration still accepts older snapshot files, but preset fields are ignored instead of being rehydrated into live state.
+- Removed the stale preset export helper from `export-controller.ts` and the remaining preset-name input special case from `preview-shell-controller.ts`.
+- Source-default reset no longer rebuilds non-existent preset tabs, and `sample-document.ts` now only carries overlay-param cloning plus export-format defaults instead of dead preset persistence utilities.
+- Validation: `npm run typecheck` and `npm run preview:build`.
+
 ## Completed Execution Queue
 
 - EQ-1 through EQ-12 are complete.

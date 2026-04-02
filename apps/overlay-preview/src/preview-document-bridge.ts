@@ -11,7 +11,6 @@ import {
 } from "@brand-layout-ops/operator-overlay-layout";
 
 import {
-  clonePreset,
   createOverlayPreviewDocument,
   normalizeOverlayPreviewDocumentForPersistence,
   type OverlayPreviewDocument,
@@ -19,11 +18,8 @@ import {
 } from "./preview-document.js";
 import {
   cloneOverlayParams,
-  saveActivePresetId,
   saveOutputFormatKey,
-  savePresets,
-  type ExportSettings,
-  type Preset
+  type ExportSettings
 } from "./sample-document.js";
 
 function cloneJson<T>(value: T): T {
@@ -56,8 +52,6 @@ export interface OverlayPreviewDocumentBridgeState<
   contentFormatKey: string;
   profileFormatBuckets: ProfileFormatBuckets;
   contentFormatKeyByProfile: ProfileContentFormatMap;
-  presets: Preset[];
-  activePresetId: string | null;
   exportSettings: ExportSettings;
   exportSettingsByProfile: Record<string, ExportSettings>;
   haloConfig: THaloConfig;
@@ -170,9 +164,7 @@ export function buildOverlayPreviewDocument<
     ...(options.updatedAt ? { updatedAt: options.updatedAt } : {}),
     project: normalizeOverlayDocumentProject(state.documentProject, snapshot),
     state: snapshot,
-    pendingCsvDraftsByBucket: state.pendingCsvDraftsByBucket,
-    presets: state.presets,
-    activePresetId: state.activePresetId
+    pendingCsvDraftsByBucket: state.pendingCsvDraftsByBucket
   });
 }
 
@@ -202,13 +194,6 @@ export function applyOverlayPreviewDocumentState<
   applySourceDefaultSnapshotToState(state, previewDocument.document.state, adapter);
   state.documentProject = cloneOverlayDocumentProject(previewDocument.document.project);
   state.pendingCsvDraftsByBucket = { ...previewDocument.pendingCsvDraftsByBucket };
-  state.presets = previewDocument.presets.map((preset) => clonePreset(preset));
-  state.activePresetId = previewDocument.activePresetId && state.presets.some((preset) => preset.id === previewDocument.activePresetId)
-    ? previewDocument.activePresetId
-    : null;
-
-  savePresets(state.presets);
-  saveActivePresetId(state.activePresetId);
   saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
 }
 
@@ -223,10 +208,5 @@ export function resetOverlayPreviewDocumentState<
   applySourceDefaultSnapshotToState(state, state.sourceDefaults, adapter);
   state.documentProject = cloneOverlayDocumentProject(state.sourceDefaultProject);
   state.pendingCsvDraftsByBucket = {};
-  state.presets = [];
-  state.activePresetId = null;
-
-  savePresets(state.presets);
-  saveActivePresetId(state.activePresetId);
   saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
 }

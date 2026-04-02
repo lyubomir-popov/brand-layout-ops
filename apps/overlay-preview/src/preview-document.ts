@@ -4,10 +4,8 @@ import {
 } from "@brand-layout-ops/core-types";
 import {
   cloneOverlayDocumentFile,
-  cloneProfileContentFormatMap,
-  cloneProfileFormatBuckets,
-  createOverlayDocumentFile,
   createDefaultOverlayParams,
+  createOverlayDocumentFile,
   sanitizeOverlayDocumentFile,
   type OverlayDocumentFile,
   type OverlayDocumentProject,
@@ -19,20 +17,13 @@ import {
 } from "@brand-layout-ops/operator-overlay-layout";
 
 import {
-  cloneOverlayParams,
   createDefaultExportSettings,
-  denormalizePresetFromPersistence,
-  normalizePresetForPersistence,
-  type ExportSettings,
-  type PersistedPreset,
-  type Preset
+  type ExportSettings
 } from "./sample-document.js";
 
 export interface OverlayPreviewDocument<THaloConfig extends object, TGuideMode extends string = string> {
   document: OverlayDocumentFile<ExportSettings, THaloConfig, TGuideMode>;
   pendingCsvDraftsByBucket: Record<string, string>;
-  presets: Preset[];
-  activePresetId: string | null;
 }
 
 export interface PersistedOverlayPreviewDocument {
@@ -42,8 +33,6 @@ export interface PersistedOverlayPreviewDocument {
   project?: unknown;
   state?: unknown;
   pendingCsvDraftsByBucket?: unknown;
-  presets?: PersistedPreset[];
-  activePresetId?: string | null;
 }
 
 export interface CreateOverlayPreviewDocumentOptions<THaloConfig extends object, TGuideMode extends string = string> {
@@ -53,8 +42,6 @@ export interface CreateOverlayPreviewDocumentOptions<THaloConfig extends object,
   project?: OverlayDocumentProject;
   state: OverlaySourceDefaultSnapshot<ExportSettings, THaloConfig, TGuideMode>;
   pendingCsvDraftsByBucket: Record<string, string>;
-  presets: Preset[];
-  activePresetId: string | null;
 }
 
 const LEGACY_OVERLAY_PREVIEW_DOCUMENT_KIND = "brand-layout-ops-document";
@@ -120,28 +107,6 @@ function denormalizeProfileFormatBucketsFromPersistence(rawProfileFormatBuckets:
   return buckets;
 }
 
-export function clonePreset(preset: Preset): Preset {
-  const clonedPreset: Preset = {
-    id: preset.id,
-    name: preset.name,
-    config: cloneOverlayParams(preset.config),
-    profileFormatBuckets: cloneProfileFormatBuckets(preset.profileFormatBuckets ?? {}),
-    contentFormatKeyByProfile: cloneProfileContentFormatMap(preset.contentFormatKeyByProfile ?? {}),
-    exportSettingsByProfile: cloneJson(preset.exportSettingsByProfile ?? {}),
-    haloConfigByProfile: cloneJson(preset.haloConfigByProfile ?? {})
-  };
-
-  if (preset.outputProfileKey) {
-    clonedPreset.outputProfileKey = preset.outputProfileKey;
-  }
-
-  if (preset.contentFormatKey) {
-    clonedPreset.contentFormatKey = preset.contentFormatKey;
-  }
-
-  return clonedPreset;
-}
-
 export function createOverlayPreviewDocument<THaloConfig extends object, TGuideMode extends string = string>(
   options: CreateOverlayPreviewDocumentOptions<THaloConfig, TGuideMode>
 ): OverlayPreviewDocument<THaloConfig, TGuideMode> {
@@ -155,9 +120,7 @@ export function createOverlayPreviewDocument<THaloConfig extends object, TGuideM
 
   return {
     document: createOverlayDocumentFile(documentOptions),
-    pendingCsvDraftsByBucket: cloneJson(options.pendingCsvDraftsByBucket),
-    presets: options.presets.map((preset) => clonePreset(preset)),
-    activePresetId: options.activePresetId ?? null
+    pendingCsvDraftsByBucket: cloneJson(options.pendingCsvDraftsByBucket)
   };
 }
 
@@ -166,9 +129,7 @@ export function normalizeOverlayPreviewDocumentForPersistence<THaloConfig extend
 ): PersistedOverlayPreviewDocument {
   return {
     ...cloneOverlayDocumentFile(document.document),
-    pendingCsvDraftsByBucket: cloneJson(document.pendingCsvDraftsByBucket),
-    presets: document.presets.map((preset) => normalizePresetForPersistence(preset)),
-    activePresetId: document.activePresetId ?? null
+    pendingCsvDraftsByBucket: cloneJson(document.pendingCsvDraftsByBucket)
   };
 }
 
@@ -185,16 +146,6 @@ function sanitizePendingCsvDraftsByBucket(rawValue: unknown): Record<string, str
   }
 
   return pendingCsvDraftsByBucket;
-}
-
-function sanitizePresets(rawValue: unknown): Preset[] {
-  if (!Array.isArray(rawValue)) {
-    return [];
-  }
-
-  return rawValue
-    .map((preset) => denormalizePresetFromPersistence(preset))
-    .filter((preset): preset is Preset => preset !== null);
 }
 
 function sanitizeLegacyOverlayPreviewDocument<THaloConfig extends object, TGuideMode extends string = string>(
@@ -263,17 +214,9 @@ function sanitizeLegacyOverlayPreviewDocument<THaloConfig extends object, TGuide
     return null;
   }
 
-  const presets = sanitizePresets(rawDocument.presets);
-
-  const activePresetId = typeof rawDocument.activePresetId === "string" && presets.some((preset) => preset.id === rawDocument.activePresetId)
-    ? rawDocument.activePresetId
-    : null;
-
   return {
     document,
-    pendingCsvDraftsByBucket: sanitizePendingCsvDraftsByBucket(rawSnapshot.pendingCsvDraftsByBucket),
-    presets,
-    activePresetId
+    pendingCsvDraftsByBucket: sanitizePendingCsvDraftsByBucket(rawSnapshot.pendingCsvDraftsByBucket)
   };
 }
 
@@ -287,14 +230,9 @@ export function denormalizeOverlayPreviewDocumentFromPersistence<THaloConfig ext
 
   const document = sanitizeOverlayDocumentFile(rawDocument, options);
   if (document) {
-    const presets = sanitizePresets(rawDocument.presets);
     return {
       document,
-      pendingCsvDraftsByBucket: sanitizePendingCsvDraftsByBucket(rawDocument.pendingCsvDraftsByBucket),
-      presets,
-      activePresetId: typeof rawDocument.activePresetId === "string" && presets.some((preset) => preset.id === rawDocument.activePresetId)
-        ? rawDocument.activePresetId
-        : null
+      pendingCsvDraftsByBucket: sanitizePendingCsvDraftsByBucket(rawDocument.pendingCsvDraftsByBucket)
     };
   }
 

@@ -70,7 +70,7 @@ That starts a Vite app at `apps/overlay-preview/` which currently:
 - supports text and logo selection, double-click text editing, drag snapping, guide toggling, and CSV or inline content switching
 - surfaces the main operator document controls from an operator parameter schema instead of only from preview-local hardcoded controls
 - includes left and right snapped resize handles for selected text fields, a first-baseline guide, and staged CSV apply or discard controls
-- persists local `.brand-layout-ops.json` documents through the shared overlay document metadata/state envelope plus shared scene-family or target `project` metadata, with preview-only preset and CSV-draft extras layered on top and legacy preview-file compatibility retained
+- persists local `.brand-layout-ops.json` documents through the shared overlay document metadata/state envelope plus shared scene-family or target `project` metadata, with CSV-draft extras layered on top and legacy preview-file compatibility retained
 - lets the Output Format panel add or delete saved document sizes and edit the document scene-family metadata instead of treating the active screen size as only transient preview state
 - uses the selected document scene family in the live stage and composed-frame export path, with phyllotaxis, fuzzy-boids, and scatter rendered through richer family-specific canvas preview passes while halo keeps the Three.js renderer
 - treats local documents as the source of truth for working state; browser-local preset storage is no longer supposed to seed a new session's working document
@@ -108,7 +108,7 @@ The repo is past parity rebuild and shell extraction.
 
 Current state:
 
-- Stage 1 parity is closed for the current rebuild scope: overlay text, logo placement, selected-element editing, presets, exports, and the geometry screenshot pass now match the reference closely enough to treat parity as complete.
+- Stage 1 parity is closed for the current rebuild scope: overlay text, logo placement, selected-element editing, document workflow, exports, and the geometry screenshot pass now match the reference closely enough to treat parity as complete.
 - Local `.brand-layout-ops.json` documents are the working artifact, not browser-local preset state.
 - Background scene families are document-owned through `project.backgroundGraph`, with halo, phyllotaxis, fuzzy-boids, and scatter sharing the same document and export envelope.
 - The preview shell is largely controllerized; `apps/overlay-preview/src/main.ts` is now a composition root rather than the old monolith.
@@ -116,7 +116,7 @@ Current state:
 Current active queue:
 
 1. Promote the inspector from the current mixed accordion stack to a true selected-operator pane.
-2. Keep shell-level document, export, and preset actions separate from operator parameter panels.
+2. Keep shell-level document, export, and source-default actions separate from operator parameter panels.
 3. Treat further `main.ts` thinning as optional cleanup, not the primary plan.
 
 Queued next after that active lane:
