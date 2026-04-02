@@ -56,6 +56,77 @@ body.bf-theme.is-dark {
   text-align: left;
 }
 
+@media (min-width: 48rem) {
+  :where(.bf-theme) :where(.bf-top-navigation-row) {
+    align-items: stretch;
+    flex-direction: row;
+    gap: calc(var(--bf-baseline) * 2);
+  }
+
+  :where(.bf-theme) :where(.bf-top-navigation-banner) {
+    flex: 0 0 auto;
+  }
+
+  :where(.bf-theme) :where(.bf-top-navigation-nav) {
+    align-items: stretch;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  :where(.bf-theme) :where(.bf-top-navigation-list) {
+    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  :where(.bf-theme) :where(.bf-top-navigation-nav) :where(.bf-top-navigation-item) {
+    border-top: 0;
+  }
+
+  :where(.bf-theme) :where(.bf-top-navigation-link) {
+    inline-size: auto;
+  }
+
+  :where(.bf-theme) :where(.bf-top-navigation-list.is-banner-actions) {
+    display: none;
+  }
+
+  :where(.bf-theme) :where(.bf-top-navigation-item.is-selected) > :where(.bf-top-navigation-link),
+  :where(.bf-theme) :where(.bf-top-navigation-item.is-dropdown-toggle.is-active) > :where(.bf-top-navigation-link),
+  :where(.bf-theme) :where(.bf-top-navigation-link[aria-current='page']) {
+    box-shadow: inset 0 calc(var(--bf-border-width) * -2) 0 var(--bf-color-text-default);
+  }
+
+  :where(.bf-theme) :where(.bf-top-navigation-dropdown-toggle)::after {
+    transform: rotate(0deg);
+  }
+
+  :where(.bf-theme) :where(.bf-top-navigation-item.is-dropdown-toggle.is-active) > :where(.bf-top-navigation-dropdown-toggle)::after {
+    transform: rotate(180deg);
+  }
+
+  :where(.bf-theme) :where(.bf-top-navigation-dropdown) {
+    border-top: 0;
+    box-shadow: 0 0 0 var(--bf-border-width) var(--bf-color-border-low-contrast), 0 calc(var(--bf-baseline) * 0.5) calc(var(--bf-baseline) * 2) rgba(0, 0, 0, 0.16);
+    left: 0;
+    min-inline-size: max(100%, 12rem);
+    position: absolute;
+    top: calc((var(--bf-top-navigation-link-padding-block) * 2) + var(--bf-body-line-height));
+    z-index: 5;
+  }
+
+  :where(.bf-theme) :where(.bf-top-navigation-dropdown.is-right) {
+    left: auto;
+    right: 0;
+  }
+
+  :where(.bf-theme) :where(.bf-top-navigation-dropdown-item) {
+    padding-inline: var(--bf-top-navigation-link-padding-inline);
+  }
+}
+
 .bf-application > .bf-main,
 .bf-application > .bf-aside {
   block-size: 100%;
