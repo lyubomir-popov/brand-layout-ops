@@ -46,30 +46,6 @@ body.bf-theme.is-dark {
   width: 100%;
 }
 
-.is-authoring-top-navigation {
-  box-shadow: inset 0 calc(var(--bf-border-width) * -1) 0 rgba(255, 255, 255, 0.08);
-}
-
-.is-authoring-top-navigation-brand {
-  cursor: default;
-}
-
-.is-authoring-top-navigation-brand:hover {
-  background: transparent;
-}
-
-.is-authoring-top-navigation .bf-top-navigation-logo-tag {
-  background: #f6b73c;
-  color: #202020;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
-.is-authoring-top-navigation .bf-top-navigation-logo-title {
-  letter-spacing: 0.01em;
-}
-
 :where(.bf-theme) :where(button.bf-top-navigation-dropdown-item) {
   appearance: none;
   background: transparent;
