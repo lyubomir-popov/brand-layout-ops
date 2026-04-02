@@ -2,7 +2,7 @@
 
 Items moved here from `docs/TODO.md` to keep the active backlog lean.
 
-## Lane M1/M2/M3 — stage network overlay bootstrap (2026-04-02)
+## Lane M — stage network overlay + compositor seam (2026-04-02)
 
 - Added a dedicated stage network overlay mount in the preview stage and a persisted `networkOverlayVisible` flag in preview state.
 - Extended `preview-shell-controller.ts` so `View` can show or hide the overlay and `N` toggles it directly from the keyboard.
@@ -10,6 +10,9 @@ Items moved here from `docs/TODO.md` to keep the active backlog lean.
 - The overlay uses a 50% black scrim, `baseline-foundry` option-card primitives for node cards, curved SVG connections, and connection labels derived from graph ports.
 - Added honest pseudo-nodes for `Overlay Layout`, `Preview Composite`, and `Preview Sink` so the current preview composition flow is visible without pretending there is already a full compositor editor.
 - Wired overlay rerenders to selection, graph sync, profile switching, document apply/reset, resize, and visibility changes so the overlay stays in sync without redrawing every playback frame.
+- Added `preview-composition.ts` as the shared source of truth for ordered preview layers and named output sinks.
+- Stage canvas visibility, SVG overlay visibility, export frame composition, automation state, and the network overlay's composite or sink pseudo-nodes now all read that same preview composition model instead of each hardcoding their own render-order assumptions.
+- The current preview seam now explicitly models composed outputs as sinks: `Frame Preview`, `PNG Still`, `Image Sequence`, `Automation Frame`, with `SVG` and `PDF` carried as planned sink slots instead of implied future work.
 - Validation: `npm run typecheck` and `npm run preview:build`.
 
 ## Lane L — Sparse operator graph inclusion + node CRUD

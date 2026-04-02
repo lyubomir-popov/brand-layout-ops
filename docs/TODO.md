@@ -103,17 +103,17 @@ Goal: Documents only persist operator graphs for families the user has explicitl
 | L5 | Done | `removeBackgroundNode()` — removes node, prunes edges, falls back `activeNodeId`, refuses to remove last node. Wired into Layers palette with hover-reveal × button |
 | L6 | Verified | Source-default, legacy files, and automation all work unchanged under sparse type |
 
-### Lane M — Stage network overlay + compositor seam (active)
+### Lane N — Graph authoring CRUD (next)
 
-Goal: Add a toggleable stage overlay that visualizes the current operator flow with deterministic DAG autolayout, connection lines, and a 50% black scrim. Do not build a temporary spatial editor. Dependency flow stays in the operator graph; visual ordering and future z-index live in a separate composition seam.
+Goal: Move from graph inspection to graph authoring. The saved background graph should support add-node and edge CRUD without requiring manual spatial editing. The network overlay stays a read or select-first surface unless an editing affordance clearly improves the model instead of coupling it to the stage.
 
 | Step | Status | Summary |
 |------|--------|---------|
-| M1 | Done | Added `networkOverlayVisible` state, persisted visibility, `View` menu wiring, and `N` keyboard toggle. Mounted a dedicated stage overlay layer with a 50% black scrim |
-| M2 | Done | Render the current graph as an auto-laid-out DAG overlay using topological depth rather than force layout or persisted XY positions |
-| M3 | Done | Overlay nodes are selectable and edges show direction or port labels so flows like `scatter -> boids` are legible |
-| M4 | Not started | Introduce a separate composition seam for ordered render layers (`Three.js scene`, `vignette`, `2D overlay`, future media) instead of overloading the dependency graph with z-order |
-| M5 | Not started | Model preview and export backends as sinks (`frame`, `image sequence`, `SVG`, `PDF`) that consume the composed output rather than mutating graph semantics |
+| N1 | Not started | Add-node action: browse the registered background operators for the active family and insert a new node into `backgroundGraph` with default params |
+| N2 | Not started | Edge-create action: connect compatible typed ports while preserving DAG validity and rejecting cycles |
+| N3 | Not started | Edge-remove and disconnect affordances so the graph can be edited without deleting entire nodes |
+| N4 | Not started | Keep Layers palette, network overlay selection, and parameter pane focus synchronized after graph edits |
+| N5 | Not started | Decide the first authoring surface deliberately: Layers palette first, overlay affordances second, with graph model logic staying surface-agnostic |
 
 ## Immediate next steps after the above is done
 - **Promote the next lane explicitly.** Lane K is complete, so the next pass should choose a new approved lane instead of drifting into opportunistic shell work.

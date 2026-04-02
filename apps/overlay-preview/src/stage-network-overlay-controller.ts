@@ -11,8 +11,14 @@ import {
 
 import {
   OVERLAY_LAYOUT_OPERATOR_SELECTION_ID,
+  type SceneFamilyPreviewSnapshot,
   type PreviewState
 } from "./preview-app-context.js";
+import {
+  getActivePreviewCompositionLayers,
+  getActivePreviewOutputSink,
+  getPreviewOutputSinks
+} from "./preview-composition.js";
 
 const OVERLAY_LAYOUT_NODE_ID = "__overlay_layout__";
 const PREVIEW_COMPOSITE_NODE_ID = "__preview_composite__";
@@ -53,6 +59,7 @@ export interface StageNetworkOverlayControllerDeps {
   getOverlayEl(): HTMLElement | null;
   getSelectedOperatorId(): string;
   getSceneFamilyLabel(key: OverlaySceneFamilyKey): string;
+  getSceneFamilyPreviewState(): SceneFamilyPreviewSnapshot | null;
   selectBackgroundNode(nodeId: string): void;
   selectOverlayLayout(): void;
 }
@@ -113,6 +120,17 @@ export function createStageNetworkOverlayController(
   function buildOverlayNodesAndEdges(): { nodes: NetworkOverlayNode[]; edges: NetworkOverlayEdge[] } {
     const backgroundGraph = deps.state.documentProject.backgroundGraph;
     const selectedOperatorId = deps.getSelectedOperatorId();
+    const previewState = deps.getSceneFamilyPreviewState();
+    const compositionLayers = getActivePreviewCompositionLayers({
+      state: deps.state,
+      simulationBackend: previewState?.simulationBackend ?? null
+    });
+    const outputSinks = getPreviewOutputSinks();
+    const activeOutputSink = getActivePreviewOutputSink();
+    const implementedExportSinks = outputSinks.filter(
+      (sink) => sink.implemented && !sink.active && sink.id !== "automation-frame"
+    );
+    const plannedSinks = outputSinks.filter((sink) => !sink.implemented);
     const depthByNodeId = getDepthByNodeId(backgroundGraph.nodes, backgroundGraph.edges);
     const maxBackgroundDepth = Math.max(...depthByNodeId.values(), 0);
 
@@ -157,11 +175,7 @@ export function createStageNetworkOverlayController(
     const compositeNode: NetworkOverlayNode = {
       id: PREVIEW_COMPOSITE_NODE_ID,
       label: "Preview Composite",
-      meta: [
-        "Order 0: background scene",
-        "Order 1: overlay SVG/text",
-        "Temporary preview seam"
-      ],
+      meta: compositionLayers.map((layer) => `Order ${layer.order}: ${layer.label}`),
       depth: maxBackgroundDepth + 1,
       sortOrder: 0,
       kind: "composite",
@@ -171,11 +185,13 @@ export function createStageNetworkOverlayController(
 
     const outputNode: NetworkOverlayNode = {
       id: PREVIEW_OUTPUT_NODE_ID,
-      label: "Preview Sink",
+      label: "Output Sinks",
       meta: [
         `${deps.state.params.frame.widthPx}×${deps.state.params.frame.heightPx}`,
-        "Frame preview output"
-      ],
+        `${activeOutputSink.label} (active)`,
+        implementedExportSinks.map((sink) => sink.label).join(" / "),
+        plannedSinks.length > 0 ? `${plannedSinks.map((sink) => sink.label).join(" / ")} planned` : ""
+      ].filter((line) => line.length > 0),
       depth: maxBackgroundDepth + 2,
       sortOrder: 0,
       kind: "output",
@@ -213,7 +229,7 @@ export function createStageNetworkOverlayController(
       {
         fromId: PREVIEW_COMPOSITE_NODE_ID,
         toId: PREVIEW_OUTPUT_NODE_ID,
-        label: "preview"
+        label: "composed frame"
       }
     );
 

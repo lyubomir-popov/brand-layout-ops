@@ -19,6 +19,13 @@ import type {
   PreviewAppContext
 } from "./preview-app-context.js";
 import type { PersistedOverlayPreviewDocument } from "./preview-document.js";
+import {
+  getActivePreviewCompositionLayers,
+  getActivePreviewOutputSink,
+  getPreviewCompositionLayers,
+  getPreviewOutputSinks,
+  type PreviewCompositionLayerId
+} from "./preview-composition.js";
 
 interface ExportOptions {
   startFrame: number;
@@ -324,20 +331,46 @@ export function createExportAutomationController(
       canvasContext.clearRect(0, 0, widthPx, heightPx);
     }
 
-    canvasContext.drawImage(stageCanvas, 0, 0, widthPx, heightPx);
-    canvasContext.drawImage(scenePreviewCanvas, 0, 0, widthPx, heightPx);
-    canvasContext.drawImage(scenePreviewGpuCanvas, 0, 0, widthPx, heightPx);
-    canvasContext.drawImage(textCanvas, 0, 0, widthPx, heightPx);
+    const activeLayers = getActivePreviewCompositionLayers({
+      state: ctx.state,
+      simulationBackend: ctx.getSceneFamilyPreviewState("export")?.simulationBackend ?? null
+    });
+    let svgMarkup: string | null | undefined;
 
-    const svgMarkup = await serializeExportSvgMarkup(transparentBackground);
-    if (svgMarkup) {
-      const svgBlob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
-      const svgUrl = URL.createObjectURL(svgBlob);
-      try {
-        const svgImage = await loadImage(svgUrl);
-        canvasContext.drawImage(svgImage, 0, 0, widthPx, heightPx);
-      } finally {
-        URL.revokeObjectURL(svgUrl);
+    for (const layer of activeLayers) {
+      switch (layer.id as PreviewCompositionLayerId) {
+        case "halo-webgl":
+          canvasContext.drawImage(stageCanvas, 0, 0, widthPx, heightPx);
+          break;
+        case "scene-preview-cpu":
+          canvasContext.drawImage(scenePreviewCanvas, 0, 0, widthPx, heightPx);
+          break;
+        case "scene-preview-gpu":
+          canvasContext.drawImage(scenePreviewGpuCanvas, 0, 0, widthPx, heightPx);
+          break;
+        case "halo-labels":
+          canvasContext.drawImage(textCanvas, 0, 0, widthPx, heightPx);
+          break;
+        case "authored-overlay":
+          if (typeof svgMarkup === "undefined") {
+            svgMarkup = await serializeExportSvgMarkup(transparentBackground);
+          }
+
+          if (!svgMarkup) {
+            break;
+          }
+
+          {
+            const svgBlob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
+            const svgUrl = URL.createObjectURL(svgBlob);
+            try {
+              const svgImage = await loadImage(svgUrl);
+              canvasContext.drawImage(svgImage, 0, 0, widthPx, heightPx);
+            } finally {
+              URL.revokeObjectURL(svgUrl);
+            }
+          }
+          break;
       }
     }
 
@@ -444,6 +477,12 @@ export function createExportAutomationController(
   function getAutomationState(): Record<string, unknown> {
     const profile = getOutputProfile(ctx.state.outputProfileKey);
     const sceneDescriptor = options.getSceneDescriptor();
+    const previewCompositionLayers = getPreviewCompositionLayers({
+      state: ctx.state,
+      simulationBackend: ctx.getSceneFamilyPreviewState()?.simulationBackend ?? null
+    });
+    const outputSinks = getPreviewOutputSinks();
+    const activeOutputSink = getActivePreviewOutputSink();
     return {
       preview_document: options.buildCurrentDocumentPersistence(),
       output_profile_key: ctx.state.outputProfileKey,
@@ -462,6 +501,22 @@ export function createExportAutomationController(
       })),
       document_scene_family_graphs: cloneOverlayDocumentProject(ctx.state.documentProject).sceneFamilyGraphs,
       document_background_graph: cloneOverlayDocumentProject(ctx.state.documentProject).backgroundGraph,
+      preview_composition_layers: previewCompositionLayers.map((layer) => ({
+        id: layer.id,
+        label: layer.label,
+        order: layer.order,
+        visible: layer.visible,
+        source_kind: layer.sourceKind,
+        domain: layer.domain
+      })),
+      output_sinks: outputSinks.map((sink) => ({
+        id: sink.id,
+        label: sink.label,
+        category: sink.category,
+        implemented: sink.implemented,
+        active: sink.active
+      })),
+      active_output_sink: activeOutputSink.id,
       frame_rate: Math.max(1, Math.round(ctx.state.exportSettings.frameRate)),
       current_playback_time_sec: ctx.state.playbackTimeSec,
       overlay_visible: ctx.state.overlayVisible,

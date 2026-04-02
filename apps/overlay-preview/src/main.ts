@@ -799,17 +799,16 @@ networkOverlayController = createStageNetworkOverlayController({
   getOverlayEl: getNetworkOverlayEl,
   getSelectedOperatorId,
   getSceneFamilyLabel,
+  getSceneFamilyPreviewState,
   selectBackgroundNode(nodeId: string) {
     const didChange = setSelectedOperator(nodeId);
     if (didChange) {
       buildConfigEditor();
     }
-    networkOverlayController?.render();
   },
   selectOverlayLayout() {
     setSelectedOperator(OVERLAY_LAYOUT_OPERATOR_SELECTION_ID);
     select(null);
-    networkOverlayController?.render();
   }
 });
 authoringController = createAuthoringInteractionController({

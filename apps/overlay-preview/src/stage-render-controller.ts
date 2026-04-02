@@ -43,6 +43,9 @@ import {
   createSafeAreaMarkup,
   createTextMarkup
 } from "./svg-overlay-adapter.js";
+import {
+  getActivePreviewCompositionLayers
+} from "./preview-composition.js";
 
 const PREVIEW_NODE_ID = "overlay-preview";
 
@@ -139,6 +142,14 @@ export function createStageRenderController(
     syncBackgroundRendererVisibilityWithState(lastPreviewState);
   }
 
+  function getPreviewSimulationBackend(previewState: SceneFamilyPreviewState | null): string | null {
+    if (!previewState || !("simulationBackend" in previewState)) {
+      return null;
+    }
+
+    return previewState.simulationBackend ?? null;
+  }
+
   function syncBackgroundRendererVisibilityWithState(previewState: SceneFamilyPreviewState | null): void {
     const stageCanvas = deps.getCanvasEl();
     const scenePreviewCanvas = deps.getScenePreviewCanvas();
@@ -148,15 +159,17 @@ export function createStageRenderController(
       return;
     }
 
-    const showHaloCanvas = deps.state.documentProject.sceneFamilyKey === "halo";
-    const showGpuScenePreview = !showHaloCanvas
-      && previewState?.sceneFamilyKey === "fuzzy-boids"
-      && previewState.simulationBackend === "gpu-spike";
-    const showScenePreviewCanvas = !showHaloCanvas && Boolean(previewState) && !showGpuScenePreview;
-    stageCanvas.style.opacity = showHaloCanvas ? "1" : "0";
-    scenePreviewCanvas.style.opacity = showScenePreviewCanvas ? "1" : "0";
-    scenePreviewGpuCanvas.style.opacity = showGpuScenePreview ? "1" : "0";
-    textCanvas.style.opacity = "1";
+    const activeLayerIds = new Set(
+      getActivePreviewCompositionLayers({
+        state: deps.state,
+        simulationBackend: getPreviewSimulationBackend(previewState)
+      }).map((layer) => layer.id)
+    );
+
+    stageCanvas.style.opacity = activeLayerIds.has("halo-webgl") ? "1" : "0";
+    scenePreviewCanvas.style.opacity = activeLayerIds.has("scene-preview-cpu") ? "1" : "0";
+    scenePreviewGpuCanvas.style.opacity = activeLayerIds.has("scene-preview-gpu") ? "1" : "0";
+    textCanvas.style.opacity = activeLayerIds.has("halo-labels") ? "1" : "0";
   }
 
   function resizeRenderer(): void {
@@ -202,7 +215,14 @@ export function createStageRenderController(
       return;
     }
 
-    if (!deps.state.overlayVisible) {
+    const activeLayerIds = new Set(
+      getActivePreviewCompositionLayers({
+        state: deps.state,
+        simulationBackend: getPreviewSimulationBackend(lastPreviewState)
+      }).map((layer) => layer.id)
+    );
+
+    if (!activeLayerIds.has("authored-overlay")) {
       svg.innerHTML = "";
       svg.style.display = "none";
       return;

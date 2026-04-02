@@ -209,7 +209,7 @@ export interface PreviewAppContext {
   /** Rebuild the saved background graph from the current scene-family state. */
   syncDocumentBackgroundGraph(): void;
   /** Get the preview state snapshot for the current scene family. */
-  getSceneFamilyPreviewState(): SceneFamilyPreviewSnapshot | null;
+  getSceneFamilyPreviewState(mode?: SceneFamilyPreviewMode): SceneFamilyPreviewSnapshot | null;
   /** Get a human-readable label for a scene family key. */
   getSceneFamilyLabel(key: OverlaySceneFamilyKey): string;
 
