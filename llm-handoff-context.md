@@ -29,7 +29,7 @@ Useful focused checks: `npm run demo:overlay-layout`, `npm run demo:copy-to-poin
 
 - Stage 1 parity is closed for the current rebuild scope. Document workflow, overlay editing, guides, source-default writeback, and the current export path are all working.
 - The working artifact is a local `.brand-layout-ops.json` file. Browser-local presets are gone from the live workflow.
-- `project.sceneFamilyGraphs` is the persisted per-family store. `project.backgroundGraph` is the live active-family projection used by the preview runtime. Legacy `sceneFamilyConfigs` remains load/apply compatibility only.
+- `project.sceneFamilyGraphs` is the persisted per-family store. `project.backgroundGraph` is a derived live active-family projection used by the preview runtime and is no longer written into new saved files. Legacy `sceneFamilyConfigs` remains load/apply compatibility only.
 - The live inspector is split into a `Workspace` rail and a `Parameters` rail. The Parameters rail now starts with a dedicated `Layers` palette that can select background nodes, the overlay root, text fields, and the logo.
 - The shell uses the canonical `baseline-foundry` dark application, overlay, and resize contracts. The old local shell class layer is gone from source.
 - `main.ts` is now a composition root around extracted controllers. The remaining work is product-shape work, not more parity recovery.
@@ -38,7 +38,7 @@ Useful focused checks: `npm run demo:overlay-layout`, `npm run demo:copy-to-poin
 
 No approved lane is currently open in `docs/TODO.md`.
 
-- Lane J is complete.
+- Lane K is complete.
 - The current authoring baseline is: top-level shell chrome for workspace actions, a dedicated Layers palette, and a Parameters rail that follows the current layer selection.
 - The next pass should promote a new lane explicitly rather than drifting into unscheduled shell polish.
 
@@ -67,4 +67,4 @@ No approved lane is currently open in `docs/TODO.md`.
 
 ## Fresh chat prompt
 
-Continue work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\lyubo\work\repos\racoon-anim` as the read-only reference app. Read `AGENTS.md`, `llm-handoff-context.md`, `docs/TODO.md`, `docs/product-roadmap.md`, and `README.md` first. Treat `docs/TODO.md` as the canonical active queue. Stage 1 parity, the selected-operator pane, the baseline-foundry shell cleanup, the preset-residue cleanup, the graph-first family-persistence migration, and Lane J1-J5 are complete. The current baseline is a top-level action chrome plus a dedicated Layers palette and a layer-following Parameters rail. Promote a new lane explicitly before starting another large refactor.
+Continue work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\lyubo\work\repos\racoon-anim` as the read-only reference app. Read `AGENTS.md`, `llm-handoff-context.md`, `docs/TODO.md`, `docs/product-roadmap.md`, and `README.md` first. Treat `docs/TODO.md` as the canonical active queue. Stage 1 parity, the selected-operator pane, the baseline-foundry shell cleanup, the preset-residue cleanup, the graph-first family-persistence migration, Lane J1-J5, and Lane K1-K3 are complete. The current baseline is a top-level action chrome plus a dedicated Layers palette and a layer-following Parameters rail, with persisted documents now storing `sceneFamilyGraphs` without serializing `backgroundGraph`. Promote a new lane explicitly before starting another large refactor.

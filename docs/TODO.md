@@ -28,7 +28,7 @@ Use this before and after substantial work so parity implementation keeps servin
 - A scene family must be swappable. New motion work should move toward a world where halo, boids, phyllotaxis, and later generators can sit behind the same document, layout, and export stack.
 - The layout engine stays rigorous and document-owned. Do not let renderer adapters or preview-only helpers become the canonical home for layout semantics.
 - Preview code is an adapter, not the product core. If a rule must survive renderer changes, it belongs in shared types, layout kernels, operator outputs, or backend contracts.
-- Background graph execution should converge on one graph-shaped authority. `project.sceneFamilyGraphs` is the persisted per-family store, and `project.backgroundGraph` is the live active-family projection for `project.sceneFamilyKey`. Legacy `sceneFamilyConfigs` is now a load/apply compatibility bridge only. Do not re-introduce per-edit mirroring.
+- Background graph execution should converge on one graph-shaped authority. `project.sceneFamilyGraphs` is the persisted per-family store, and `project.backgroundGraph` is the live active-family projection for `project.sceneFamilyKey`. New saved files should derive that runtime projection on load instead of serializing it separately. Legacy `sceneFamilyConfigs` is now a load/apply compatibility bridge only. Do not re-introduce per-edit mirroring.
 - The authored document should keep one authoritative instance of each editable layer or operator. Selection UIs, parameter panes, and shell chrome may point at that state, but they must not create parallel editable shadow models.
 - UI work should reduce hardcoded preview ownership over time. Prefer section registration, manifests, and typed operator surfaces over adding more bespoke accordion builders indefinitely.
 - Do not let Ubuntu-specific render quirks calcify into permanent one-off features. If a need is really "multiple ordered visual planes" or "a compositor above and below text," move toward a layer-stack model rather than adding another special-case toggle.
@@ -107,14 +107,14 @@ Item 18 from the original audit (Three.js vs SVG renderer difference) is an inte
 
 All initial splits complete. Mask operators remain deferred.
 
-## Drift Signals — 2026-04-01
+## Drift Signals — 2026-04-02
 
 Active architectural risks requiring attention during the next work cycle.
 
 | Signal | Severity | Detail |
 |--------|----------|--------|
 | `main.ts` at ~833 lines | **Medium** | CSV draft, playback, source-default, authoring, export, overlay editing, stage rendering/composition, inspector section registration, document target CRUD, profile/content switching, preview-document/workspace state orchestration, and background-graph selection or sync are all extracted from the former monolith. Remaining: DOM query helpers, overlay-visibility shell glue, and the final controller/bootstrap composition root. |
-| `project.backgroundGraph` vs `sceneFamilyGraphs` | **Medium** | `sceneFamilyGraphs` now persists one graph per family, while `backgroundGraph` mirrors the active family graph for live runtime convenience. Remaining cleanup is optional: if desired, drop `backgroundGraph` from serialized envelopes and treat it as a purely derived runtime projection. |
+| `project.backgroundGraph` vs `sceneFamilyGraphs` | **Resolved** | New persisted documents now store `sceneFamilyGraphs` only. `backgroundGraph` is rebuilt as the live active-family runtime projection during normalization or load, while older files that still contain it remain supported. |
 | `operator-overlay-layout/src/index.ts` at 262 lines (was 2,031) | **Resolved** | Decomposed into `document-schema.ts`, `background-graph.ts`, `field-defaults.ts`, `csv-resolution.ts`, `overlay-internals.ts`. Barrel re-exports only. |
 | `scene-family-preview.ts` at 724 lines | **Medium** | Graph orchestration now uses preview operators registered with the shared graph runtime, which is the right direction. Remaining cleanup should extract preview operator wrappers or draw adapters only when reuse is concrete, not as a file-split exercise. |
 | `halo-config-section.ts` at 62 lines | **Resolved** | Converted to schema-driven rendering via `renderSchemaPanel(HALO_FIELD_CONFIG_SCHEMA, ...)`. |
@@ -250,8 +250,18 @@ J1-J5 are complete. The canonical docs now follow their stated roles again, the 
 | J4 | Collapse the inspector into a pure parameters pane | J3 | **DONE** — the Parameters rail now follows the selected overlay layer, hides root-only overlay controls while a text or logo layer is selected, and no longer carries the special `Selected Element` framing |
 | J5 | Move file, export, document-setup, and source-default actions into top-level navigation | J4 | **DONE** — file, document-size, source-default, export, and playback actions now live in top-level shell chrome, the playback inspector section is retired, and first-class file shortcuts include Ctrl/Cmd+N, Ctrl/Cmd+O, Ctrl/Cmd+S, and Ctrl/Cmd+Shift+S |
 
+### Lane K — Serialized-envelope cleanup (complete)
+
+Lane K is complete. Persisted preview documents and source-default writes now keep `project.sceneFamilyGraphs` as the authored family authority and treat `project.backgroundGraph` as a runtime-only projection rebuilt during load or normalization.
+
+| Step | Task | Depends on | Exit criteria |
+|------|------|------------|---------------|
+| K1 | Add shared persisted-document normalizers that omit the active-family runtime graph from disk | J5 | **DONE** — `document-schema.ts` now exposes persistence helpers that clone the document envelope without serializing `project.backgroundGraph` |
+| K2 | Route preview-document and source-default serialization through the persisted normalizer | K1 | **DONE** — preview-document save payloads and source-default writeback now serialize through the shared persisted-document helper instead of cloning the runtime project verbatim |
+| K3 | Verify backward compatibility and runtime reconstruction | K2 | **DONE** — `npm run typecheck`, `npm run preview:build`, and a direct `tsx` smoke test confirmed new persisted files omit `backgroundGraph` while normalize/load restores the live runtime graph |
+
 ## Immediate next steps after the above is done
-- **Promote the next lane explicitly.** Lane J is complete, so the next pass should choose a new approved lane instead of drifting into opportunistic shell work.
+- **Promote the next lane explicitly.** Lane K is complete, so the next pass should choose a new approved lane instead of drifting into opportunistic shell work.
 - **Keep the shell stable.** Treat the new top-level chrome plus Layers palette as the current authoring baseline and only reopen it for a concrete product need.
 - **Full compositor model.** Layer-stack direction is committed but the active queue should add parity-friendly seams first, not schedule a premature compositor rewrite.
 - **Timeline and clip model.** Belongs after parity, as a sequencing layer above the operator graph.
@@ -267,7 +277,6 @@ These are optional spot checks, not Stage 1 parity gates and not part of the act
 
 Deferred until explicitly promoted. Each carries a working assumption.
 
-- **Serialized-envelope cleanup.** `project.backgroundGraph` can later become a derived runtime projection if we want fully normalized saved files.
 - **Content-format vs project variants.** If document-backed variants replace format switching, the remaining format schema can shrink later.
 - **GPU/execution backends.** Keep moderate operators in TypeScript. Allow GPU paths only where profiling proves TypeScript insufficient.
 - **Spokes decomposition.** Keep `operator-spokes` coarse for parity. Later split toward wave, mask, and polar-field operators.

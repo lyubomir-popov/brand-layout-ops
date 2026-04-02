@@ -2,6 +2,7 @@ import {
   cloneOverlayDocumentProject,
   cloneOverlaySourceDefaultSnapshot,
   createOverlayDocumentProjectFromSnapshot,
+  normalizeOverlayDocumentFileForPersistence,
   sanitizeOverlayDocumentFile,
   type OverlayDocumentProject,
   type OverlaySourceDefaultSnapshot
@@ -161,12 +162,13 @@ export function createSourceDefaultController(opts: SourceDefaultControllerOptio
     }
 
     const sourceDefaultDocument = buildCurrentDocumentPayload().document;
+    const persistedSourceDefaultDocument = normalizeOverlayDocumentFileForPersistence(sourceDefaultDocument);
     const response = await fetch(SOURCE_DEFAULT_AUTHORING_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(sourceDefaultDocument, null, 2)
+      body: JSON.stringify(persistedSourceDefaultDocument, null, 2)
     });
 
     const payload = await response.json().catch(() => ({}));

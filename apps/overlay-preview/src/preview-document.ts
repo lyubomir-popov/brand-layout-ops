@@ -3,9 +3,9 @@ import {
   OVERLAY_CONTENT_FORMAT_ORDER
 } from "@brand-layout-ops/core-types";
 import {
-  cloneOverlayDocumentFile,
   createDefaultOverlayParams,
   createOverlayDocumentFile,
+  normalizeOverlayDocumentFileForPersistence,
   sanitizeOverlayDocumentFile,
   type OverlayDocumentFile,
   type OverlayDocumentProject,
@@ -128,7 +128,7 @@ export function normalizeOverlayPreviewDocumentForPersistence<THaloConfig extend
   document: OverlayPreviewDocument<THaloConfig, TGuideMode>
 ): PersistedOverlayPreviewDocument {
   return {
-    ...cloneOverlayDocumentFile(document.document),
+    ...normalizeOverlayDocumentFileForPersistence(document.document),
     pendingCsvDraftsByBucket: cloneJson(document.pendingCsvDraftsByBucket)
   };
 }

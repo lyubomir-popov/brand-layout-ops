@@ -99,6 +99,13 @@ export interface OverlayDocumentProject {
   backgroundGraph: OverlayBackgroundGraph;
 }
 
+export interface PersistedOverlayDocumentProject {
+  sceneFamilyKey: OverlaySceneFamilyKey;
+  activeTargetId: string;
+  targets: OverlayDocumentTarget[];
+  sceneFamilyGraphs: OverlaySceneFamilyGraphs;
+}
+
 export interface OverlayDocumentFile<
   TExportSettings extends object,
   THaloConfig extends object,
@@ -108,6 +115,18 @@ export interface OverlayDocumentFile<
   version: typeof OVERLAY_DOCUMENT_FILE_VERSION;
   metadata: OverlayDocumentMetadata;
   project: OverlayDocumentProject;
+  state: OverlaySourceDefaultSnapshot<TExportSettings, THaloConfig, TGuideMode>;
+}
+
+export interface PersistedOverlayDocumentFile<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+> {
+  kind: typeof OVERLAY_DOCUMENT_FILE_KIND;
+  version: typeof OVERLAY_DOCUMENT_FILE_VERSION;
+  metadata: OverlayDocumentMetadata;
+  project: PersistedOverlayDocumentProject;
   state: OverlaySourceDefaultSnapshot<TExportSettings, THaloConfig, TGuideMode>;
 }
 
@@ -220,6 +239,13 @@ function createOverlayDocumentTarget(outputProfileKey: string, rawTarget?: unkno
 
 export function cloneOverlayDocumentProject(project: OverlayDocumentProject): OverlayDocumentProject {
   return cloneOverlayJson(project);
+}
+
+export function normalizeOverlayDocumentProjectForPersistence(
+  project: OverlayDocumentProject
+): PersistedOverlayDocumentProject {
+  const { backgroundGraph: _backgroundGraph, ...persistedProject } = cloneOverlayDocumentProject(project);
+  return persistedProject;
 }
 
 export function normalizeOverlayDocumentProject<
@@ -378,6 +404,22 @@ export function cloneOverlayDocumentFile<
   documentFile: OverlayDocumentFile<TExportSettings, THaloConfig, TGuideMode>
 ): OverlayDocumentFile<TExportSettings, THaloConfig, TGuideMode> {
   return cloneOverlayJson(documentFile);
+}
+
+export function normalizeOverlayDocumentFileForPersistence<
+  TExportSettings extends object,
+  THaloConfig extends object,
+  TGuideMode extends string = string
+>(
+  documentFile: OverlayDocumentFile<TExportSettings, THaloConfig, TGuideMode>
+): PersistedOverlayDocumentFile<TExportSettings, THaloConfig, TGuideMode> {
+  return {
+    kind: documentFile.kind,
+    version: documentFile.version,
+    metadata: cloneOverlayJson(documentFile.metadata),
+    project: normalizeOverlayDocumentProjectForPersistence(documentFile.project),
+    state: cloneOverlaySourceDefaultSnapshot(documentFile.state)
+  };
 }
 
 // ---------- Create ----------

@@ -105,6 +105,13 @@ All initial first splits complete: grid, text, overlay composition, overlay inte
 - Added first-class file shortcuts for `Ctrl/Cmd+N` and `Ctrl/Cmd+O` alongside the existing save shortcuts so keyboard workflow still matches the promoted file actions.
 - Validation: `npm run typecheck` and `npm run preview:build`.
 
+## Lane K — serialized-envelope cleanup (2026-04-02)
+
+- Added shared persistence helpers in `packages/operator-overlay-layout/src/document-schema.ts` so new saved documents keep `project.sceneFamilyGraphs` as the authored family store and omit `project.backgroundGraph` from disk.
+- Updated preview-document persistence and source-default writeback to serialize through the shared persisted-document normalizer instead of cloning the runtime project envelope verbatim.
+- Preserved backward compatibility: older files that still include `backgroundGraph` still load, and normalization rebuilds the live runtime projection when new files omit it.
+- Validation: `npm run typecheck`, `npm run preview:build`, and a direct `tsx` smoke test confirming persisted documents report `persistedHasBackgroundGraph: false` while sanitized reloads report `reloadedHasBackgroundGraph: true`.
+
 ## Completed Execution Queue
 
 - EQ-1 through EQ-12 are complete.
