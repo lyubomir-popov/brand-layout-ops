@@ -5,6 +5,7 @@ import {
   createDefaultOverlayPhyllotaxisConfig,
   createDefaultOverlaySceneFamilyConfigs,
   createDefaultOverlayScatterConfig,
+  findOverlayBackgroundIncomingEdge,
   getOverlaySceneFamilyKeyForBackgroundOperator,
   getOverlaySceneFamilyKeyForBackgroundGraph,
   OVERLAY_BACKGROUND_FUZZY_BOIDS_NODE_ID,
@@ -15,9 +16,11 @@ import {
   OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY,
   OVERLAY_BACKGROUND_SCATTER_NODE_ID,
   OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY,
+  type OverlayBackgroundEdge,
   type OverlayBackgroundNode,
   type OverlayBackgroundOperatorKey,
-  type OverlaySceneFamilyKey
+  type OverlaySceneFamilyKey,
+  validateOverlayBackgroundEdge
 } from "@brand-layout-ops/operator-overlay-layout";
 
 import {
@@ -41,6 +44,8 @@ export interface BackgroundGraphController {
   getSelectedBackgroundNode(): OverlayBackgroundNode | null;
   getSelectedOperatorGroup(): string;
   updateSelectedBackgroundNode(updater: (node: OverlayBackgroundNode) => OverlayBackgroundNode): boolean;
+  connectBackgroundEdge(edge: OverlayBackgroundEdge): boolean;
+  disconnectBackgroundInput(nodeId: string, portKey: string): boolean;
   removeBackgroundNode(nodeId: string): boolean;
   syncDocumentBackgroundGraph(): void;
   getSceneFamilyLabel(sceneFamilyKey: OverlaySceneFamilyKey): string;
@@ -247,6 +252,39 @@ export function createBackgroundGraphController(
     return true;
   }
 
+  function connectBackgroundEdge(edge: OverlayBackgroundEdge): boolean {
+    const graph = state.documentProject.backgroundGraph;
+    const validation = validateOverlayBackgroundEdge(graph, edge, { allowReplacingInput: true });
+    if (!validation.isValid) {
+      return false;
+    }
+
+    const nextEdges = graph.edges.filter((existingEdge) => existingEdge !== validation.existingEdge);
+    nextEdges.push({ ...edge });
+
+    setCurrentSceneFamilyGraph({
+      ...graph,
+      edges: nextEdges
+    });
+    normalizeSelectedBackgroundNodeId(state.selectedBackgroundNodeId);
+    return true;
+  }
+
+  function disconnectBackgroundInput(nodeId: string, portKey: string): boolean {
+    const graph = state.documentProject.backgroundGraph;
+    const existingEdge = findOverlayBackgroundIncomingEdge(graph, nodeId, portKey);
+    if (!existingEdge) {
+      return false;
+    }
+
+    setCurrentSceneFamilyGraph({
+      ...graph,
+      edges: graph.edges.filter((edge) => edge !== existingEdge)
+    });
+    normalizeSelectedBackgroundNodeId(state.selectedBackgroundNodeId);
+    return true;
+  }
+
   function removeBackgroundNode(nodeId: string): boolean {
     const graph = state.documentProject.backgroundGraph;
     const nodeIndex = graph.nodes.findIndex((node) => node.id === nodeId);
@@ -314,6 +352,8 @@ export function createBackgroundGraphController(
     getSelectedBackgroundNode,
     getSelectedOperatorGroup,
     updateSelectedBackgroundNode,
+    connectBackgroundEdge,
+    disconnectBackgroundInput,
     removeBackgroundNode,
     syncDocumentBackgroundGraph,
     getSceneFamilyLabel

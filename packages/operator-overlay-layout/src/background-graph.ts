@@ -2,6 +2,7 @@ import {
   DEFAULT_OUTPUT_PROFILE_KEY,
   getOutputProfile,
   type FrameSize,
+  type OperatorPort,
   type OperatorParameterSchema
 } from "@brand-layout-ops/core-types";
 import {
@@ -333,6 +334,15 @@ export const OVERLAY_BACKGROUND_FUZZY_SEED_NODE_ID = "background-fuzzy-seed";
 export const OVERLAY_BACKGROUND_FUZZY_BOIDS_NODE_ID = "background-fuzzy-boids";
 export const OVERLAY_BACKGROUND_SCATTER_NODE_ID = "background-scatter";
 
+export interface OverlayBackgroundPortDefinition extends OperatorPort {
+  label: string;
+}
+
+export interface OverlayBackgroundOperatorPorts {
+  inputs: OverlayBackgroundPortDefinition[];
+  outputs: OverlayBackgroundPortDefinition[];
+}
+
 export interface OverlayBackgroundEdge {
   fromNodeId: string;
   fromPortKey: string;
@@ -374,6 +384,296 @@ export interface OverlayBackgroundGraph {
   activeNodeId: string;
   nodes: OverlayBackgroundNode[];
   edges: OverlayBackgroundEdge[];
+}
+
+export type OverlayBackgroundConnectionValidationCode =
+  | "missing-source-node"
+  | "missing-target-node"
+  | "same-node"
+  | "unknown-output-port"
+  | "unknown-input-port"
+  | "kind-mismatch"
+  | "duplicate-edge"
+  | "occupied-input"
+  | "cycle";
+
+export interface OverlayBackgroundConnectionValidationResult {
+  isValid: boolean;
+  code?: OverlayBackgroundConnectionValidationCode;
+  outputPort?: OverlayBackgroundPortDefinition;
+  inputPort?: OverlayBackgroundPortDefinition;
+  existingEdge?: OverlayBackgroundEdge | null;
+}
+
+const OVERLAY_BACKGROUND_OPERATOR_PORTS = {
+  [OVERLAY_BACKGROUND_HALO_OPERATOR_KEY]: {
+    inputs: [],
+    outputs: []
+  },
+  [OVERLAY_BACKGROUND_PHYLLOTAXIS_OPERATOR_KEY]: {
+    inputs: [{
+      key: "centroid",
+      label: "Centroid",
+      kind: "vector3",
+      description: "Optional centroid input used to offset the phyllotaxis center."
+    }],
+    outputs: [{
+      key: "pointField",
+      label: "Point Field",
+      kind: "point-field",
+      description: "Generated phyllotaxis points for scene-family preview."
+    }]
+  },
+  [OVERLAY_BACKGROUND_FUZZY_BOIDS_OPERATOR_KEY]: {
+    inputs: [{
+      key: "center",
+      label: "Center",
+      kind: "vector3",
+      description: "Optional external center used as the flock anchor and bounds origin."
+    }, {
+      key: "seedField",
+      label: "Seed Field",
+      kind: "point-field",
+      description: "Optional seed point field used to initialize boid positions and inherited attributes."
+    }],
+    outputs: [{
+      key: "boidField",
+      label: "Boid Field",
+      kind: "boid-field",
+      description: "Resolved boid records for scene-family preview."
+    }, {
+      key: "pointField",
+      label: "Point Field",
+      kind: "point-field",
+      description: "Point-field projection of the preview boid simulation."
+    }]
+  },
+  [OVERLAY_BACKGROUND_SCATTER_OPERATOR_KEY]: {
+    inputs: [{
+      key: "centroid",
+      label: "Centroid",
+      kind: "vector3",
+      description: "Optional centroid input used as the scatter shape center."
+    }],
+    outputs: [{
+      key: "pointField",
+      label: "Point Field",
+      kind: "point-field",
+      description: "Scatter point field for scene-family preview."
+    }]
+  }
+} satisfies Record<OverlayBackgroundOperatorKey, OverlayBackgroundOperatorPorts>;
+
+function cloneOverlayBackgroundPortDefinition(
+  port: OverlayBackgroundPortDefinition
+): OverlayBackgroundPortDefinition {
+  return { ...port };
+}
+
+function getOverlayBackgroundOperatorPortsInternal(
+  operatorKey: OverlayBackgroundOperatorKey
+): OverlayBackgroundOperatorPorts {
+  return OVERLAY_BACKGROUND_OPERATOR_PORTS[operatorKey];
+}
+
+function getOverlayBackgroundEdgeKey(edge: OverlayBackgroundEdge): string {
+  return `${edge.fromNodeId}:${edge.fromPortKey}:${edge.toNodeId}:${edge.toPortKey}`;
+}
+
+function wouldOverlayBackgroundEdgeCreateCycle(
+  graph: Pick<OverlayBackgroundGraph, "nodes" | "edges">,
+  candidateEdge: OverlayBackgroundEdge
+): boolean {
+  const outgoingNodeIdsByNodeId = new Map<string, string[]>();
+
+  for (const node of graph.nodes) {
+    outgoingNodeIdsByNodeId.set(node.id, []);
+  }
+
+  for (const edge of graph.edges) {
+    const outgoingNodeIds = outgoingNodeIdsByNodeId.get(edge.fromNodeId) ?? [];
+    outgoingNodeIds.push(edge.toNodeId);
+    outgoingNodeIdsByNodeId.set(edge.fromNodeId, outgoingNodeIds);
+  }
+
+  const pendingNodeIds = [candidateEdge.toNodeId];
+  const visitedNodeIds = new Set<string>();
+
+  while (pendingNodeIds.length > 0) {
+    const currentNodeId = pendingNodeIds.pop();
+    if (!currentNodeId || visitedNodeIds.has(currentNodeId)) {
+      continue;
+    }
+
+    if (currentNodeId === candidateEdge.fromNodeId) {
+      return true;
+    }
+
+    visitedNodeIds.add(currentNodeId);
+
+    for (const nextNodeId of outgoingNodeIdsByNodeId.get(currentNodeId) ?? []) {
+      pendingNodeIds.push(nextNodeId);
+    }
+  }
+
+  return false;
+}
+
+export function getOverlayBackgroundOperatorPorts(
+  operatorKey: OverlayBackgroundOperatorKey
+): OverlayBackgroundOperatorPorts {
+  const ports = getOverlayBackgroundOperatorPortsInternal(operatorKey);
+  return {
+    inputs: ports.inputs.map(cloneOverlayBackgroundPortDefinition),
+    outputs: ports.outputs.map(cloneOverlayBackgroundPortDefinition)
+  };
+}
+
+export function getOverlayBackgroundInputPorts(
+  operatorKey: OverlayBackgroundOperatorKey
+): OverlayBackgroundPortDefinition[] {
+  return getOverlayBackgroundOperatorPorts(operatorKey).inputs;
+}
+
+export function getOverlayBackgroundOutputPorts(
+  operatorKey: OverlayBackgroundOperatorKey
+): OverlayBackgroundPortDefinition[] {
+  return getOverlayBackgroundOperatorPorts(operatorKey).outputs;
+}
+
+export function findOverlayBackgroundInputPort(
+  operatorKey: OverlayBackgroundOperatorKey,
+  portKey: string
+): OverlayBackgroundPortDefinition | null {
+  const port = getOverlayBackgroundOperatorPortsInternal(operatorKey).inputs.find((candidate) => candidate.key === portKey);
+  return port ? cloneOverlayBackgroundPortDefinition(port) : null;
+}
+
+export function findOverlayBackgroundOutputPort(
+  operatorKey: OverlayBackgroundOperatorKey,
+  portKey: string
+): OverlayBackgroundPortDefinition | null {
+  const port = getOverlayBackgroundOperatorPortsInternal(operatorKey).outputs.find((candidate) => candidate.key === portKey);
+  return port ? cloneOverlayBackgroundPortDefinition(port) : null;
+}
+
+export function getOverlayBackgroundCompatibleOutputPorts(
+  sourceOperatorKey: OverlayBackgroundOperatorKey,
+  targetOperatorKey: OverlayBackgroundOperatorKey,
+  targetInputPortKey: string
+): OverlayBackgroundPortDefinition[] {
+  const inputPort = findOverlayBackgroundInputPort(targetOperatorKey, targetInputPortKey);
+  if (!inputPort) {
+    return [];
+  }
+
+  return getOverlayBackgroundOutputPorts(sourceOperatorKey).filter((port) => port.kind === inputPort.kind);
+}
+
+export function findOverlayBackgroundIncomingEdge(
+  graph: Pick<OverlayBackgroundGraph, "edges">,
+  toNodeId: string,
+  toPortKey: string
+): OverlayBackgroundEdge | null {
+  return graph.edges.find((edge) => edge.toNodeId === toNodeId && edge.toPortKey === toPortKey) ?? null;
+}
+
+export function validateOverlayBackgroundEdge(
+  graph: Pick<OverlayBackgroundGraph, "nodes" | "edges">,
+  candidateEdge: OverlayBackgroundEdge,
+  options: { allowReplacingInput?: boolean } = {}
+): OverlayBackgroundConnectionValidationResult {
+  const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const sourceNode = nodesById.get(candidateEdge.fromNodeId);
+  if (!sourceNode) {
+    return {
+      isValid: false,
+      code: "missing-source-node"
+    };
+  }
+
+  const targetNode = nodesById.get(candidateEdge.toNodeId);
+  if (!targetNode) {
+    return {
+      isValid: false,
+      code: "missing-target-node"
+    };
+  }
+
+  if (candidateEdge.fromNodeId === candidateEdge.toNodeId) {
+    return {
+      isValid: false,
+      code: "same-node"
+    };
+  }
+
+  const outputPort = findOverlayBackgroundOutputPort(sourceNode.operatorKey, candidateEdge.fromPortKey);
+  if (!outputPort) {
+    return {
+      isValid: false,
+      code: "unknown-output-port"
+    };
+  }
+
+  const inputPort = findOverlayBackgroundInputPort(targetNode.operatorKey, candidateEdge.toPortKey);
+  if (!inputPort) {
+    return {
+      isValid: false,
+      code: "unknown-input-port"
+    };
+  }
+
+  if (outputPort.kind !== inputPort.kind) {
+    return {
+      isValid: false,
+      code: "kind-mismatch",
+      outputPort,
+      inputPort
+    };
+  }
+
+  const duplicateEdge = graph.edges.find((edge) => getOverlayBackgroundEdgeKey(edge) === getOverlayBackgroundEdgeKey(candidateEdge));
+  if (duplicateEdge) {
+    return {
+      isValid: false,
+      code: "duplicate-edge",
+      outputPort,
+      inputPort,
+      existingEdge: duplicateEdge
+    };
+  }
+
+  const existingEdge = findOverlayBackgroundIncomingEdge(graph, candidateEdge.toNodeId, candidateEdge.toPortKey);
+  if (existingEdge && !options.allowReplacingInput) {
+    return {
+      isValid: false,
+      code: "occupied-input",
+      outputPort,
+      inputPort,
+      existingEdge
+    };
+  }
+
+  const cycleCheckEdges = existingEdge && options.allowReplacingInput
+    ? graph.edges.filter((edge) => edge !== existingEdge)
+    : graph.edges;
+
+  if (wouldOverlayBackgroundEdgeCreateCycle({ nodes: graph.nodes, edges: cycleCheckEdges }, candidateEdge)) {
+    return {
+      isValid: false,
+      code: "cycle",
+      outputPort,
+      inputPort,
+      existingEdge
+    };
+  }
+
+  return {
+    isValid: true,
+    outputPort,
+    inputPort,
+    existingEdge
+  };
 }
 
 function createDefaultOverlayFuzzySeedConfig(
@@ -823,9 +1123,7 @@ export function normalizeOverlayBackgroundGraph(
     return fallbackGraph;
   }
 
-  const nodeIds = new Set(nodes.map((node) => node.id));
   const edges: OverlayBackgroundEdge[] = [];
-  const seenEdges = new Set<string>();
 
   if (Array.isArray(rawGraph.edges)) {
     rawGraph.edges.forEach((rawEdge) => {
@@ -842,19 +1140,17 @@ export function normalizeOverlayBackgroundGraph(
         || fromPortKey.length === 0
         || toNodeId.length === 0
         || toPortKey.length === 0
-        || !nodeIds.has(fromNodeId)
-        || !nodeIds.has(toNodeId)
       ) {
         return;
       }
 
-      const edgeKey = `${fromNodeId}:${fromPortKey}:${toNodeId}:${toPortKey}`;
-      if (seenEdges.has(edgeKey)) {
+      const candidateEdge = { fromNodeId, fromPortKey, toNodeId, toPortKey };
+      const validation = validateOverlayBackgroundEdge({ nodes, edges }, candidateEdge);
+      if (!validation.isValid) {
         return;
       }
 
-      edges.push({ fromNodeId, fromPortKey, toNodeId, toPortKey });
-      seenEdges.add(edgeKey);
+      edges.push(candidateEdge);
     });
   }
 
