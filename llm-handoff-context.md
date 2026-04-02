@@ -33,18 +33,20 @@ Useful focused checks: `npm run demo:overlay-layout`, `npm run demo:copy-to-poin
 - The live shell now uses a two-menu `bf-top-navigation`: `File` owns recent-file access, document setup, export settings, export commands, and source defaults through BF modal dialogs, while `View` owns overlay visibility, guide mode, and playback state. The current document name is shown in the top-navigation banner, the Parameters rail stays parameter-only, and it starts with a dedicated `Layers` palette.
 - The stage now has a toggleable network overlay layer. `View` and `N` can show a 50% black scrim plus a deterministic DAG autolayout of the active background graph, with pseudo-nodes for overlay layout, preview composite, and output sinks so operator flow is visible without committing to a spatial editor yet.
 - `preview-composition.ts` is now the shared preview compositor seam. Stage canvas visibility, SVG overlay visibility, export composition, automation state, and the network overlay all use the same ordered layer and sink model instead of carrying separate hardcoded assumptions.
-- The Layers palette can now add background operators directly. New nodes get unique IDs and default params, are selected immediately for editing, and do not become the graph output until later edge or active-node authoring says so.
+- The Layers palette now owns the first graph-authoring surface. It can add background operators, connect compatible typed ports per input, and disconnect occupied inputs without deleting nodes. New nodes get unique IDs and default params, are selected immediately for editing, and do not become the graph output until later edge or active-node authoring says so.
+- Shared graph port metadata and validation now live in `packages/operator-overlay-layout/src/background-graph.ts`. Persisted graphs normalize against real input and output ports, reject duplicate or cyclic connections, and keep the graph model reusable across future authoring surfaces.
+- The stage network overlay now labels authored graph edges with human port names instead of raw port keys.
 - Document setup is now a table-driven workflow instead of the older choice-row modal. It shows saved sizes as radio rows with width/height columns, supports direct custom-size entry, and allows row-level removal without forcing the user to activate a size first. Custom dimensions flow through generated `custom_{width}x{height}` output-profile keys.
 - The shell uses the canonical `baseline-foundry` dark application, overlay, and resize contracts. The old local shell class layer is gone from source. The preview currently imports the valid exported `baseline-foundry/presets/app-tier.css` preset because the sibling repo's exported `presets/panel.css` artifact is malformed.
 - `main.ts` is now a composition root around extracted controllers. The remaining work is product-shape work, not more parity recovery.
 
 ## Active queue
 
-Lane N (graph authoring CRUD) is next.
+Lane N is complete.
 
 - Lane M is complete: network overlay, deterministic autolayout, selection, composition seam, and named output sinks are all in place.
-- N1 landed: Layers palette add-node authoring now works for the supported background operators.
-- Next up: N2 edge creation for compatible typed ports, then N3 disconnect or edge removal without forcing whole-node deletion.
+- Lane N is complete: Layers-palette graph CRUD now covers add-node, connect, disconnect, shared typed-port validation, and synchronized parameter-pane focus.
+- Next chat should promote a new approved lane explicitly instead of extending graph authoring opportunistically.
 - Content-format as a user-facing concept is retired. The document authoring model replaces it, with Houdini as the north star. See `docs/product-roadmap.md` → "Document/project model — the Houdini ROP analogy" for the full synthesis.
 
 ## Invariants that still matter

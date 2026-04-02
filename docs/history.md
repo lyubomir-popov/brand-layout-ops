@@ -22,6 +22,15 @@ Items moved here from `docs/TODO.md` to keep the active backlog lean.
 - Added Layers-palette `Add ...` buttons for the supported background operators. Clicking one adds the node, marks the document dirty, selects the new node, and opens its parameter section immediately.
 - Validation: `npm run typecheck` and `npm run preview:build`.
 
+## Lane N2–N5 — edge CRUD and layers-first authoring (2026-04-02)
+
+- Added shared background-graph port metadata and connection validation in `packages/operator-overlay-layout/src/background-graph.ts`. Graph normalization now keeps only real typed ports, rejects duplicates, rejects cyclic connections, and preserves one incoming edge per input port.
+- Added controller-level background edge connect and disconnect helpers so graph mutation stays centralized instead of the Layers palette editing edge arrays directly.
+- Added per-input graph authoring controls to the Layers palette. Compatible upstream outputs appear as connect or replace choices, and occupied inputs expose explicit `Disconnect` actions.
+- Connect and disconnect now keep the edited node selected, rebuild the parameter pane immediately, and rerender the stage network overlay so the selection surface stays synchronized after graph edits.
+- The stage network overlay now labels authored graph edges with human port names instead of raw key strings.
+- Validation: `npm run typecheck`.
+
 ## Lane L — Sparse operator graph inclusion + node CRUD
 
 - Changed `OverlaySceneFamilyGraphs` from a fixed interface with all four families to a sparse `Partial<Record<OverlaySceneFamilyKey, OverlayBackgroundGraph>>`. New documents start with only the active family's graph.

@@ -103,20 +103,20 @@ Goal: Documents only persist operator graphs for families the user has explicitl
 | L5 | Done | `removeBackgroundNode()` — removes node, prunes edges, falls back `activeNodeId`, refuses to remove last node. Wired into Layers palette with hover-reveal × button |
 | L6 | Verified | Source-default, legacy files, and automation all work unchanged under sparse type |
 
-### Lane N — Graph authoring CRUD (active)
+### Lane N — Graph authoring CRUD
 
 Goal: Move from graph inspection to graph authoring. The saved background graph should support add-node and edge CRUD without requiring manual spatial editing. The network overlay stays a read or select-first surface unless an editing affordance clearly improves the model instead of coupling it to the stage.
 
 | Step | Status | Summary |
 |------|--------|---------|
 | N1 | Done | Added Layers-palette add-node actions for the supported background operators. New nodes get unique IDs, default params, stay non-active until explicitly wired, and immediately focus the parameter pane |
-| N2 | Not started | Edge-create action: connect compatible typed ports while preserving DAG validity and rejecting cycles |
-| N3 | Not started | Edge-remove and disconnect affordances so the graph can be edited without deleting entire nodes |
-| N4 | Not started | Keep Layers palette, network overlay selection, and parameter pane focus synchronized after graph edits |
-| N5 | Not started | Decide the first authoring surface deliberately: Layers palette first, overlay affordances second, with graph model logic staying surface-agnostic |
+| N2 | Done | Edge-create authoring now lives in the Layers palette: per-input connect controls list compatible typed upstream outputs, replace occupied inputs safely, and preserve DAG validity through shared graph validation |
+| N3 | Done | Occupied input ports now expose explicit disconnect actions, so edges can be removed without deleting whole nodes |
+| N4 | Done | Graph edits keep the target node selected, rebuild the Layers palette, rerender the network overlay, and keep the parameter pane focused on the edited operator |
+| N5 | Done | The first authoring surface is now explicitly the Layers palette. Shared port metadata and controller validation stay surface-agnostic so future overlay or network affordances can reuse them |
 
 ## Immediate next steps after the above is done
-- **Promote the next lane explicitly.** Lane K is complete, so the next pass should choose a new approved lane instead of drifting into opportunistic shell work.
+- **Promote the next lane explicitly.** Lane N is complete, so the next pass should choose a new approved lane instead of drifting into opportunistic shell work.
 - **Keep the shell stable.** Treat the File/View `bf-top-navigation`, shell-level BF modals, dedicated Layers palette, and parameter-only rail as the current authoring baseline and only reopen it for a concrete product need.
 - **Full compositor model.** Layer-stack direction is committed but the active queue should add parity-friendly seams first, not schedule a premature compositor rewrite.
 - **Timeline and clip model.** Belongs after parity, as a sequencing layer above the operator graph.
