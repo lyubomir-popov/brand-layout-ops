@@ -39,7 +39,7 @@ Useful focused checks: `npm run demo:overlay-layout`, `npm run demo:copy-to-poin
 No approved lane is currently open in `docs/TODO.md`.
 
 - Lane K is complete.
-- The current authoring baseline is: baseline-foundry's `bf-top-navigation` for workspace actions, a dedicated Layers palette, and a Parameters rail that follows the current layer selection.
+- The current authoring baseline is: a dedicated full-width `bf-top-navigation` shell for workspace actions, a dedicated Layers palette, and a Parameters rail that follows the current layer selection. Do not use `bf-application.has-navigation` here unless a real BF side navigation rail is present; that class adds a desktop navigation column.
 - The next pass should promote a new lane explicitly rather than drifting into unscheduled shell polish.
 
 ## Invariants that still matter

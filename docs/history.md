@@ -117,6 +117,7 @@ All initial first splits complete: grid, text, overlay composition, overlay inte
 - Replaced the interim grouped top toolbar slab in `apps/overlay-preview/index.html` with baseline-foundry's real `bf-top-navigation` structure: responsive menu banner, dropdown action groups, and a first-class Parameters toggle.
 - Updated `preview-shell-controller.ts` to render File, Document, Defaults, Export, and Motion actions as top-navigation dropdown menus instead of `bf-actions` toolbars, and wired the shell to `initTopNavigations()` so the mobile menu and dropdown behavior come from upstream runtime instead of preview-local header policy.
 - Added the small local styling needed for this shell: a compact brand tag and button resets for dropdown command items, while removing the older grouped-toolbar-specific header styles.
+- Follow-up cleanup fixed the shell grid wiring: the preview no longer uses `bf-application.has-navigation` without a real side navigation rail. It now uses a dedicated top-navigation shell layout so the BF menu bar spans the full app width while the resizable `480px` inline width only applies to the Parameters aside.
 - Validation: `npm run typecheck` and `npm run preview:build`.
 
 ## Completed Execution Queue

@@ -46,6 +46,32 @@ body.bf-theme.is-dark {
   width: 100%;
 }
 
+.bf-application.is-top-navigation-shell {
+  grid-template-areas:
+    "navigation-bar"
+    "main";
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: min-content minmax(0, 1fr);
+}
+
+.bf-application.is-top-navigation-shell > .bf-top-navigation {
+  grid-area: navigation-bar;
+  min-inline-size: 0;
+}
+
+.bf-application.is-top-navigation-shell > .bf-main {
+  grid-area: main;
+}
+
+.bf-application.is-top-navigation-shell.has-pinned-aside,
+.bf-application.is-top-navigation-shell:has(> .bf-aside.is-pinned) {
+  grid-template-areas:
+    "navigation-bar navigation-bar"
+    "main aside";
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--bf-application-aside-width));
+  grid-template-rows: min-content minmax(0, 1fr);
+}
+
 :where(.bf-theme) :where(button.bf-top-navigation-dropdown-item) {
   appearance: none;
   background: transparent;
