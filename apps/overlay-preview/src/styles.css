@@ -294,17 +294,36 @@ body.bf-theme.is-dark {
   inline-size: 100%;
 }
 
+.is-stage-worksurface {
+  --stage-shell-available-block: calc(100dvh - 2rem);
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.16), transparent 55%),
+    linear-gradient(180deg, #8a8a8a 0%, #747474 100%);
+}
+
+.is-stage-shell-frame {
+  align-items: center;
+  display: grid;
+  justify-items: center;
+  min-inline-size: 0;
+  width: 100%;
+}
+
 .is-stage {
   --stage-aspect-ratio: 1.7777778;
   aspect-ratio: 16 / 9;
   background: #202020;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.22),
+    0 1.5rem 3.5rem rgba(0, 0, 0, 0.35);
   cursor: pointer;
+  max-inline-size: 100%;
   overflow: hidden;
   position: relative;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  width: min(100%, calc((100dvh - 2rem) * var(--stage-aspect-ratio)));
+  width: min(100%, calc(var(--stage-shell-available-block) * var(--stage-aspect-ratio)));
 }
 
 .is-stage > canvas {
@@ -526,8 +545,8 @@ button.is-network-overlay-node {
 }
 
 @media (max-width: 720px) {
-  .is-stage {
-    width: min(100%, calc((100dvh - 1.5rem) * var(--stage-aspect-ratio)));
+  .is-stage-worksurface {
+    --stage-shell-available-block: calc(100dvh - 1.5rem);
   }
 }
 
