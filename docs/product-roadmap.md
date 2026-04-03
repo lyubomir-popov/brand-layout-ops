@@ -109,6 +109,7 @@ This is not a pure Houdini ROP model. It is closer to Adobe alternate layouts wi
 - The result must stay easy to override. Auto-adjust is a starting point for finesse, not a locked responsive system.
 - The current compatibility-groundwork model now records `formatPresetKey` and `derivedFromFormatId` per format so preset origin and derivation can be preserved before the larger saved-file model is redesigned.
 - The working preset rule is now explicit: a global preset seeds frame size, safe area, and baseline-grid structure together; document variants then own any later safe-area or grid overrides instead of mutating the global preset itself.
+- The first concrete runtime slice now follows that rule when a format bucket is created: preset-backed variants keep preset safe-area and grid structure, while the source format still provides the initial authored layout guess.
 
 **Benefits of variant-driven documents:**
 

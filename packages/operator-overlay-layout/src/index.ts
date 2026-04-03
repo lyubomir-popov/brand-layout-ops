@@ -176,6 +176,36 @@ export function syncOverlaySharedProfileParams(
   return synced;
 }
 
+export interface SeedOverlayFormatVariantOptions {
+  preserveTargetSafeArea?: boolean;
+  preserveTargetGrid?: boolean;
+}
+
+export function seedOverlayFormatVariantParams(
+  source: OverlayLayoutOperatorParams,
+  target: OverlayLayoutOperatorParams,
+  profileKey: string,
+  options: SeedOverlayFormatVariantOptions = {}
+): OverlayLayoutOperatorParams {
+  const profile = getOutputProfile(profileKey);
+  const seeded = JSON.parse(JSON.stringify(source)) as OverlayLayoutOperatorParams;
+
+  seeded.frame = {
+    widthPx: profile.widthPx,
+    heightPx: profile.heightPx
+  };
+
+  if (options.preserveTargetSafeArea) {
+    seeded.safeArea = { ...target.safeArea };
+  }
+
+  if (options.preserveTargetGrid) {
+    seeded.grid = { ...target.grid };
+  }
+
+  return seeded;
+}
+
 export {
   findCsvHeaderForField,
   getOverlayFieldContentKey,

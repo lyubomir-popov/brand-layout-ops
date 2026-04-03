@@ -39,6 +39,14 @@ Items moved here from `docs/TODO.md` to keep the active backlog lean.
 - The new modal explains the split: presets are global frame + safe-area + grid seeds, while document formats own later overrides.
 - The Formats dialog copy now points back to the preset library so the difference between document-owned formats, global presets, and source defaults stays legible in the shell.
 
+## Lane P4d — metadata-driven variant seeding (2026-04-03)
+
+- First-time profile buckets for new formats are now seeded from actual format metadata instead of only copying the active bucket blindly during output-profile switches.
+- Preset-backed variants now keep the preset's safe-area and grid seed while carrying the source format's authored layout as the initial first guess.
+- Custom-size variants now derive directly from the source format's authored layout, which makes `derivedFromFormatId` reflect a real seeding behavior instead of only row metadata.
+- The Formats dialog copy and status messages now explain the difference between preset-backed adds and custom derived variants.
+- Validation: `npm run typecheck` and `npm run preview:build`.
+
 ## Lane M — stage network overlay + compositor seam (2026-04-02)
 
 - Added a dedicated stage network overlay mount in the preview stage and a persisted `networkOverlayVisible` flag in preview state.

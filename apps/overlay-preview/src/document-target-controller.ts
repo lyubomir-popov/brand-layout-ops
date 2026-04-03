@@ -279,7 +279,7 @@ export function createDocumentFormatController(
         targets: [...state.documentProject.targets, nextTarget]
       };
       setActiveDocumentTarget(nextTarget.id);
-      setStatus(`Added ${nextTarget.label} and made it active.`, "success");
+      setStatus(`Added ${nextTarget.label} from the preset library and made it active.`, "success");
       return true;
     }
 
@@ -331,7 +331,7 @@ export function createDocumentFormatController(
       width: "",
       height: ""
     };
-    setStatus(`Added ${nextTarget.label} and made it active.`, "success");
+    setStatus(`Added ${nextTarget.label} from the current format and made it active.`, "success");
     return true;
   }
 
@@ -492,7 +492,7 @@ export function createDocumentFormatController(
 
     const help = document.createElement("p");
     help.className = "bf-form-help bf-u-no-margin--bottom";
-    help.textContent = "Choose the active format, add preset or custom dimensions, or remove formats you no longer need. New formats become active immediately and start from the current format as a first guess. Use Preset Library for the global seed definitions, then save the file to persist document-owned overrides.";
+    help.textContent = "Choose the active format, add preset or custom dimensions, or remove formats you no longer need. Preset adds keep the preset safe-area and grid seed while carrying the current format as a first guess; custom sizes derive directly from the current format. Use Preset Library for the global seed definitions, then save the file to persist document-owned overrides.";
     container.append(help);
 
     const status = document.createElement("p");
