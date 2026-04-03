@@ -68,8 +68,8 @@ import {
   type CsvDraftController
 } from "./csv-draft-controller.js";
 import {
-  createDocumentTargetController,
-  type DocumentTargetController
+  createDocumentFormatController,
+  type DocumentFormatController
 } from "./document-target-controller.js";
 import {
   createExportAutomationController,
@@ -210,7 +210,7 @@ let csvDraftController: CsvDraftController | null = null;
 let playbackController: PlaybackController | null = null;
 let overlayEditingController: OverlayEditingController | null = null;
 let configEditorController: ConfigEditorController | null = null;
-let documentTargetController: DocumentTargetController | null = null;
+let documentFormatController: DocumentFormatController | null = null;
 let profileStateController: ProfileStateController | null = null;
 let documentStateController: PreviewDocumentStateController | null = null;
 
@@ -256,8 +256,8 @@ function getConfigEditor(): HTMLElement | null {
   return $("[data-config-editor]");
 }
 
-function getOutputProfileOptions(): HTMLElement | null {
-  return $("[data-output-profile-options]");
+function getFormatOptions(): HTMLElement | null {
+  return $("[data-format-options]");
 }
 
 function getOverlayVisibilityInput(): HTMLInputElement | null {
@@ -582,40 +582,40 @@ function discardStagedCsvDraft() {
   csvDraftController!.discardStagedCsvDraft();
 }
 
-function getDefaultDocumentTargetLabel(profileKey: string): string {
-  return documentTargetController!.getDefaultDocumentTargetLabel(profileKey);
+function getDefaultDocumentFormatLabel(profileKey: string): string {
+  return documentFormatController!.getDefaultDocumentFormatLabel(profileKey);
 }
 
 function syncDocumentProjectToCurrentOutputProfile() {
-  return documentTargetController!.syncDocumentProjectToCurrentOutputProfile();
+  return documentFormatController!.syncDocumentProjectToCurrentOutputProfile();
 }
 
-function getUnusedDocumentTargetProfileKeys(currentProfileKey?: string): string[] {
-  return documentTargetController!.getUnusedDocumentTargetProfileKeys(currentProfileKey);
+function getUnusedDocumentFormatProfileKeys(currentProfileKey?: string): string[] {
+  return documentFormatController!.getUnusedDocumentFormatProfileKeys(currentProfileKey);
 }
 
 function getSceneFamilyLabel(sceneFamilyKey: OverlaySceneFamilyKey): string {
   return backgroundGraphController.getSceneFamilyLabel(sceneFamilyKey);
 }
 
-function setActiveDocumentTarget(targetId: string): void {
-  documentTargetController!.setActiveDocumentTarget(targetId);
+function setActiveDocumentFormat(targetId: string): void {
+  documentFormatController!.setActiveDocumentFormat(targetId);
 }
 
-function addDocumentTarget(profileKey?: string): boolean {
-  return documentTargetController!.addDocumentTarget(profileKey);
+function addDocumentFormat(profileKey?: string): boolean {
+  return documentFormatController!.addDocumentFormat(profileKey);
 }
 
-function updateActiveDocumentTargetLabel(rawLabel: string): void {
-  documentTargetController!.updateActiveDocumentTargetLabel(rawLabel);
+function updateActiveDocumentFormatLabel(rawLabel: string): void {
+  documentFormatController!.updateActiveDocumentFormatLabel(rawLabel);
 }
 
-function updateActiveDocumentTargetProfile(nextProfileKey: string): void {
-  documentTargetController!.updateActiveDocumentTargetProfile(nextProfileKey);
+function updateActiveDocumentFormatProfile(nextProfileKey: string): void {
+  documentFormatController!.updateActiveDocumentFormatProfile(nextProfileKey);
 }
 
-function removeActiveDocumentTarget(): boolean {
-  return documentTargetController!.removeActiveDocumentTarget();
+function removeActiveDocumentFormat(): boolean {
+  return documentFormatController!.removeActiveDocumentFormat();
 }
 
 function switchOutputProfile(profileKey: string) {
@@ -734,8 +734,8 @@ async function renderStage(mode: SceneFamilyPreviewMode = "interactive") {
   await stageRenderController.renderStage(mode);
 }
 
-function buildOutputProfileOptions() {
-  documentTargetController!.buildOutputProfileOptions();
+function buildFormatOptions() {
+  documentFormatController!.buildFormatOptions();
 }
 
 function getSelectedOverlaySectionTitle(): string {
@@ -754,7 +754,7 @@ const ctx: PreviewAppContext = {
   state,
   renderStage,
   buildConfigEditor,
-  buildOutputProfileOptions,
+  buildFormatOptions,
   resizeRenderer,
   syncOverlayVisibilityUi,
   updatePlaybackToggleUi,
@@ -805,13 +805,13 @@ const ctx: PreviewAppContext = {
   syncDocumentBackgroundGraph,
   getSceneFamilyPreviewState,
   getSceneFamilyLabel,
-  addDocumentTarget,
-  removeActiveDocumentTarget,
-  setActiveDocumentTarget,
-  updateActiveDocumentTargetLabel,
-  updateActiveDocumentTargetProfile,
-  getUnusedDocumentTargetProfileKeys,
-  getDefaultDocumentTargetLabel,
+  addDocumentFormat,
+  removeActiveDocumentFormat,
+  setActiveDocumentFormat,
+  updateActiveDocumentFormatLabel,
+  updateActiveDocumentFormatProfile,
+  getUnusedDocumentFormatProfileKeys,
+  getDefaultDocumentFormatLabel,
   documentWorkspace: documentWorkspaceController,
   getNormalizedDocumentName,
   exportComposedFramePng: async () => {
@@ -935,7 +935,7 @@ previewShellController = createPreviewShellController({
   markDocumentDirty,
   loadLogoIntrinsicDimensions,
   buildConfigEditor,
-  buildOutputProfileOptions,
+  buildFormatOptions,
   renderStage,
   resizeRenderer,
   togglePlayback,
@@ -943,8 +943,8 @@ previewShellController = createPreviewShellController({
   updateExportSettings,
   setOverlayVisible,
   setNetworkOverlayVisible,
-  addDocumentTarget,
-  removeActiveDocumentTarget,
+  addDocumentFormat,
+  removeActiveDocumentFormat,
   exportComposedFramePng: async () => {
     await exportAutomationController?.exportComposedFramePng();
   },
@@ -994,9 +994,9 @@ configEditorController = createConfigEditorController({
   renderStage
 });
 
-documentTargetController = createDocumentTargetController({
+documentFormatController = createDocumentFormatController({
   state,
-  getOutputProfileOptions,
+  getFormatOptions,
   switchOutputProfile,
   markDocumentDirty,
   buildConfigEditor,

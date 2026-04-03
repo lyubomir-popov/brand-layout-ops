@@ -107,31 +107,35 @@ body.bf-theme.is-dark {
   pointer-events: none;
 }
 
-:where(.bf-theme) :where([data-document-setup-table]) {
+:where(.bf-theme) :where([data-formats-table]) {
   inline-size: 100%;
 }
 
-:where(.bf-theme) :where([data-document-setup-table] tr[data-active-document-target='true']) {
+:where(.bf-theme) :where([data-preset-library-table]) {
+  inline-size: 100%;
+}
+
+:where(.bf-theme) :where([data-formats-table] tr[data-active-document-format='true']) {
   background: rgba(255, 255, 255, 0.04);
 }
 
-:where(.bf-theme) :where([data-document-setup-table] .is-radio-cell) {
+:where(.bf-theme) :where([data-formats-table] .is-radio-cell) {
   text-align: center;
   white-space: nowrap;
   width: calc(var(--bf-baseline) * 6);
 }
 
-:where(.bf-theme) :where([data-document-setup-table] .is-action-cell) {
+:where(.bf-theme) :where([data-formats-table] .is-action-cell) {
   text-align: end;
   white-space: nowrap;
   width: calc(var(--bf-baseline) * 8);
 }
 
-:where(.bf-theme) :where([data-document-setup-table] input) {
+:where(.bf-theme) :where([data-formats-table] input) {
   inline-size: 100%;
 }
 
-:where(.bf-theme) :where([data-remove-target-button]) {
+:where(.bf-theme) :where([data-remove-format-button]) {
   min-inline-size: calc(var(--bf-baseline) * 4);
   padding-inline: 0;
 }
@@ -297,8 +301,8 @@ body.bf-theme.is-dark {
 .is-stage-worksurface {
   --stage-shell-available-block: calc(100dvh - 2rem);
   background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.16), transparent 55%),
-    linear-gradient(180deg, #8a8a8a 0%, #747474 100%);
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 55%),
+    linear-gradient(180deg, #4d4d4d 0%, #444444 100%);
 }
 
 .is-stage-shell-frame {

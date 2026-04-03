@@ -2,6 +2,43 @@
 
 Items moved here from `docs/TODO.md` to keep the active backlog lean.
 
+## Lane P1–P2 — formats shell terminology + preset activation (2026-04-03)
+
+- Reframed the old `Document Setup` shell surface as `Formats...` in the live File menu and modal title so the user-facing workflow reads as authored formats instead of output-only target rows.
+- Updated the Formats dialog copy and table labels to talk about active formats, saved formats, and format removal rather than generic sizes or targets.
+- Added a built-in preset row to the Formats dialog so unused standard output profiles can be added directly from a preset list instead of forcing manual dimension entry for common social sizes.
+- Custom-size adds now immediately activate the new format, matching the design workflow of choosing a format and then editing for it. This reuses the existing profile-bucket behavior that seeds a new profile from the current active format as a first-guess layout.
+- Validation: `npm run typecheck` and `npm run preview:build`.
+
+## Lane P3 — compatibility naming cleanup (2026-04-03)
+
+- Added `OverlayDocumentFormat` to the shared document schema and kept `OverlayDocumentTarget` as a compatibility alias so new code can use format terminology without breaking the current saved-file shape.
+- Clarified in the shared project types that `activeTargetId` and `project.targets` are compatibility keys for now, even though the user-facing model is moving toward authored formats.
+- Extended automation state in `export-controller.ts` to emit `document_formats` and `document_active_format_id` alongside the legacy `document_targets` and `document_active_target_id` keys, giving downstream tooling a migration path without a breaking change.
+- Renamed the live app-layer controller, app-context API, dialog selectors, and shell wiring to format-first terminology so the running preview no longer advertises targets as the primary concept outside the persisted compatibility keys.
+- Validation: `npm run typecheck` and `npm run preview:build`.
+
+## Lane P4a — format origin metadata groundwork (2026-04-03)
+
+- Added `formatPresetKey` and `derivedFromFormatId` to `OverlayDocumentFormat` so document-owned formats can now remember both which global or built-in size preset seeded them and which existing format they were derived from.
+- New built-in-preset and custom-format adds now stamp their derivation source from the previously active format, matching the existing first-guess layout seeding behavior.
+- Automation export state now includes the new format metadata so downstream tooling can inspect preset origin and derivation without inferring it indirectly from dimensions alone.
+- The Formats dialog now shows preset or derivation summaries per format row, and the controller keeps derivation references honest when a source format is removed or when a format id changes because its profile key changed.
+- Validation: `npm run typecheck` and `npm run preview:build`.
+
+## Lane P4b — preset seed package definition (2026-04-03)
+
+- Defined the built-in global format presets explicitly in shared overlay-layout code as a coupled seed package: frame size, safe area, and grid now live together instead of being inferred from separate profile and grid-default tables.
+- Default overlay params now seed from that shared preset package, which keeps new formats honest while still leaving the live document buckets as the authority for later safe-area or grid edits.
+- The Formats dialog now surfaces the richer preset seed summary, including safe-area dimensions plus grid rhythm, and automation export state now exposes the resolved preset payload for each document format.
+- Validation: `npm run typecheck` and `npm run preview:build`.
+
+## Lane P4c — preset library shell entry (2026-04-03)
+
+- Added `File -> Preset Library...` so the menu system now exposes the global preset model explicitly instead of leaving it implicit inside the Formats add row.
+- The new modal explains the split: presets are global frame + safe-area + grid seeds, while document formats own later overrides.
+- The Formats dialog copy now points back to the preset library so the difference between document-owned formats, global presets, and source defaults stays legible in the shell.
+
 ## Lane M — stage network overlay + compositor seam (2026-04-02)
 
 - Added a dedicated stage network overlay mount in the preview stage and a persisted `networkOverlayVisible` flag in preview state.

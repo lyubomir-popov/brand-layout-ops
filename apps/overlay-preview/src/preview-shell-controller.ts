@@ -4,6 +4,11 @@ import {
   createFormGroup,
   createNumberInput
 } from "@brand-layout-ops/parameter-ui";
+import {
+  OVERLAY_FORMAT_PRESET_ORDER,
+  getOverlayFormatPresetDefinition,
+  getOverlayFormatSafeAreaFrame
+} from "@brand-layout-ops/operator-overlay-layout";
 
 import {
   renderDocumentWorkspaceUi,
@@ -32,7 +37,8 @@ type MenuItemSpec =
 
 interface ShellDialogRefs {
   documentDialog: HTMLDialogElement | null;
-  outputProfilesDialog: HTMLDialogElement | null;
+  formatsDialog: HTMLDialogElement | null;
+  presetLibraryDialog: HTMLDialogElement | null;
   exportSettingsDialog: HTMLDialogElement | null;
   exportNameInput: HTMLInputElement | null;
   exportFrameRateInput: HTMLInputElement | null;
@@ -50,7 +56,7 @@ export interface PreviewShellControllerDeps {
   markDocumentDirty(): void;
   loadLogoIntrinsicDimensions(assetPath: string): Promise<void>;
   buildConfigEditor(): void;
-  buildOutputProfileOptions(): void;
+  buildFormatOptions(): void;
   renderStage(): Promise<void>;
   resizeRenderer(): void;
   togglePlayback(): void;
@@ -60,8 +66,8 @@ export interface PreviewShellControllerDeps {
   ): void;
   setOverlayVisible(visible: boolean): void;
   setNetworkOverlayVisible(visible: boolean): void;
-  addDocumentTarget(): boolean;
-  removeActiveDocumentTarget(): boolean;
+  addDocumentFormat(): boolean;
+  removeActiveDocumentFormat(): boolean;
   exportComposedFramePng(): Promise<void>;
   exportPngSequence(): Promise<void>;
   initHaloRenderer(): void;
@@ -89,7 +95,8 @@ export function createPreviewShellController(
 
   const shellDialogs: ShellDialogRefs = {
     documentDialog: null,
-    outputProfilesDialog: null,
+    formatsDialog: null,
+    presetLibraryDialog: null,
     exportSettingsDialog: null,
     exportNameInput: null,
     exportFrameRateInput: null,
@@ -342,22 +349,22 @@ export function createPreviewShellController(
     shellDialogs.documentDialog = dialog;
   }
 
-  function syncOutputProfilesDialog(): void {
-    deps.buildOutputProfileOptions();
+  function syncFormatsDialog(): void {
+    deps.buildFormatOptions();
   }
 
-  function ensureOutputProfilesDialog(): void {
-    if (shellDialogs.outputProfilesDialog) {
+  function ensureFormatsDialog(): void {
+    if (shellDialogs.formatsDialog) {
       return;
     }
 
-    const { dialog, body, footer } = createShellModal("output-profiles-modal", "Document Setup");
+    const { dialog, body, footer } = createShellModal("formats-modal", "Formats");
     const stack = document.createElement("div");
     stack.className = "bf-stack is-compact-stack";
 
     const optionsContainer = document.createElement("div");
     optionsContainer.className = "bf-grid-scope";
-    optionsContainer.setAttribute("data-output-profile-options", "");
+    optionsContainer.setAttribute("data-format-options", "");
     stack.append(optionsContainer);
 
     body.append(stack);
@@ -368,7 +375,119 @@ export function createPreviewShellController(
     footer.append(closeButton);
 
     document.body.append(dialog);
-    shellDialogs.outputProfilesDialog = dialog;
+    shellDialogs.formatsDialog = dialog;
+  }
+
+  function syncPresetLibraryDialog(): void {
+    const dialog = shellDialogs.presetLibraryDialog;
+    if (!dialog) {
+      return;
+    }
+
+    const summary = dialog.querySelector<HTMLElement>("[data-preset-library-summary]");
+    const list = dialog.querySelector<HTMLElement>("[data-preset-library-list]");
+    if (!summary || !list) {
+      return;
+    }
+
+    summary.textContent = `${OVERLAY_FORMAT_PRESET_ORDER.length} global preset${OVERLAY_FORMAT_PRESET_ORDER.length === 1 ? "" : "s"}. Add one to the current document from Formats; after that, the document owns safe-area and grid overrides.`;
+
+    list.innerHTML = "";
+
+    const table = document.createElement("table");
+    table.className = "bf-table";
+    table.setAttribute("data-preset-library-table", "");
+    table.setAttribute("aria-label", "Global format presets");
+
+    const thead = document.createElement("thead");
+    const headingRow = document.createElement("tr");
+    for (const heading of ["Preset", "Frame", "Safe Area", "Grid Seed"]) {
+      const cell = document.createElement("th");
+      cell.textContent = heading;
+      headingRow.append(cell);
+    }
+    thead.append(headingRow);
+    table.append(thead);
+
+    const tbody = document.createElement("tbody");
+    for (const presetKey of OVERLAY_FORMAT_PRESET_ORDER) {
+      const preset = getOverlayFormatPresetDefinition(presetKey);
+      if (!preset) {
+        continue;
+      }
+
+      const safeAreaFrame = getOverlayFormatSafeAreaFrame(preset);
+      const row = document.createElement("tr");
+
+      const presetCell = document.createElement("td");
+      presetCell.textContent = preset.label;
+
+      const frameCell = document.createElement("td");
+      frameCell.textContent = `${preset.frame.widthPx}x${preset.frame.heightPx}`;
+
+      const safeAreaCell = document.createElement("td");
+      safeAreaCell.textContent = `${safeAreaFrame.widthPx}x${safeAreaFrame.heightPx}`;
+      const safeAreaMeta = document.createElement("div");
+      safeAreaMeta.className = "bf-form-help bf-u-no-margin--bottom";
+      safeAreaMeta.textContent = `Insets t${preset.safeArea.top} r${preset.safeArea.right} b${preset.safeArea.bottom} l${preset.safeArea.left}`;
+      safeAreaCell.append(safeAreaMeta);
+
+      const gridCell = document.createElement("td");
+      gridCell.textContent = `${preset.grid.columnCount}c x ${preset.grid.rowCount}r / ${preset.grid.baselineStepPx}px baseline / gutters c${preset.grid.columnGutterBaselines} r${preset.grid.rowGutterBaselines}`;
+      const gridMeta = document.createElement("div");
+      gridMeta.className = "bf-form-help bf-u-no-margin--bottom";
+      gridMeta.textContent = preset.grid.fitWithinSafeArea === false
+        ? "Grid uses the full frame by default."
+        : "Grid fits within the safe area by default.";
+      gridCell.append(gridMeta);
+
+      row.append(presetCell, frameCell, safeAreaCell, gridCell);
+      tbody.append(row);
+    }
+
+    table.append(tbody);
+    list.append(table);
+  }
+
+  function ensurePresetLibraryDialog(): void {
+    if (shellDialogs.presetLibraryDialog) {
+      return;
+    }
+
+    const { dialog, body, footer } = createShellModal("preset-library-modal", "Preset Library");
+    const stack = document.createElement("div");
+    stack.className = "bf-stack is-compact-stack";
+
+    const help = document.createElement("p");
+    help.className = "bf-form-help bf-u-no-margin--bottom";
+    help.textContent = "Global presets seed frame, safe area, and grid together. Add one in Formats, then treat the document format as the editable authority.";
+    stack.append(help);
+
+    const summary = document.createElement("p");
+    summary.className = "bf-form-help bf-u-no-margin--bottom";
+    summary.setAttribute("data-preset-library-summary", "");
+    stack.append(summary);
+
+    const list = document.createElement("div");
+    list.className = "bf-grid-scope";
+    list.setAttribute("data-preset-library-list", "");
+    stack.append(list);
+
+    body.append(stack);
+
+    const openFormatsButton = createFooterButton("Open Formats", "primary");
+    openFormatsButton.addEventListener("click", () => {
+      dialog.close();
+      openFormatsDialog();
+    });
+    footer.append(openFormatsButton);
+
+    const closeButton = createFooterButton("Close");
+    closeButton.addEventListener("click", () => dialog.close());
+    footer.append(closeButton);
+
+    document.body.append(dialog);
+    shellDialogs.presetLibraryDialog = dialog;
   }
 
   function syncExportSettingsDialog(): void {
@@ -496,7 +615,7 @@ export function createPreviewShellController(
       deps.markDocumentDirty();
       deps.state.playbackTimeSec = 0;
       deps.resizeRenderer();
-      syncOutputProfilesDialog();
+      syncFormatsDialog();
       syncExportSettingsDialog();
       deps.buildConfigEditor();
       deps.sourceDefaultController.setSourceDefaultStatus("Reset to source default.");
@@ -531,7 +650,8 @@ export function createPreviewShellController(
 
   function ensureShellDialogs(): void {
     ensureDocumentDialog();
-    ensureOutputProfilesDialog();
+    ensureFormatsDialog();
+    ensurePresetLibraryDialog();
     ensureExportSettingsDialog();
     ensureSourceDefaultDialog();
   }
@@ -542,10 +662,16 @@ export function createPreviewShellController(
     showDialog(shellDialogs.documentDialog!);
   }
 
-  function openOutputProfilesDialog(): void {
-    ensureOutputProfilesDialog();
-    syncOutputProfilesDialog();
-    showDialog(shellDialogs.outputProfilesDialog!);
+  function openFormatsDialog(): void {
+    ensureFormatsDialog();
+    syncFormatsDialog();
+    showDialog(shellDialogs.formatsDialog!);
+  }
+
+  function openPresetLibraryDialog(): void {
+    ensurePresetLibraryDialog();
+    syncPresetLibraryDialog();
+    showDialog(shellDialogs.presetLibraryDialog!);
   }
 
   function openExportSettingsDialog(): void {
@@ -678,10 +804,11 @@ export function createPreviewShellController(
         }
       },
       { kind: "separator" },
-      { label: "Document Setup...", shortcut: "D", onClick: () => openOutputProfilesDialog() },
-      { label: "Export Settings...", shortcut: "E", onClick: () => openExportSettingsDialog() },
+      { label: "Formats...", shortcut: "D", onClick: () => openFormatsDialog() },
+      { label: "Preset Library...", onClick: () => openPresetLibraryDialog() },
       { label: "Source Defaults...", onClick: () => openSourceDefaultDialog() },
       { kind: "separator" },
+      { label: "Export Settings...", shortcut: "E", onClick: () => openExportSettingsDialog() },
       {
         label: "Export PNG",
         onClick: () => deps.exportComposedFramePng(),
@@ -870,7 +997,7 @@ export function createPreviewShellController(
     }
 
     if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.key === "d" || event.key === "D")) {
-      openOutputProfilesDialog();
+      openFormatsDialog();
       event.preventDefault();
       return;
     }
@@ -1020,7 +1147,7 @@ export function createPreviewShellController(
 
     ensureShellDialogs();
     buildShellChrome();
-    syncOutputProfilesDialog();
+    syncFormatsDialog();
     syncExportSettingsDialog();
     updateDocumentUi();
     deps.buildConfigEditor();

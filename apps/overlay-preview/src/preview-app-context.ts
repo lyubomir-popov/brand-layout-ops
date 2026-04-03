@@ -104,8 +104,8 @@ export interface PreviewAppContext {
   renderStage(mode?: SceneFamilyPreviewMode): Promise<void>;
   /** Rebuild all accordion sections from the section registry. */
   buildConfigEditor(): void;
-  /** Rebuild the output-profile options sub-panel. */
-  buildOutputProfileOptions(): void;
+  /** Rebuild the document formats sub-panel. */
+  buildFormatOptions(): void;
   /** Resize the Three.js renderer to match current frame dimensions. */
   resizeRenderer(): void;
   /** Sync overlay visibility checkbox and layer display. */
@@ -213,22 +213,22 @@ export interface PreviewAppContext {
   /** Get a human-readable label for a scene family key. */
   getSceneFamilyLabel(key: OverlaySceneFamilyKey): string;
 
-  // — Document targets —
+  // — Document formats —
 
-  /** Add a new document target. Returns true if successful. */
-  addDocumentTarget(): boolean;
-  /** Remove the active document target. Returns true if successful. */
-  removeActiveDocumentTarget(): boolean;
-  /** Set the active document target by ID. */
-  setActiveDocumentTarget(id: string): void;
-  /** Update the label of the active document target. */
-  updateActiveDocumentTargetLabel(label: string): void;
-  /** Update the output profile of the active document target. */
-  updateActiveDocumentTargetProfile(profileKey: string): void;
-  /** Get profile keys not yet used by any document target, optionally excluding one. */
-  getUnusedDocumentTargetProfileKeys(exclude?: string): string[];
-  /** Get the default label for a document target profile key. */
-  getDefaultDocumentTargetLabel(profileKey: string): string;
+  /** Add a new document format. Returns true if successful. */
+  addDocumentFormat(): boolean;
+  /** Remove the active document format. Returns true if successful. */
+  removeActiveDocumentFormat(): boolean;
+  /** Set the active document format by ID. */
+  setActiveDocumentFormat(id: string): void;
+  /** Update the label of the active document format. */
+  updateActiveDocumentFormatLabel(label: string): void;
+  /** Update the output profile of the active document format. */
+  updateActiveDocumentFormatProfile(profileKey: string): void;
+  /** Get profile keys not yet used by any document format, optionally excluding one. */
+  getUnusedDocumentFormatProfileKeys(exclude?: string): string[];
+  /** Get the default label for a document format profile key. */
+  getDefaultDocumentFormatLabel(profileKey: string): string;
 
   // — Document workspace —
 

@@ -70,8 +70,8 @@ That starts a Vite app at `apps/overlay-preview/` which currently:
 - supports text and logo selection, double-click text editing, drag snapping, guide toggling, and CSV or inline content switching
 - surfaces the main operator document controls from an operator parameter schema instead of only from preview-local hardcoded controls
 - includes left and right snapped resize handles for selected text fields, a first-baseline guide, and staged CSV apply or discard controls
-- persists local `.brand-layout-ops.json` documents through the shared overlay document metadata/state envelope plus shared scene-family or target `project` metadata, with CSV-draft extras layered on top and legacy preview-file compatibility retained
-- lets the Output Format panel add or delete saved document sizes and edit the document scene-family metadata instead of treating the active screen size as only transient preview state
+- persists local `.brand-layout-ops.json` documents through the shared overlay document metadata/state envelope plus shared scene-family and per-format `project` metadata, with CSV-draft extras layered on top and legacy preview-file compatibility retained
+- lets the Formats dialog add or delete saved document formats, add common sizes from a built-in preset list, and edit the document scene-family metadata instead of treating the active screen size as only transient preview state
 - uses the selected document scene family in the live stage and composed-frame export path, with phyllotaxis, fuzzy-boids, and scatter rendered through richer family-specific canvas preview passes while halo keeps the Three.js renderer
 - treats local documents as the source of truth for working state; browser-local preset storage is no longer supposed to seed a new session's working document
 

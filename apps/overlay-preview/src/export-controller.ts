@@ -7,6 +7,8 @@ import {
   cloneOverlayDocumentProject,
   createDefaultOverlaySceneFamilyConfigs,
   extractOverlaySceneFamilyConfigsFromGraph,
+  getOverlayFormatPresetDefinition,
+  getOverlayFormatSafeAreaFrame,
   normalizeOverlayBackgroundGraph,
   normalizeOverlaySceneFamilyGraphs,
   normalizeOverlaySceneFamilyConfigs,
@@ -483,6 +485,45 @@ export function createExportAutomationController(
     });
     const outputSinks = getPreviewOutputSinks();
     const activeOutputSink = getActivePreviewOutputSink();
+    const documentFormats = ctx.state.documentProject.targets.map((target) => {
+      const preset = target.formatPresetKey
+        ? getOverlayFormatPresetDefinition(target.formatPresetKey)
+        : null;
+      const safeAreaFrame = preset ? getOverlayFormatSafeAreaFrame(preset) : null;
+
+      return {
+        id: target.id,
+        label: target.label,
+        output_profile_key: target.outputProfileKey,
+        format_preset_key: target.formatPresetKey,
+        format_preset: preset ? {
+          key: preset.key,
+          label: preset.label,
+          frame: {
+            width_px: preset.frame.widthPx,
+            height_px: preset.frame.heightPx
+          },
+          safe_area: {
+            top: preset.safeArea.top,
+            right: preset.safeArea.right,
+            bottom: preset.safeArea.bottom,
+            left: preset.safeArea.left,
+            width_px: safeAreaFrame?.widthPx ?? 0,
+            height_px: safeAreaFrame?.heightPx ?? 0
+          },
+          grid: {
+            baseline_step_px: preset.grid.baselineStepPx,
+            row_count: preset.grid.rowCount,
+            column_count: preset.grid.columnCount,
+            row_gutter_baselines: preset.grid.rowGutterBaselines,
+            column_gutter_baselines: preset.grid.columnGutterBaselines,
+            fit_within_safe_area: preset.grid.fitWithinSafeArea !== false
+          }
+        } : null,
+        derived_from_format_id: target.derivedFromFormatId
+      };
+    });
+
     return {
       preview_document: options.buildCurrentDocumentPersistence(),
       output_profile_key: ctx.state.outputProfileKey,
@@ -493,12 +534,10 @@ export function createExportAutomationController(
         label: profile.label
       },
       document_scene_family_key: ctx.state.documentProject.sceneFamilyKey,
+      document_active_format_id: ctx.state.documentProject.activeTargetId,
+      document_formats: documentFormats,
       document_active_target_id: ctx.state.documentProject.activeTargetId,
-      document_targets: ctx.state.documentProject.targets.map((target) => ({
-        id: target.id,
-        label: target.label,
-        output_profile_key: target.outputProfileKey
-      })),
+      document_targets: documentFormats,
       document_scene_family_graphs: cloneOverlayDocumentProject(ctx.state.documentProject).sceneFamilyGraphs,
       document_background_graph: cloneOverlayDocumentProject(ctx.state.documentProject).backgroundGraph,
       preview_composition_layers: previewCompositionLayers.map((layer) => ({
@@ -545,7 +584,7 @@ export function createExportAutomationController(
 
   async function applyAutomationSnapshot(payload: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
     let shouldRebuildConfigEditor = false;
-    let shouldRebuildOutputProfileOptions = false;
+    let shouldRebuildFormatOptions = false;
     let shouldSyncDocumentBackgroundGraph = false;
     let backgroundGraphProvided = false;
 
@@ -561,7 +600,7 @@ export function createExportAutomationController(
     if (typeof payload.output_profile_key === "string" && OUTPUT_PROFILES[payload.output_profile_key]) {
       ctx.switchOutputProfile(payload.output_profile_key);
       shouldRebuildConfigEditor = true;
-      shouldRebuildOutputProfileOptions = true;
+      shouldRebuildFormatOptions = true;
     }
 
     if (
@@ -573,7 +612,7 @@ export function createExportAutomationController(
         sceneFamilyKey: payload.document_scene_family_key as OverlaySceneFamilyKey
       };
       shouldRebuildConfigEditor = true;
-      shouldRebuildOutputProfileOptions = true;
+      shouldRebuildFormatOptions = true;
       shouldSyncDocumentBackgroundGraph = true;
     }
 
@@ -636,8 +675,8 @@ export function createExportAutomationController(
       ctx.buildConfigEditor();
     }
 
-    if (shouldRebuildOutputProfileOptions) {
-      ctx.buildOutputProfileOptions();
+    if (shouldRebuildFormatOptions) {
+      ctx.buildFormatOptions();
     }
 
     if (typeof payload.transparent_background === "boolean") {

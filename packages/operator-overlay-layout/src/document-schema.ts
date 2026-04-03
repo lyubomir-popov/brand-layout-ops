@@ -2,7 +2,6 @@ import {
   DEFAULT_OUTPUT_PROFILE_KEY,
   getOutputProfile,
   OUTPUT_PROFILE_ORDER,
-  OUTPUT_PROFILES,
   OVERLAY_CONTENT_FORMATS,
   OVERLAY_CONTENT_FORMAT_ORDER,
   type OverlayContentFormatSpec,
@@ -31,11 +30,14 @@ import {
   DEFAULT_OVERLAY_FORMAT_OVERRIDES,
   DEFAULT_OVERLAY_LOGO,
   DEFAULT_OVERLAY_TEXT_STYLES,
-  getDefaultOverlayGridForProfile,
   resolveOverlayContentFormatKeyForProfile,
   SPEAKER_OVERLAY_CSV_DRAFT,
   type ContentFormatOverrides
 } from "./field-defaults.js";
+import {
+  getOverlayFormatPresetKeyForProfile,
+  getOverlayFormatSeedForProfile
+} from "./format-presets.js";
 import {
   cloneOverlayJson,
   isRecord,
@@ -85,16 +87,22 @@ export interface OverlayDocumentMetadata {
   updatedAt: string;
 }
 
-export interface OverlayDocumentTarget {
+export interface OverlayDocumentFormat {
   id: string;
   label: string;
   outputProfileKey: string;
+  formatPresetKey: string | null;
+  derivedFromFormatId: string | null;
 }
+
+export type OverlayDocumentTarget = OverlayDocumentFormat;
 
 export interface OverlayDocumentProject {
   sceneFamilyKey: OverlaySceneFamilyKey;
+  // Compatibility: the persisted key stays `activeTargetId` until the saved-file schema evolves.
   activeTargetId: string;
-  targets: OverlayDocumentTarget[];
+  // Compatibility: authored format rows still persist under `project.targets` for now.
+  targets: OverlayDocumentFormat[];
   sceneFamilyGraphs: OverlaySceneFamilyGraphs;
   backgroundGraph: OverlayBackgroundGraph;
 }
@@ -102,7 +110,7 @@ export interface OverlayDocumentProject {
 export interface PersistedOverlayDocumentProject {
   sceneFamilyKey: OverlaySceneFamilyKey;
   activeTargetId: string;
-  targets: OverlayDocumentTarget[];
+  targets: OverlayDocumentFormat[];
   sceneFamilyGraphs: OverlaySceneFamilyGraphs;
 }
 
@@ -221,7 +229,7 @@ function getOverlayDocumentProfileKeysFromSnapshot<
   ]);
 }
 
-function createOverlayDocumentTarget(outputProfileKey: string, rawTarget?: unknown): OverlayDocumentTarget {
+function createOverlayDocumentTarget(outputProfileKey: string, rawTarget?: unknown): OverlayDocumentFormat {
   return {
     id: normalizeOverlayDocumentString(
       isRecord(rawTarget) ? rawTarget.id : undefined,
@@ -231,7 +239,15 @@ function createOverlayDocumentTarget(outputProfileKey: string, rawTarget?: unkno
       isRecord(rawTarget) ? rawTarget.label : undefined,
       getOverlayDocumentTargetLabel(outputProfileKey)
     ),
-    outputProfileKey
+    outputProfileKey,
+    formatPresetKey: normalizeOverlayDocumentString(
+      isRecord(rawTarget) ? rawTarget.formatPresetKey : undefined,
+      getOverlayFormatPresetKeyForProfile(outputProfileKey) ?? ""
+    ) || null,
+    derivedFromFormatId: normalizeOverlayDocumentString(
+      isRecord(rawTarget) ? rawTarget.derivedFromFormatId : undefined,
+      ""
+    ) || null
   };
 }
 
@@ -278,7 +294,7 @@ export function normalizeOverlayDocumentProject<
     };
   }
 
-  const targets: OverlayDocumentTarget[] = [];
+  const targets: OverlayDocumentFormat[] = [];
   const seenProfileKeys = new Set<string>();
   const seenTargetIds = new Set<string>();
 
@@ -711,7 +727,7 @@ export function createDefaultOverlayParams(
   profileKey: string = DEFAULT_OUTPUT_PROFILE_KEY,
   formatKey: string = "generic_social"
 ): OverlayLayoutOperatorParams {
-  const profile = getOutputProfile(profileKey);
+  const formatSeed = getOverlayFormatSeedForProfile(profileKey);
   const textFields = buildTextFieldsForFormat(formatKey);
   const landscapeTextByContentField = new Map(
     createLandscapeOverlayTextFields().map((field) => [field.contentFieldId ?? field.id, field.text])
@@ -726,12 +742,9 @@ export function createDefaultOverlayParams(
   }
 
   return {
-    frame: {
-      widthPx: profile.widthPx,
-      heightPx: profile.heightPx
-    },
-    safeArea: { ...profile.safeArea },
-    grid: getDefaultOverlayGridForProfile(profileKey),
+    frame: { ...formatSeed.frame },
+    safeArea: { ...formatSeed.safeArea },
+    grid: { ...formatSeed.grid },
     textStyles: applyOverlayProfileTextStyleDefaults(DEFAULT_OVERLAY_TEXT_STYLES, profileKey),
     textFields: textFields.map((field) => ({ ...field })),
     logo: { ...DEFAULT_OVERLAY_LOGO },

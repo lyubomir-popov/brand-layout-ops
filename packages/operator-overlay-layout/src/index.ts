@@ -64,6 +64,7 @@ export type ProfileContentFormatMap = Record<string, string>;
 
 export * from "./background-graph.js";
 export * from "./document-schema.js";
+export * from "./format-presets.js";
 
 export interface OverlayLayoutOperatorOutputs {
   scene: LayerScene;

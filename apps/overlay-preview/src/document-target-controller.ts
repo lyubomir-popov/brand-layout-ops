@@ -1,8 +1,9 @@
 /**
- * document-target-controller.ts - Document-size target state and UI rebuilds.
+ * document-target-controller.ts - Document-format state and UI rebuilds.
  *
- * Owns saved document-target CRUD plus the document setup modal table so main.ts
- * can delegate target-specific mutations and DOM assembly.
+ * Owns saved document-target CRUD plus the formats modal table so main.ts can
+ * delegate format-specific mutations and DOM assembly while the persisted shape
+ * remains compatible with the existing `project.targets` model.
  */
 
 import {
@@ -12,7 +13,12 @@ import {
   getOutputProfile,
   type FrameSize
 } from "@brand-layout-ops/core-types";
-import type { OverlayDocumentTarget } from "@brand-layout-ops/operator-overlay-layout";
+import {
+  getOverlayFormatPresetDefinition,
+  getOverlayFormatPresetKeyForProfile,
+  getOverlayFormatSeedSummary,
+  type OverlayDocumentFormat
+} from "@brand-layout-ops/operator-overlay-layout";
 
 import type { PreviewState } from "./preview-app-context.js";
 
@@ -24,35 +30,40 @@ interface PendingDocumentTargetDraft {
   height: string;
 }
 
+interface CreateDocumentFormatOptions {
+  formatPresetKey?: string | null;
+  derivedFromFormatId?: string | null;
+}
+
 interface RemoveDocumentTargetResult {
   removed: boolean;
   activeChanged: boolean;
 }
 
-export interface DocumentTargetControllerDeps {
+export interface DocumentFormatControllerDeps {
   readonly state: PreviewState;
-  getOutputProfileOptions(): HTMLElement | null;
+  getFormatOptions(): HTMLElement | null;
   switchOutputProfile(profileKey: string): void;
   markDocumentDirty(): void;
   buildConfigEditor(): void;
   renderStage(): Promise<void>;
 }
 
-export interface DocumentTargetController {
-  getDefaultDocumentTargetLabel(profileKey: string): string;
-  syncDocumentProjectToCurrentOutputProfile(): OverlayDocumentTarget;
-  getUnusedDocumentTargetProfileKeys(currentProfileKey?: string): string[];
-  setActiveDocumentTarget(targetId: string): void;
-  addDocumentTarget(profileKey?: string): boolean;
-  updateActiveDocumentTargetLabel(rawLabel: string): void;
-  updateActiveDocumentTargetProfile(nextProfileKey: string): void;
-  removeActiveDocumentTarget(): boolean;
-  buildOutputProfileOptions(): void;
+export interface DocumentFormatController {
+  getDefaultDocumentFormatLabel(profileKey: string): string;
+  syncDocumentProjectToCurrentOutputProfile(): OverlayDocumentFormat;
+  getUnusedDocumentFormatProfileKeys(currentProfileKey?: string): string[];
+  setActiveDocumentFormat(targetId: string): void;
+  addDocumentFormat(profileKey?: string): boolean;
+  updateActiveDocumentFormatLabel(rawLabel: string): void;
+  updateActiveDocumentFormatProfile(nextProfileKey: string): void;
+  removeActiveDocumentFormat(): boolean;
+  buildFormatOptions(): void;
 }
 
-export function createDocumentTargetController(
-  deps: DocumentTargetControllerDeps
-): DocumentTargetController {
+export function createDocumentFormatController(
+  deps: DocumentFormatControllerDeps
+): DocumentFormatController {
   const { state } = deps;
 
   let pendingDraft: PendingDocumentTargetDraft = {
@@ -60,6 +71,7 @@ export function createDocumentTargetController(
     width: "",
     height: ""
   };
+  let pendingPresetProfileKey = "";
 
   let statusMessage = "";
   let statusTone: DocumentSetupStatusTone = "neutral";
@@ -78,7 +90,11 @@ export function createDocumentTargetController(
     return getOutputProfile(profileKey).label;
   }
 
-  function getDocumentTargetFrame(target: OverlayDocumentTarget): FrameSize {
+  function getDefaultDocumentFormatPresetKey(profileKey: string): string | null {
+    return getOverlayFormatPresetKeyForProfile(profileKey);
+  }
+
+  function getDocumentTargetFrame(target: OverlayDocumentFormat): FrameSize {
     const profile = getOutputProfile(target.outputProfileKey);
     return {
       widthPx: profile.widthPx,
@@ -86,11 +102,17 @@ export function createDocumentTargetController(
     };
   }
 
-  function createDocumentTarget(profileKey: string, labelOverride?: string): OverlayDocumentTarget {
+  function createDocumentTarget(
+    profileKey: string,
+    labelOverride?: string,
+    options?: CreateDocumentFormatOptions
+  ): OverlayDocumentFormat {
     return {
       id: profileKey,
       label: labelOverride?.trim() || getDefaultDocumentTargetLabel(profileKey),
-      outputProfileKey: profileKey
+      outputProfileKey: profileKey,
+      formatPresetKey: options?.formatPresetKey ?? getDefaultDocumentFormatPresetKey(profileKey),
+      derivedFromFormatId: options?.derivedFromFormatId ?? null
     };
   }
 
@@ -104,7 +126,7 @@ export function createDocumentTargetController(
 
   function getDocumentTargetById(
     targetId: string | null | undefined = state.documentProject.activeTargetId
-  ): OverlayDocumentTarget | null {
+  ): OverlayDocumentFormat | null {
     if (!targetId) {
       return null;
     }
@@ -112,11 +134,52 @@ export function createDocumentTargetController(
     return state.documentProject.targets.find((target) => target.id === targetId) ?? null;
   }
 
-  function getDocumentTargetByProfileKey(profileKey: string): OverlayDocumentTarget | null {
+  function getDocumentTargetByProfileKey(profileKey: string): OverlayDocumentFormat | null {
     return state.documentProject.targets.find((target) => target.outputProfileKey === profileKey) ?? null;
   }
 
-  function getDocumentTargetByDimensions(widthPx: number, heightPx: number): OverlayDocumentTarget | null {
+  function normalizeDerivedFromFormatId(target: OverlayDocumentFormat): OverlayDocumentFormat {
+    if (!target.derivedFromFormatId || target.derivedFromFormatId === target.id) {
+      return {
+        ...target,
+        derivedFromFormatId: null
+      };
+    }
+
+    const sourceExists = state.documentProject.targets.some((candidate) => candidate.id === target.derivedFromFormatId);
+    if (sourceExists) {
+      return target;
+    }
+
+    return {
+      ...target,
+      derivedFromFormatId: null
+    };
+  }
+
+  function getDocumentFormatSourceSummary(target: OverlayDocumentFormat): string {
+    const parts: string[] = [];
+    const preset = target.formatPresetKey
+      ? getOverlayFormatPresetDefinition(target.formatPresetKey)
+      : null;
+    if (preset) {
+      parts.push(`Preset: ${preset.label}`);
+      parts.push(`Seed ${getOverlayFormatSeedSummary(preset)}`);
+    } else {
+      parts.push("Custom size");
+    }
+
+    if (target.derivedFromFormatId && target.derivedFromFormatId !== target.id) {
+      const sourceFormat = getDocumentTargetById(target.derivedFromFormatId);
+      if (sourceFormat) {
+        parts.push(`Derived from ${sourceFormat.label}`);
+      }
+    }
+
+    return parts.join(" · ");
+  }
+
+  function getDocumentTargetByDimensions(widthPx: number, heightPx: number): OverlayDocumentFormat | null {
     const safeWidthPx = Math.max(1, Math.round(widthPx));
     const safeHeightPx = Math.max(1, Math.round(heightPx));
 
@@ -126,7 +189,7 @@ export function createDocumentTargetController(
     }) ?? null;
   }
 
-  function syncDocumentProjectToCurrentOutputProfile(): OverlayDocumentTarget {
+  function syncDocumentProjectToCurrentOutputProfile(): OverlayDocumentFormat {
     const existingTarget = getDocumentTargetByProfileKey(state.outputProfileKey);
     if (existingTarget) {
       if (state.documentProject.activeTargetId !== existingTarget.id) {
@@ -166,9 +229,21 @@ export function createDocumentTargetController(
   }
 
   function setActiveDocumentTarget(targetId: string): void {
-    const nextTarget = getDocumentTargetById(targetId);
+    const rawTarget = getDocumentTargetById(targetId);
+    const nextTarget = rawTarget ? normalizeDerivedFromFormatId(rawTarget) : null;
     if (!nextTarget) {
       return;
+    }
+
+    if (nextTarget.derivedFromFormatId !== rawTarget?.derivedFromFormatId) {
+      state.documentProject = {
+        ...state.documentProject,
+        targets: state.documentProject.targets.map((target) => (
+          target.id === nextTarget.id
+            ? nextTarget
+            : target
+        ))
+      };
     }
 
     state.documentProject = {
@@ -196,13 +271,20 @@ export function createDocumentTargetController(
 
     const existingTarget = getDocumentTargetByProfileKey(nextProfileKey);
     if (!existingTarget) {
+      const nextTarget = createDocumentTarget(nextProfileKey, undefined, {
+        derivedFromFormatId: state.documentProject.activeTargetId || null
+      });
       state.documentProject = {
         ...state.documentProject,
-        targets: [...state.documentProject.targets, createDocumentTarget(nextProfileKey)]
+        targets: [...state.documentProject.targets, nextTarget]
       };
+      setActiveDocumentTarget(nextTarget.id);
+      setStatus(`Added ${nextTarget.label} and made it active.`, "success");
+      return true;
     }
 
-    setActiveDocumentTarget(existingTarget?.id ?? nextProfileKey);
+    setActiveDocumentTarget(existingTarget.id);
+    setStatus(`Switched to ${existingTarget.label}.`, "neutral");
     return true;
   }
 
@@ -235,18 +317,21 @@ export function createDocumentTargetController(
       return false;
     }
 
-    const nextTarget = createDocumentTarget(nextProfileKey, pendingDraft.label);
+    const nextTarget = createDocumentTarget(nextProfileKey, pendingDraft.label, {
+      derivedFromFormatId: state.documentProject.activeTargetId || null
+    });
     state.documentProject = {
       ...state.documentProject,
       targets: [...state.documentProject.targets, nextTarget]
     };
+    setActiveDocumentTarget(nextTarget.id);
 
     pendingDraft = {
       label: "",
       width: "",
       height: ""
     };
-    setStatus(`Added ${nextTarget.label}.`, "success");
+    setStatus(`Added ${nextTarget.label} and made it active.`, "success");
     return true;
   }
 
@@ -295,8 +380,11 @@ export function createDocumentTargetController(
             ...target,
             id: nextProfileKey,
             outputProfileKey: nextProfileKey,
+            formatPresetKey: getDefaultDocumentFormatPresetKey(nextProfileKey),
             label: shouldResetLabel ? getDefaultDocumentTargetLabel(nextProfileKey) : target.label
           }
+          : target.derivedFromFormatId === activeTarget.id
+            ? { ...target, derivedFromFormatId: nextProfileKey }
           : target
       ))
     };
@@ -308,12 +396,18 @@ export function createDocumentTargetController(
   function removeDocumentTarget(targetId: string): RemoveDocumentTargetResult {
     const target = getDocumentTargetById(targetId);
     if (!target || state.documentProject.targets.length <= 1) {
-      setStatus("A document needs at least one size.", "error");
+      setStatus("A document needs at least one format.", "error");
       return { removed: false, activeChanged: false };
     }
 
     const activeIndex = state.documentProject.targets.findIndex((candidate) => candidate.id === target.id);
-    const remainingTargets = state.documentProject.targets.filter((candidate) => candidate.id !== target.id);
+    const remainingTargets = state.documentProject.targets
+      .filter((candidate) => candidate.id !== target.id)
+      .map((candidate) => (
+        candidate.derivedFromFormatId === target.id
+          ? { ...candidate, derivedFromFormatId: null }
+          : candidate
+      ));
     const removedActiveTarget = target.id === state.documentProject.activeTargetId;
 
     if (!removedActiveTarget) {
@@ -328,7 +422,7 @@ export function createDocumentTargetController(
 
     const fallbackTarget = remainingTargets[Math.min(activeIndex, remainingTargets.length - 1)] ?? remainingTargets[0];
     if (!fallbackTarget) {
-      setStatus("Could not choose a fallback size.", "error");
+      setStatus("Could not choose a fallback format.", "error");
       return { removed: false, activeChanged: false };
     }
 
@@ -386,8 +480,8 @@ export function createDocumentTargetController(
     return input;
   }
 
-  function buildOutputProfileOptions(): void {
-    const container = deps.getOutputProfileOptions();
+  function buildFormatOptions(): void {
+    const container = deps.getFormatOptions();
     if (!container) {
       return;
     }
@@ -398,12 +492,12 @@ export function createDocumentTargetController(
 
     const help = document.createElement("p");
     help.className = "bf-form-help bf-u-no-margin--bottom";
-    help.textContent = "Choose the active size, add custom dimensions, or remove sizes you no longer need. Changes stay in the current document until you save the file.";
+    help.textContent = "Choose the active format, add preset or custom dimensions, or remove formats you no longer need. New formats become active immediately and start from the current format as a first guess. Use Preset Library for the global seed definitions, then save the file to persist document-owned overrides.";
     container.append(help);
 
     const status = document.createElement("p");
     status.className = "bf-form-help bf-u-no-margin--bottom";
-    status.textContent = statusMessage || `${state.documentProject.targets.length} saved size${state.documentProject.targets.length === 1 ? "" : "s"}.`;
+    status.textContent = statusMessage || `${state.documentProject.targets.length} saved format${state.documentProject.targets.length === 1 ? "" : "s"}.`;
     status.style.color = statusTone === "success"
       ? "#9ad47d"
       : statusTone === "error"
@@ -413,14 +507,14 @@ export function createDocumentTargetController(
 
     const table = document.createElement("table");
     table.className = "bf-table";
-    table.setAttribute("data-document-setup-table", "");
-    table.setAttribute("aria-label", "Document setup sizes");
+    table.setAttribute("data-formats-table", "");
+    table.setAttribute("aria-label", "Document formats");
 
     const thead = document.createElement("thead");
     const headingRow = document.createElement("tr");
     headingRow.append(
-      createCell("th", "Use"),
-      createCell("th", "Title"),
+      createCell("th", "Active"),
+      createCell("th", "Format"),
       createCell("th", "Width"),
       createCell("th", "Height"),
       createCell("th", "")
@@ -433,28 +527,40 @@ export function createDocumentTargetController(
       const frame = getDocumentTargetFrame(target);
       const row = document.createElement("tr");
       if (target.id === activeTarget.id) {
-        row.setAttribute("data-active-document-target", "true");
+        row.setAttribute("data-active-document-format", "true");
       }
 
       const activeCell = createCell("td");
       activeCell.className = "is-radio-cell";
       const radio = document.createElement("input");
       radio.type = "radio";
-      radio.name = "document-setup-target";
+      radio.name = "document-setup-format";
       radio.value = target.id;
       radio.checked = target.id === activeTarget.id;
-      radio.setAttribute("aria-label", `Activate ${target.label}`);
+      radio.setAttribute("aria-label", `Activate format ${target.label}`);
       radio.addEventListener("change", () => {
         clearStatus();
         setActiveDocumentTarget(target.id);
         deps.markDocumentDirty();
         deps.buildConfigEditor();
         void deps.renderStage();
-        buildOutputProfileOptions();
+        buildFormatOptions();
       });
       activeCell.append(radio);
 
-      const titleCell = createCell("td", target.label);
+      const titleCell = createCell("td");
+      const titleLabel = document.createElement("div");
+      titleLabel.textContent = target.label;
+      titleCell.append(titleLabel);
+
+      const formatSummary = getDocumentFormatSourceSummary(target);
+      if (formatSummary) {
+        const titleMeta = document.createElement("div");
+        titleMeta.className = "bf-form-help bf-u-no-margin--bottom";
+        titleMeta.textContent = formatSummary;
+        titleCell.title = formatSummary;
+        titleCell.append(titleMeta);
+      }
       const widthCell = createCell("td", String(frame.widthPx));
       const heightCell = createCell("td", String(frame.heightPx));
 
@@ -465,12 +571,12 @@ export function createDocumentTargetController(
       removeButton.className = "bf-button is-base is-dense";
       removeButton.textContent = "×";
       removeButton.disabled = state.documentProject.targets.length <= 1;
-      removeButton.setAttribute("data-remove-target-button", "");
-      removeButton.setAttribute("aria-label", `Remove ${target.label}`);
+      removeButton.setAttribute("data-remove-format-button", "");
+      removeButton.setAttribute("aria-label", `Remove format ${target.label}`);
       removeButton.addEventListener("click", () => {
         const result = removeDocumentTarget(target.id);
         if (!result.removed) {
-          buildOutputProfileOptions();
+          buildFormatOptions();
           return;
         }
 
@@ -479,7 +585,7 @@ export function createDocumentTargetController(
           deps.buildConfigEditor();
           void deps.renderStage();
         }
-        buildOutputProfileOptions();
+        buildFormatOptions();
       });
       actionCell.append(removeButton);
 
@@ -489,26 +595,107 @@ export function createDocumentTargetController(
     table.append(tbody);
 
     const tfoot = document.createElement("tfoot");
+
+    const availablePresetProfileKeys = getUnusedDocumentTargetProfileKeys();
+    if (!availablePresetProfileKeys.includes(pendingPresetProfileKey)) {
+      pendingPresetProfileKey = availablePresetProfileKeys[0] ?? "";
+    }
+
+    const presetRow = document.createElement("tr");
+    presetRow.setAttribute("data-formats-preset-row", "");
+
+    const presetLeadCell = createCell("td", "+");
+    presetLeadCell.className = "is-radio-cell";
+
+    const presetSelectCell = createCell("td");
+    const presetSelect = document.createElement("select");
+    presetSelect.className = "bf-input is-dense";
+
+    const presetWidthCell = createCell("td");
+    const presetHeightCell = createCell("td");
+    const syncPresetSummary = (): void => {
+      if (!pendingPresetProfileKey) {
+        presetWidthCell.textContent = "-";
+        presetHeightCell.textContent = "-";
+        return;
+      }
+
+      const profile = getOutputProfile(pendingPresetProfileKey);
+      presetWidthCell.textContent = String(profile.widthPx);
+      presetHeightCell.textContent = String(profile.heightPx);
+    };
+
+    if (availablePresetProfileKeys.length === 0) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "All built-in presets already added";
+      presetSelect.append(option);
+      presetSelect.disabled = true;
+    } else {
+      for (const profileKey of availablePresetProfileKeys) {
+        const profile = getOutputProfile(profileKey);
+        const option = document.createElement("option");
+        option.value = profileKey;
+        option.textContent = `${profile.label} (${profile.widthPx}x${profile.heightPx})`;
+        option.selected = profileKey === pendingPresetProfileKey;
+        presetSelect.append(option);
+      }
+
+      presetSelect.addEventListener("change", () => {
+        pendingPresetProfileKey = presetSelect.value;
+        clearStatus();
+        syncPresetSummary();
+      });
+    }
+
+    syncPresetSummary();
+    presetSelectCell.append(presetSelect);
+
+    const presetActionCell = createCell("td");
+    presetActionCell.className = "is-action-cell";
+    const addPresetButton = document.createElement("button");
+    addPresetButton.type = "button";
+    addPresetButton.className = "bf-button is-base is-dense";
+    addPresetButton.textContent = "Add Preset";
+    addPresetButton.disabled = availablePresetProfileKeys.length === 0;
+    addPresetButton.addEventListener("click", () => {
+      if (!pendingPresetProfileKey || !addDocumentTarget(pendingPresetProfileKey)) {
+        buildFormatOptions();
+        return;
+      }
+
+      deps.markDocumentDirty();
+      deps.buildConfigEditor();
+      void deps.renderStage();
+      buildFormatOptions();
+    });
+    presetActionCell.append(addPresetButton);
+
+    presetRow.append(presetLeadCell, presetSelectCell, presetWidthCell, presetHeightCell, presetActionCell);
+    tfoot.append(presetRow);
+
     const addRow = document.createElement("tr");
-    addRow.setAttribute("data-document-setup-add-row", "");
+    addRow.setAttribute("data-formats-add-row", "");
 
     const addLeadCell = createCell("td", "+");
     addLeadCell.className = "is-radio-cell";
 
     const submitDraft = (): void => {
       if (!addDocumentTargetFromDraft()) {
-        buildOutputProfileOptions();
+        buildFormatOptions();
         return;
       }
 
       deps.markDocumentDirty();
-      buildOutputProfileOptions();
+      deps.buildConfigEditor();
+      void deps.renderStage();
+      buildFormatOptions();
     };
 
     const titleInput = createDraftInput(
       "text",
       pendingDraft.label,
-      "Title",
+      "Format name",
       (nextValue) => {
         pendingDraft = { ...pendingDraft, label: nextValue };
       },
@@ -547,8 +734,8 @@ export function createDocumentTargetController(
     const addButton = document.createElement("button");
     addButton.type = "button";
     addButton.className = "bf-button is-dense";
-    addButton.textContent = "Add";
-    addButton.setAttribute("data-add-target-button", "");
+    addButton.textContent = "Add Format";
+    addButton.setAttribute("data-add-format-button", "");
     addButton.addEventListener("click", submitDraft);
     addActionCell.append(addButton);
 
@@ -560,14 +747,14 @@ export function createDocumentTargetController(
   }
 
   return {
-    getDefaultDocumentTargetLabel,
+    getDefaultDocumentFormatLabel: getDefaultDocumentTargetLabel,
     syncDocumentProjectToCurrentOutputProfile,
-    getUnusedDocumentTargetProfileKeys,
-    setActiveDocumentTarget,
-    addDocumentTarget,
-    updateActiveDocumentTargetLabel,
-    updateActiveDocumentTargetProfile,
-    removeActiveDocumentTarget,
-    buildOutputProfileOptions
+    getUnusedDocumentFormatProfileKeys: getUnusedDocumentTargetProfileKeys,
+    setActiveDocumentFormat: setActiveDocumentTarget,
+    addDocumentFormat: addDocumentTarget,
+    updateActiveDocumentFormatLabel: updateActiveDocumentTargetLabel,
+    updateActiveDocumentFormatProfile: updateActiveDocumentTargetProfile,
+    removeActiveDocumentFormat: removeActiveDocumentTarget,
+    buildFormatOptions
   };
 }

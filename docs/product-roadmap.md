@@ -32,56 +32,124 @@ The preferred document analogy is closer to draw.io or local Canva-style project
 
 It should not try to become a full freeform design tool first.
 
-## Document/project model — the Houdini ROP analogy
+## Current architectural guardrails
 
-The working unit in this product is a **document-project hybrid**: one `.brand-layout-ops.json` file that carries authored layout state, operator graphs, content bindings, and target-size definitions together — more like a Houdini `.hip` than a single-page InDesign document.
+Use these to keep short-term work aligned with the product shape:
 
-### Multi-size documents
+- A scene family must stay swappable. Halo, boids, phyllotaxis, and later generators should sit behind the same document, layout, and export stack.
+- The layout engine stays rigorous and document-owned. Renderer adapters and preview-only helpers must not become the canonical home for layout semantics.
+- Preview code is an adapter, not the product core. If a rule must survive renderer changes, it belongs in shared types, kernels, operator outputs, or backend contracts.
+- Background graph execution should converge on one graph-shaped authority. `project.sceneFamilyGraphs` is the persisted family store; `project.backgroundGraph` is a derived live projection and should stay runtime-only in new files.
+- The authored document should keep one authoritative instance of each editable layer or operator. Selection UIs, parameter panes, and shell chrome may point at that state, but they must not create editable shadow models.
+- UI work should reduce hardcoded preview ownership over time. Prefer manifests, typed operator surfaces, and shared parameter rendering over adding more bespoke shell builders.
+- Shell-level project actions belong in authoring chrome, not buried in operator panels.
+- Export stays backend-driven. PNG, MP4, SVG, PDF, and EPS should share scene or document authority rather than each inventing their own semantics.
+- Content-format as a user-facing concept is retired. Each document carries authored state, and the operator graph remains the north star for how content, layout, and export relate.
 
-A single document can define multiple output sizes through Document Setup. This is intentional and maps directly to the Houdini ROP model:
+### Standing rules
+
+1. Keep halo stable and closed unless a concrete regression appears.
+2. Keep label orientation in adapters, not kernels.
+3. Keep mascot composition adapter-side until reuse is concrete.
+4. Visual output parity matters more than renderer parity.
+
+## Current technical drift signals
+
+These are not roadmap stages; they are current code-shape risks worth watching while execution work continues.
+
+| Signal | Severity | Detail |
+|--------|----------|--------|
+| `main.ts` at ~833 lines | Medium | The app is now mostly controllerized, but the composition root still carries DOM query helpers, overlay-visibility glue, and final bootstrap wiring. Keep extracting only where the seam becomes genuinely reusable or clarifying. |
+| `scene-family-preview.ts` at 724 lines | Medium | Graph orchestration is now on the shared runtime, which is correct. Further splitting should happen only if preview-operator wrappers or draw adapters become reusable, not as churn. |
+
+## Operator-surface north star
+
+The current multi-surface parameter shell is still an interim shape. The longer-term target is a list-first or graph-first operator view where:
+
+- the document's active operator graph is visible as a list first and a node graph later
+- selecting an operator shows only that operator's typed parameters in the parameter pane
+- document, file, playback, and export settings stay shell-level rather than posing as operator parameters
+- operator panels are driven by manifests or schemas through shared parameter rendering instead of preview-local DOM builders
+- typed graph payloads such as `PointField` stay first-order so operators can feed one another without preview-only glue
+
+This implies a gradual shift, not a rewrite: section builders move out of the composition root first, operator-owned panels stabilize second, and only then does a selected-operator pane become a composition decision instead of a structural rewrite.
+
+## Document/project model — Adobe-style variants over a Houdini core
+
+The working unit in this product is a **document-project hybrid**: one `.brand-layout-ops.json` file that carries authored layout state, operator graphs, content bindings, and format-variant definitions together. The user-facing workflow should feel closer to InDesign alternate layouts, while the internal graph and execution model still borrows heavily from Houdini.
+
+### Format variants
+
+A single document can define multiple format variants. Each variant starts from a shared size preset or from another variant, but becomes a real authored surface once the user adjusts the grid, keylines, or overlay placement for that format.
+
+This is not a pure Houdini ROP model. It is closer to Adobe alternate layouts with a Houdini-style execution layer underneath:
 
 | Houdini concept | brand-layout-ops equivalent |
 |-----------------|---------------------------|
 | `.hip` file | `.brand-layout-ops.json` document |
 | SOPs (geometry operators) | `sceneFamilyGraphs` — per-family operator graphs |
 | Display flag / current ROP | `backgroundGraph` — runtime projection of the active family |
-| Multiple ROP outputs | Multiple document target sizes |
-| Render to disk from ROPs | Export PNG / PNG sequence per target size |
+| Global preset menu | Shared document-size preset library |
+| Alternate layouts / artboards | Authored format variants inside one document |
+| Render to disk from ROPs | Output operator exports one or more authored variants |
 
-**How Document Setup persists:**
+**How format variants should persist:**
 
-1. User opens `File → Document Setup...` and adds, removes, or modifies target sizes.
-2. Those sizes live in the document's `project.targets` array (runtime state).
-3. When the user saves (`Ctrl+S` or `File → Save`), the full document including all target sizes is written to disk.
-4. If the document is **not saved**, target changes exist only in runtime memory and are lost on reload — same as unsaved edits in any file-based editor.
-5. Source defaults (`File → Source Defaults → Save Defaults`) provides a separate persistence path: the default set of sizes for **new** documents. Modifying source defaults does not retroactively change existing saved documents.
+1. User chooses a global size preset or custom size and creates a new format variant.
+2. The new variant gets an initial grid and overlay placement guess, optionally derived from another variant.
+3. Grid changes, keyline changes, and overlay repositioning then become authored state for that variant, not transient export settings.
+4. When the user saves (`Ctrl+S` or `File → Save`), the full document including all format variants is written to disk.
+5. Export presets stay separate from authoring: they describe how to render the chosen variants, not how those variants are laid out.
 
-**Benefits of multi-size per document:**
+**Auto-adjust and derivation:**
 
-- Bulk export: one document can emit `1080×1350` (Instagram), `1920×1080` (YouTube), `1080×1080` (square) sequences in a single export pass, like Houdini rendering multiple ROP outputs from the same scene.
-- The layout engine re-evaluates per target size, so responsive text wrapping and grid behavior are document-driven rather than requiring separate files per format.
-- Scene families, operator graphs, content bindings, and authored overlay objects are shared across all sizes. Only the layout evaluation differs.
+- Creating a new format variant from an existing one should carry forward a good first guess rather than starting from scratch.
+- The carryover should remap layout intent, not just raw pixels: column count, row count, keylines, and overlay anchors should adapt to the new dimensions.
+- A landscape-to-portrait switch may reduce columns or change row rhythm, but the derived variant should still preserve recognizable composition intent.
+- The result must stay easy to override. Auto-adjust is a starting point for finesse, not a locked responsive system.
+- The current compatibility-groundwork model now records `formatPresetKey` and `derivedFromFormatId` per format so preset origin and derivation can be preserved before the larger saved-file model is redesigned.
+- The working preset rule is now explicit: a global preset seeds frame size, safe area, and baseline-grid structure together; document variants then own any later safe-area or grid overrides instead of mutating the global preset itself.
+
+**Benefits of variant-driven documents:**
+
+- One campaign document can hold Instagram portrait, square, story, and landscape variants without forcing the user to rebuild each from zero.
+- Shared content, scene families, and operator graphs can stay aligned across variants while each format keeps its own grid and placement decisions.
+- Auto-adjust provides a strong starting point when deriving a new variant, reducing repetitive layout setup while keeping the final call with the designer.
+- Bulk export still works, but it exports authored variants rather than pretending every size is the same layout with a different render target.
 
 **Risks and best practices:**
 
-- **Not every project needs multiple sizes.** A single 1080×1350 document for one campaign is perfectly valid. Multi-size is opt-in via Document Setup, not the default complexity.
-- **Target sizes should stay within the same campaign intent.** A single document should not try to be a Swiss Army file for every possible brand deliverable. If the content, scene family, or operator graph would differ significantly between sizes, use separate documents.
-- **The active preview shows one size at a time.** The radio selection in Document Setup controls which target drives the live preview. Export can target all sizes or a selection.
-- **Source defaults are the template mechanism.** When a team standardizes on a set of sizes (e.g., "Ubuntu Summit 2026 social pack"), those sizes should be saved as source defaults so every `File → New` starts from that baseline. This is the equivalent of a Houdini project template.
+- **Not every project needs multiple variants.** A single 1080×1350 format for one campaign is perfectly valid. Multi-variant is opt-in, not mandatory complexity.
+- **Variants should stay within the same campaign intent.** If content, scene family, or operator graph would diverge substantially, use separate documents.
+- **The active preview shows one variant at a time.** The shell should make switching explicit, and export can render one or many variants.
+- **Global presets are seeds, not authority.** The preset library provides starting sizes; the document owns the authored variants and their per-format adjustments.
+- **Export presets belong with output.** Named export preset CRUD should move toward the future Houdini-like output operator rather than staying as shell-only modal state.
 
 ### Persistence architecture summary
 
 ```
 sceneFamilyGraphs     ← persisted, carries ALL operator graphs per family
 backgroundGraph       ← runtime-only, rebuilt from sceneFamilyGraphs[sceneFamilyKey]
-project.targets       ← persisted, the document's output size definitions
+project.targets       ← current persisted format rows; should evolve toward authored format variants
 project.sceneFamilyKey ← persisted, which family is active
 params (overlay)      ← persisted, authored text, logo, layout state
 exportSettings        ← persisted, per-profile export config
 contentFormatKey      ← internal plumbing (retired concept, no UI surface)
 ```
 
-The file on disk carries everything needed to reconstruct the full runtime state. Runtime-only projections like `backgroundGraph` are rebuilt during normalization/load — the same way Houdini rebuilds display-flag geometry from SOPs on scene open rather than caching the viewport mesh.
+The file on disk carries everything needed to reconstruct the full runtime state. Runtime-only projections like `backgroundGraph` are rebuilt during normalization/load — the same way Houdini rebuilds display-flag geometry from SOPs on scene open rather than caching the viewport mesh. The authoring model above that runtime should stay variant-first, not output-first.
+
+## Near-term design questions
+
+These are important, but they are not active execution items until explicitly promoted into `docs/TODO.md`.
+
+- Reusable size presets should live in a global library rather than hiding behind per-document CRUD or source-default writeback.
+- Global size presets should stay coupled to their default safe area and grid seed. Those defaults are the first guess, not immutable authority, so document variants must remain free to override or replace them.
+- Variant derivation and auto-adjust should carry forward a useful first guess for grid intent, keylines, and overlay anchoring when a new format is derived from another.
+- Output recipes should belong to the future output operator surface. Output should render authored variants, not define them.
+- GPU or alternate execution backends should stay opt-in and justified by profiling, not by architecture fashion.
+- `operator-spokes` should remain coarse until finer decomposition produces real reuse.
+- Paragraph-style authoring should wait for a stable operator-scoped authoring shell.
 
 ### Content-format retirement
 
@@ -159,7 +227,7 @@ Deliverables:
 - persistence for in-editor text placement, added or removed text fields, logo asset changes, and per-document output settings
 - document-owned scene-family selection plus saved background or operator graph state so the same document model can point at halo today and boids, phyllotaxis, or other background operator stacks later
 - document-owned per-node parameter state and connection data for swappable background or scene-family stacks
-- document-owned target-size groups so one document can carry multiple output destinations instead of being trapped in a single preview session
+- document-owned format-variant groups so one document can carry multiple authored formats instead of being trapped in a single preview session
 - clearer separation between authored document state and imported content sources like CSV
 
 Success criteria:
@@ -181,8 +249,9 @@ Deliverables:
 - a list-first layer or network palette that lets the document root, background operators, overlay root, and overlay child objects expose their own scoped controls, with a graphical node editor later if needed
 - the network view reads the persisted operator graph from the document model instead of introducing a second source of truth
 - dedicated shell navigation for project and export actions so file operations do not stay mixed into the operator parameter stack
+- a ROP-style output operator surface that owns named export presets and render-target policy instead of burying that state in shell-only dialogs
 - stakeholder mode for template, row, and format selection
-- document-size and template management without exposing low-level operator tuning
+- document-size selection from a global preset library shared across projects, without exposing low-level operator tuning
 - content validation and safer writeback
 - stakeholder actions that operate on document files instead of only transient browser state
 
@@ -210,7 +279,7 @@ Deliverables:
 - reusable operator libraries
 - template packages
 - scene presets
-- document-size presets and template CRUD for new branded scene families
+- global document-size presets and template CRUD for new branded scene families
 - better packaging and dependency management per project
 
 ## Product warnings
