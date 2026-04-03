@@ -3,12 +3,12 @@
   "version": 1,
   "metadata": {
     "name": "Untitled document",
-    "createdAt": "2026-04-01T21:16:45.120Z",
-    "updatedAt": "2026-04-01T21:16:45.120Z"
+    "createdAt": "2026-04-02T07:37:44.537Z",
+    "updatedAt": "2026-04-02T07:37:44.537Z"
   },
   "project": {
-    "sceneFamilyKey": "fuzzy-boids",
-    "activeTargetId": "screen_3840x2160",
+    "sceneFamilyKey": "halo",
+    "activeTargetId": "story_1080x1920",
     "targets": [
       {
         "id": "landscape_1280x720",
@@ -31,125 +31,134 @@
         "outputProfileKey": "screen_3840x2160"
       }
     ],
-    "sceneFamilyConfigs": {
-      "phyllotaxis": {
-        "numPoints": 720,
-        "radiusPx": 2203,
-        "radiusFalloff": 0.68,
-        "angleOffsetDeg": -168.8,
-        "animationEnabled": false,
-        "animationSpeedDegPerSecond": 14
+    "sceneFamilyGraphs": {
+      "halo": {
+        "activeNodeId": "background-halo",
+        "nodes": [
+          {
+            "id": "background-halo",
+            "operatorKey": "background.halo",
+            "params": {}
+          }
+        ],
+        "edges": []
       },
-      "fuzzyBoids": {
-        "numBoids": 500,
-        "seed": 1,
-        "subSteps": 2,
-        "spawnRadiusPx": 78,
-        "staggerStartSeconds": 9,
-        "initialSpeed": 1,
-        "initialSpeedJitter": 0.001,
-        "massMin": 2,
-        "massMax": 0.66,
-        "pscaleMin": 0.1,
-        "pscaleMax": 0.2,
-        "maxNeighbors": 14,
-        "separationMinDist": 0,
-        "separationMaxDist": 0.9,
-        "separationMaxStrength": 0.24,
-        "alignNearThreshold": 0.1,
-        "alignFarThreshold": 50,
-        "alignSpeedThreshold": 165,
-        "cohesionMinDist": 1.5,
-        "cohesionMaxDist": 75,
-        "cohesionMaxAccel": 2.8,
-        "attractToOrigin": false,
-        "minSpeedLimit": 0.1,
-        "maxSpeedLimit": 3,
-        "minAccelLimit": 0.01,
-        "maxAccelLimit": 3,
-        "dotSizePx": 9.75,
-        "boundsKind": "box",
-        "boundsRadiusPx": 353,
-        "boundsMarginPx": 69,
-        "boundsForcePxPerSecond2": 1000
+      "phyllotaxis": {
+        "activeNodeId": "background-phyllotaxis",
+        "nodes": [
+          {
+            "id": "background-phyllotaxis",
+            "operatorKey": "operator.phyllotaxis",
+            "params": {
+              "numPoints": 720,
+              "radiusPx": 2203,
+              "radiusFalloff": 0.68,
+              "angleOffsetDeg": -168.8,
+              "animationEnabled": false,
+              "animationSpeedDegPerSecond": 14
+            }
+          }
+        ],
+        "edges": []
+      },
+      "fuzzy-boids": {
+        "activeNodeId": "background-fuzzy-boids",
+        "nodes": [
+          {
+            "id": "background-fuzzy-seed",
+            "operatorKey": "operator.phyllotaxis",
+            "params": {
+              "numPoints": 500,
+              "radiusPx": 2203,
+              "radiusFalloff": 0.68,
+              "angleOffsetDeg": 0,
+              "animationEnabled": true,
+              "animationSpeedDegPerSecond": 8
+            }
+          },
+          {
+            "id": "background-fuzzy-boids",
+            "operatorKey": "operator.fuzzy-boids",
+            "params": {
+              "numBoids": 500,
+              "seed": 1,
+              "subSteps": 2,
+              "spawnRadiusPx": 78,
+              "staggerStartSeconds": 9,
+              "initialSpeed": 1,
+              "initialSpeedJitter": 0.001,
+              "massMin": 2,
+              "massMax": 0.66,
+              "pscaleMin": 0.1,
+              "pscaleMax": 0.2,
+              "maxNeighbors": 14,
+              "separationMinDist": 0,
+              "separationMaxDist": 0.9,
+              "separationMaxStrength": 0.24,
+              "alignNearThreshold": 0.1,
+              "alignFarThreshold": 50,
+              "alignSpeedThreshold": 165,
+              "cohesionMinDist": 1.5,
+              "cohesionMaxDist": 75,
+              "cohesionMaxAccel": 2.8,
+              "attractToOrigin": false,
+              "minSpeedLimit": 0.1,
+              "maxSpeedLimit": 3,
+              "minAccelLimit": 0.01,
+              "maxAccelLimit": 3,
+              "dotSizePx": 5.25,
+              "boundsKind": "box",
+              "boundsRadiusPx": 353,
+              "boundsMarginPx": 69,
+              "boundsForcePxPerSecond2": 1000
+            }
+          }
+        ],
+        "edges": [
+          {
+            "fromNodeId": "background-fuzzy-seed",
+            "fromPortKey": "pointField",
+            "toNodeId": "background-fuzzy-boids",
+            "toPortKey": "seedField"
+          }
+        ]
       },
       "scatter": {
-        "pointCount": 420,
-        "seed": 1,
-        "distributionMode": "uniform",
-        "marginPx": 16,
-        "shapeKind": "rounded-rect",
-        "widthPx": 3840,
-        "heightPx": 2160,
-        "cornerRadiusPx": 64,
-        "svgPath": "M -220 0 L -120 -150 L 120 -150 L 220 0 L 120 150 L -120 150 Z"
+        "activeNodeId": "background-scatter",
+        "nodes": [
+          {
+            "id": "background-scatter",
+            "operatorKey": "operator.scatter",
+            "params": {
+              "pointCount": 420,
+              "seed": 1,
+              "distributionMode": "uniform",
+              "marginPx": 16,
+              "shapeKind": "rounded-rect",
+              "widthPx": 3840,
+              "heightPx": 2160,
+              "cornerRadiusPx": 64,
+              "svgPath": "M -220 0 L -120 -150 L 120 -150 L 220 0 L 120 150 L -120 150 Z"
+            }
+          }
+        ],
+        "edges": []
       }
     },
     "backgroundGraph": {
-      "activeNodeId": "background-fuzzy-boids",
+      "activeNodeId": "background-halo",
       "nodes": [
         {
-          "id": "background-fuzzy-seed",
-          "operatorKey": "operator.phyllotaxis",
-          "params": {
-            "numPoints": 50,
-            "radiusPx": 735,
-            "radiusFalloff": 0.68,
-            "angleOffsetDeg": 0,
-            "animationEnabled": true,
-            "animationSpeedDegPerSecond": 8
-          }
-        },
-        {
-          "id": "background-fuzzy-boids",
-          "operatorKey": "operator.fuzzy-boids",
-          "params": {
-            "numBoids": 500,
-            "seed": 1,
-            "subSteps": 2,
-            "spawnRadiusPx": 78,
-            "staggerStartSeconds": 9,
-            "initialSpeed": 1,
-            "initialSpeedJitter": 0.001,
-            "massMin": 2,
-            "massMax": 0.66,
-            "pscaleMin": 0.1,
-            "pscaleMax": 0.2,
-            "maxNeighbors": 14,
-            "separationMinDist": 0,
-            "separationMaxDist": 0.9,
-            "separationMaxStrength": 0.24,
-            "alignNearThreshold": 0.1,
-            "alignFarThreshold": 50,
-            "alignSpeedThreshold": 165,
-            "cohesionMinDist": 1.5,
-            "cohesionMaxDist": 75,
-            "cohesionMaxAccel": 2.8,
-            "attractToOrigin": false,
-            "minSpeedLimit": 0.1,
-            "maxSpeedLimit": 3,
-            "minAccelLimit": 0.01,
-            "maxAccelLimit": 3,
-            "dotSizePx": 5.25,
-            "boundsKind": "box",
-            "boundsRadiusPx": 353,
-            "boundsMarginPx": 69,
-            "boundsForcePxPerSecond2": 1000
-          }
+          "id": "background-halo",
+          "operatorKey": "background.halo",
+          "params": {}
         }
       ],
-      "edges": [
-        {
-          "fromNodeId": "background-fuzzy-seed",
-          "fromPortKey": "pointField",
-          "toNodeId": "background-fuzzy-boids",
-          "toPortKey": "seedField"
-        }
-      ]
+      "edges": []
     }
   },
   "state": {
-    "outputProfileKey": "screen_3840x2160",
+    "outputProfileKey": "story_1080x1920",
     "contentFormatKey": "generic_social",
     "profileFormatBuckets": {
       "story_1080x1920": {
@@ -1017,7 +1026,7 @@
     },
     "exportSettings": {
       "exportName": "UbuntuSummit2026",
-      "frameRate": 24,
+      "frameRate": 30,
       "transparentBackground": false
     },
     "exportSettingsByProfile": {
@@ -1071,10 +1080,10 @@
         "nose_bob_up_px": 1.5
       },
       "composition": {
-        "center_x_px": 1920,
-        "center_y_px": 1162,
-        "center_offset_y_px": 82,
-        "scale": 1,
+        "center_x_px": 540,
+        "center_y_px": 804,
+        "center_offset_y_px": -156,
+        "scale": 0.75,
         "radial_scale": 1,
         "global_rotation_deg": 0,
         "background_color": "#202020"
@@ -1129,8 +1138,8 @@
         "color": "#ffffff",
         "echo_color": "#444444",
         "width_px": 3,
-        "echo_marker_stroke_px": 2.2,
-        "echo_marker_scale_mult": 1.5,
+        "echo_marker_stroke_px": 3.5,
+        "echo_marker_scale_mult": 2.5,
         "echo_sparse_scale_boost": 0.5,
         "phase_start_width_px": 8,
         "phase_end_width_px": 4,
@@ -1168,8 +1177,8 @@
       "vignette": {
         "enabled": true,
         "shape_fade": 1,
-        "shape_fade_start": 0.3,
-        "shape_fade_end": 0.85
+        "shape_fade_start": 0.23,
+        "shape_fade_end": 0.79
       }
     },
     "haloConfigByProfile": {
@@ -1260,8 +1269,8 @@
           "color": "#ffffff",
           "echo_color": "#444444",
           "width_px": 3,
-          "echo_marker_stroke_px": 2.2,
-          "echo_marker_scale_mult": 1.5,
+          "echo_marker_stroke_px": 3.5,
+          "echo_marker_scale_mult": 2.5,
           "echo_sparse_scale_boost": 0.5,
           "phase_start_width_px": 8,
           "phase_end_width_px": 4,
@@ -1650,8 +1659,8 @@
           "color": "#ffffff",
           "echo_color": "#444444",
           "width_px": 3,
-          "echo_marker_stroke_px": 2.2,
-          "echo_marker_scale_mult": 1.5,
+          "echo_marker_stroke_px": 2.5,
+          "echo_marker_scale_mult": 4.4,
           "echo_sparse_scale_boost": 0.5,
           "phase_start_width_px": 8,
           "phase_end_width_px": 4,
@@ -1694,6 +1703,6 @@
         }
       }
     },
-    "guideMode": "composition"
+    "guideMode": "off"
   }
 }
