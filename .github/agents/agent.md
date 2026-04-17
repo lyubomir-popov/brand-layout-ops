@@ -1,5 +1,5 @@
 ---
-description: "Use when continuing work in the brand-layout-ops repo. Read the root AGENTS.md and canonical docs first, then resume parity, document-model, or authoring-shell work without duplicating status tracking."
+description: "Use when continuing work in the brand-layout-ops repo. Read the repo-wide instructions and canonical docs first, then resume parity, document-model, or authoring-shell work without duplicating status tracking."
 ---
 
 # Brand Layout Ops Agent
@@ -8,27 +8,28 @@ Use this agent when continuing work in `c:\Users\lyubo\work\repos\brand-layout-o
 
 ## First read
 
-1. `AGENTS.md`
-2. `llm-handoff-context.md`
-3. `docs/TODO.md`
-4. `docs/product-roadmap.md`
-5. `README.md`
+1. `.github/copilot-instructions.md`
+2. `STATUS.md`
+3. `TODO.md`
+4. `ROADMAP.md`
+5. `docs/specs.md`
+6. `README.md`
 
 ## Canonical discipline
 
-- Treat the root `AGENTS.md` as the source of truth for workflow rules and documentation boundaries.
-- Keep status in exactly five files: `llm-handoff-context.md`, `docs/TODO.md`, `docs/product-roadmap.md`, `docs/history.md`, and `docs/AGENT-INBOX.md`.
+- Treat `.github/copilot-instructions.md` as the source of truth for workflow rules and documentation boundaries.
+- Keep status in the canonical workflow files: `STATUS.md`, `TODO.md`, `ROADMAP.md`, `HISTORY.md`, and `INBOX.md`.
 - Do not create parallel TODO, handoff, or status files.
-- Update `llm-handoff-context.md` when the current state changes.
-- Update `docs/TODO.md` when architecture, parity gaps, active tasks, or deviation-log entries change.
-- Move completed items to `docs/history.md`.
-- Update `docs/product-roadmap.md` only when long-term direction changes.
-- Check and drain `docs/AGENT-INBOX.md` at session start.
+- Update `STATUS.md` when the current state changes.
+- Update `TODO.md` when architecture, parity gaps, active tasks, or deviation-log entries change.
+- Move completed items to `HISTORY.md`.
+- Update `ROADMAP.md` only when long-term direction changes.
+- Check and drain `INBOX.md` at session start.
 - If work departs from the listed order, record why in the TODO deviation log.
 
 ## Working stance
 
-- Follow the active queue in `docs/TODO.md`.
+- Follow the active queue in `TODO.md`.
 - Keep parity first. Only widen abstractions when they reduce drift or support the emerging layer-stack and authoring-shell direction.
 - Keep layout semantics out of preview adapters and Three.js.
 - Treat `baseline-foundry` as read-only from this repo unless shared shell or style work clearly belongs upstream.

@@ -1,10 +1,10 @@
 # LLM Handoff Context
 
 > Read this first in a new chat.
-> Active plan and sequencing live in `docs/TODO.md`.
-> Completed work archive lives in `docs/history.md`.
-> Long-term direction lives in `docs/product-roadmap.md`.
-> Agent workflow rules live in `AGENTS.md`.
+> Active plan and sequencing live in `TODO.md`.
+> Completed work archive lives in `HISTORY.md`.
+> Long-term direction lives in `ROADMAP.md`.
+> Agent workflow rules live in `.github/copilot-instructions.md`.
 
 ## Repo boundary
 
@@ -55,7 +55,7 @@ Lane P is active.
 - Lane O is paused after O1-O3, with zoom and pan work deferred until there is a concrete need.
 - Lane P is active: P1-P3 are landed and P4 has started. P4b now defines the built-in preset contract as one seed package for frame, safe area, and grid, and P4d now uses that metadata during first-time variant seeding while document buckets stay authoritative for later overrides. The next pass should keep extending that split between global size presets, document-owned format variants, and future output recipes while preserving the existing saved-file shape until the larger schema redesign is settled.
 - Future format work should follow the new hybrid rule: global presets seed authored format variants, variant derivation should carry a useful first-guess layout across dimensions, and export presets belong on the future output operator.
-- Content-format as a user-facing concept is retired. The document authoring model replaces it, with Adobe-like format variants on top of the Houdini-like operator core. See `docs/product-roadmap.md` → "Document/project model — Adobe-style variants over a Houdini core" for the full synthesis.
+- Content-format as a user-facing concept is retired. The document authoring model replaces it, with Adobe-like format variants on top of the Houdini-like operator core. See `ROADMAP.md` → "Document/project model — Adobe-style variants over a Houdini core" for the full synthesis.
 
 ## Invariants that still matter
 
@@ -84,4 +84,4 @@ Lane P is active.
 
 ## Fresh chat prompt
 
-Continue work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\lyubo\work\repos\racoon-anim` as the read-only reference app. Read `AGENTS.md`, `llm-handoff-context.md`, `docs/TODO.md`, `docs/product-roadmap.md`, and `README.md` first. Treat `docs/TODO.md` as the canonical active queue. Stage 1 parity, the selected-operator pane, the baseline-foundry shell cleanup, the preset-residue cleanup, the graph-first family-persistence migration, Lane J1-J5, and Lane K1-K3 are complete. The current baseline is a `bf-top-navigation` action shell plus a dedicated Layers palette and a layer-following Parameters rail, with persisted documents now storing `sceneFamilyGraphs` without serializing `backgroundGraph`. Lane P is now the active follow-up lane: make the live shell and controller behavior read as authored formats or variants instead of output-only targets, starting with the existing compatible `project.targets` persistence shape.
+Continue work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\lyubo\work\repos\racoon-anim` as the read-only reference app. Read `.github/copilot-instructions.md`, `.github/agents/agent.md`, `STATUS.md`, `TODO.md`, `ROADMAP.md`, `docs/specs.md`, and `README.md` first. Treat `TODO.md` as the canonical active queue. Stage 1 parity, the selected-operator pane, the baseline-foundry shell cleanup, the preset-residue cleanup, the graph-first family-persistence migration, Lane J1-J5, and Lane K1-K3 are complete. The current baseline is a `bf-top-navigation` action shell plus a dedicated Layers palette and a layer-following Parameters rail, with persisted documents now storing `sceneFamilyGraphs` without serializing `backgroundGraph`. Lane P is now the active follow-up lane: make the live shell and controller behavior read as authored formats or variants instead of output-only targets, starting with the existing compatible `project.targets` persistence shape.

@@ -142,7 +142,7 @@ The file on disk carries everything needed to reconstruct the full runtime state
 
 ## Near-term design questions
 
-These are important, but they are not active execution items until explicitly promoted into `docs/TODO.md`.
+These are important, but they are not active execution items until explicitly promoted into `TODO.md`.
 
 - Reusable size presets should live in a global library rather than hiding behind per-document CRUD or source-default writeback.
 - Global size presets should stay coupled to their default safe area and grid seed. Those defaults are the first guess, not immutable authority, so document variants must remain free to override or replace them.

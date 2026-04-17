@@ -33,16 +33,17 @@ The long-term rule is simple:
 
 If you are resuming work in a fresh chat, read this first:
 
-1. `llm-handoff-context.md` — cold-start handoff with current state
+1. `STATUS.md` — cold-start handoff with current state
 
 For deeper context:
 
-2. `docs/TODO.md` — architecture, parity audit, active tasks
-3. `docs/product-roadmap.md` — long-term vision
-4. `docs/history.md` — completed work archive
-5. `docs/AGENT-INBOX.md` — async user notes (agent drains on session start)
+2. `TODO.md` — architecture, parity audit, active tasks
+3. `ROADMAP.md` — long-term vision
+4. `HISTORY.md` — completed work archive
+5. `INBOX.md` — async user notes (agent drains on session start)
+6. `docs/specs.md` — linked specs and external reference paths
 
-Agent behavior rules are in `AGENTS.md` (auto-loaded by Copilot).
+Agent behavior rules are in `.github/copilot-instructions.md`.
 
 If the task is parity-related, inspect these comparison sources next:
 
@@ -104,7 +105,7 @@ npm run demo:spokes
 
 ## Live Status
 
-Current implementation state intentionally lives in `llm-handoff-context.md` and `docs/TODO.md`, not in the README. Use the handoff file for the cold-start snapshot and the TODO for the active execution queue.
+Current implementation state intentionally lives in `STATUS.md` and `TODO.md`, not in the README. Use the status file for the cold-start snapshot and the TODO for the active execution queue.
 
 ## Later additions
 
@@ -119,28 +120,30 @@ See `docs/architecture.md` and `docs/future-backends.md`.
 
 ## Documentation & Agent Workflow
 
-This repo uses a 5-file documentation system designed for AI-assisted development. The rules are codified in `AGENTS.md` (auto-loaded by GitHub Copilot agents).
+This repo uses a standardized root-file workflow designed for AI-assisted development. The rules are codified in `.github/copilot-instructions.md`.
 
-### The 5 canonical files
+### Canonical workflow files
 
 | File | Purpose | When to update |
 |------|---------|----------------|
-| `docs/AGENT-INBOX.md` | Inbox — user drops async notes | Agent drains at session start |
-| `llm-handoff-context.md` | Cold-start handoff for a new chat | Every session |
-| `docs/TODO.md` | Active plan, architecture, parity audit | When tasks/gaps change |
-| `docs/product-roadmap.md` | Long-term 5-stage vision | Rarely |
-| `docs/history.md` | Completed work archive | When tasks complete |
+| `INBOX.md` | Inbox — user drops async notes | Agent drains at session start |
+| `STATUS.md` | Cold-start handoff for a new chat | Every session |
+| `TODO.md` | Active plan, architecture, parity audit | When tasks/gaps change |
+| `ROADMAP.md` | Long-term 5-stage vision | Rarely |
+| `HISTORY.md` | Completed work archive | When tasks complete |
+| `docs/specs.md` | Linked specs and external reference paths | When source paths change |
 
 ### Recommended workflow
 
-1. **Start a new chat** → read `llm-handoff-context.md`, drain `docs/AGENT-INBOX.md`, read `docs/TODO.md`.
+1. **Start a new chat** → read `STATUS.md`, drain `INBOX.md`, read `TODO.md`.
 2. **During work** → make code changes, run `npm run typecheck` to verify.
-3. **After completing a task** → update `docs/TODO.md` (mark done), move completed items to `docs/history.md`, update `llm-handoff-context.md` if current state changed.
+3. **After completing a task** → update `TODO.md` (mark done), move completed items to `HISTORY.md`, update `STATUS.md` if current state changed.
 4. **Commit** with area prefix: `halo: add fold seam alpha`, `ui: accordion sections`, `docs: update sprint TODO`.
-5. **End of session** → verify `llm-handoff-context.md` reflects where you stopped. Ensure inbox is empty.
+5. **End of session** → verify `STATUS.md` reflects where you stopped. Ensure inbox is empty.
 
 ### Copying to another project
 
-1. Copy `AGENTS.md` to the new repo root.
-2. Create `llm-handoff-context.md`, `docs/TODO.md`, `docs/product-roadmap.md`, `docs/history.md`, `docs/AGENT-INBOX.md`.
-3. Delete any other TODO/status/handoff files. Five is the maximum.
+1. Create `.github/copilot-instructions.md` in the repo.
+2. Optionally create `.github/agents/agent.md` for repo-specific resume guidance.
+3. Create `README.md`, `ROADMAP.md`, `TODO.md`, `INBOX.md`, `STATUS.md`, `HISTORY.md`, and `docs/specs.md`.
+4. Delete any other TODO/status/handoff files. These canonical files are the maximum.

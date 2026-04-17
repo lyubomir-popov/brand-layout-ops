@@ -1,6 +1,10 @@
 # History — Completed Work
 
-Items moved here from `docs/TODO.md` to keep the active backlog lean.
+Items moved here from `TODO.md` to keep the active backlog lean.
+
+## Short-term
+
+## Long-term
 
 ## Lane P1–P2 — formats shell terminology + preset activation (2026-04-03)
 

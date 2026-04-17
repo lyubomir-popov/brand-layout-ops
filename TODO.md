@@ -17,8 +17,8 @@ Reference source repo:
 ## Working Rules
 
 - This file is the active source of truth for sequencing and status.
-- Keep this file operational and short-term. Product shape, architecture, north stars, and open design questions belong in `docs/product-roadmap.md`.
-- Completed work belongs in `docs/history.md`, not in the active queue.
+- Keep this file operational and short-term. Product shape, architecture, north stars, and open design questions belong in `ROADMAP.md`.
+- Completed work belongs in `HISTORY.md`, not in the active queue.
 - If priorities change mid-lane, record the new lane here and move displaced long-term thinking back to the roadmap instead of letting TODO turn into a second strategy document.
 
 ## Active Execution Queue
