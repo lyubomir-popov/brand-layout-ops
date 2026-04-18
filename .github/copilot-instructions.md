@@ -10,11 +10,12 @@
 | `ROADMAP.md` | **Long-term.** Stages, parity inventory, future directions. | Agent updates rarely |
 | `TODO.md` | **Active plan.** Architecture, parity audit, short-term tasks. | Agent updates every session |
 | `INBOX.md` | **Inbox.** User drops notes to avoid interrupting agent. | User writes, agent drains |
+| `AGENT-INBOX.md` | **Agent inbox.** Long machine-generated handoffs, cross-repo notes, and diagnostics awaiting triage. | Agents / automation write, agent drains |
 | `STATUS.md` | **Cold start.** Repo orientation, current state, key files, critical invariants. | Agent updates when state changes |
 | `HISTORY.md` | **Archive.** Completed work log. | Agent appends when tasks complete |
 | `docs/specs.md` | **Specs.** Concrete linked spec paths and summary. | Agent updates when source paths change |
 
-**No other files should carry TODO lists or duplicated status.** Session-scoped scratch (Copilot `/memories/session/`) is fine for in-progress notes but must not become a parallel tracking system.
+**No other files should carry TODO lists or duplicated status.** `AGENT-INBOX.md` is the only allowed repo-level overflow channel for machine-to-machine notes, and it must not become a second `TODO.md` or `STATUS.md`. Session-scoped scratch (Copilot `/memories/session/`) is fine for in-progress notes but must not become a parallel tracking system.
 
 ## Source-of-truth precedence
 
@@ -26,7 +27,8 @@ When sources disagree, use this order unless a higher-priority source explicitly
 4. `STATUS.md` and `HISTORY.md`
 5. `README.md` and `docs/specs.md`
 6. `INBOX.md`
-7. Local implementation details that are not clearly intentional or documented
+7. `AGENT-INBOX.md`
+8. Local implementation details that are not clearly intentional or documented
 
 Do not rewrite higher-priority docs to match lower-priority implementation drift.
 
@@ -45,11 +47,11 @@ Do not rewrite higher-priority docs to match lower-priority implementation drift
 
 ### The inbox pattern
 
-`INBOX.md` is the user's write-only channel. At session start, the agent must:
+`INBOX.md` is the user write-only channel. `AGENT-INBOX.md` is the machine-generated handoff channel for long agent notes, automation diagnostics that need triage, and cross-repo follow-ups. At session start, the agent must:
 
-1. Read the inbox.
-2. Triage each item into `TODO.md` (near-term) or `ROADMAP.md` (longer-term).
-3. Empty the file back to its header template.
+1. Read `INBOX.md` and triage each item into `TODO.md` (near-term) or `ROADMAP.md` (longer-term).
+2. Read `AGENT-INBOX.md` and triage durable facts into `TODO.md`, `ROADMAP.md`, `STATUS.md`, `HISTORY.md`, or `docs/specs.md`.
+3. Empty both files back to their header templates.
 
 This lets the user drop thoughts asynchronously without derailing agent work.
 
@@ -62,6 +64,8 @@ This lets the user drop thoughts asynchronously without derailing agent work.
 | "What does the product become long-term?" | `ROADMAP.md` |
 | "What concrete linked specs govern this repo?" | `docs/specs.md` |
 | "What's been done?" | `HISTORY.md` |
+| Async user notes | `INBOX.md` |
+| Agent-generated handoffs or long machine notes | `AGENT-INBOX.md` |
 | "Quick scratch notes for this session only" | `/memories/session/` (Copilot memory) |
 | "Key file paths and resume pointers" | `/memories/repo/` (Copilot memory) |
 
@@ -70,9 +74,10 @@ This lets the user drop thoughts asynchronously without derailing agent work.
 ### Session start
 
 1. Read `STATUS.md` for orientation.
-2. Check `INBOX.md` — triage items into plan or roadmap, then empty it.
-3. Read `TODO.md` for current tasks.
-4. Read `docs/specs.md` before changing external-spec-governed behavior.
+2. Check `INBOX.md` — triage user items into plan or roadmap, then empty it.
+3. Check `AGENT-INBOX.md` — triage machine notes into canonical files, then empty it.
+4. Read `TODO.md` for current tasks.
+5. Read `docs/specs.md` before changing external-spec-governed behavior.
 
 ### During work
 
@@ -84,7 +89,14 @@ This lets the user drop thoughts asynchronously without derailing agent work.
 1. Update `STATUS.md` if the current-state paragraph is stale.
 2. Update `TODO.md` with any new tasks that emerged.
 3. Ensure `INBOX.md` is empty.
-4. **Do not** create new markdown files to document changes unless explicitly requested.
+4. Ensure `AGENT-INBOX.md` is empty.
+5. **Do not** create new markdown files to document changes unless explicitly requested.
+
+## Agent environment rules
+
+- Use foreground VS Code integrated terminals the user can monitor — not background processes or external terminal windows.
+- Prefer reusing a small number of visible terminals instead of spawning dozens of throwaway shells for small checks.
+- Keep track of the terminals you start and close any that hang, time out, or are no longer needed before finishing the task.
 
 ## Commit message discipline
 
@@ -101,6 +113,15 @@ In that mode:
 3. Re-read `TODO.md` after major chunks and periodically re-audit alignment.
 4. Update the canonical docs as work lands so the next chat can continue cold.
 5. Do not stop just to ask whether to continue unless the next best move is genuinely unclear or risky.
+
+## Cross-repo coordination
+
+When work in one repo creates a dependency or follow-up in another:
+
+1. Drop a machine-generated note in the **target repo's** `AGENT-INBOX.md` describing what changed and what the target repo needs to do. Reserve `INBOX.md` for user-authored notes.
+2. Do not attempt the cross-repo change in the same session unless the user explicitly redirects there.
+3. Use one agent per repo for feature work. Use one agent across repos only for mirroring convention changes or small coordinated edits.
+4. For larger features, prefer sequential single-repo sessions with inbox handoffs over one agent trying to hold multi-repo context.
 
 ## Repo boundary
 
@@ -119,9 +140,9 @@ In that mode:
 
 1. Create `.github/copilot-instructions.md` in the repo.
 2. Optionally create `.github/agents/agent.md` for repo-specific resume guidance.
-3. Create `README.md`, `ROADMAP.md`, `TODO.md`, `INBOX.md`, `STATUS.md`, and `HISTORY.md` at the repo root.
+3. Create `README.md`, `ROADMAP.md`, `TODO.md`, `INBOX.md`, `AGENT-INBOX.md`, `STATUS.md`, and `HISTORY.md` at the repo root.
 4. Create `docs/specs.md`.
-5. Delete any other TODO/status/handoff files. One inbox + one cold-start + one plan + one roadmap + one archive is the maximum.
+5. Delete any other TODO/status/handoff files. One user inbox + one agent inbox + one cold-start + one plan + one roadmap + one archive is the maximum.
 
 ## Agent file roles
 
