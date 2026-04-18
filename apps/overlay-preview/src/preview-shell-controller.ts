@@ -7,6 +7,7 @@ import {
 import {
   OVERLAY_FORMAT_PRESET_ORDER,
   getOverlayFormatPresetDefinition,
+  getOverlayFormatSeedSummary,
   getOverlayFormatSafeAreaFrame
 } from "@brand-layout-ops/operator-overlay-layout";
 
@@ -433,7 +434,7 @@ export function createPreviewShellController(
       safeAreaCell.append(safeAreaMeta);
 
       const gridCell = document.createElement("td");
-      gridCell.textContent = `${preset.grid.columnCount}c x ${preset.grid.rowCount}r / ${preset.grid.baselineStepPx}px baseline / gutters c${preset.grid.columnGutterBaselines} r${preset.grid.rowGutterBaselines}`;
+      gridCell.textContent = getOverlayFormatSeedSummary(preset);
       const gridMeta = document.createElement("div");
       gridMeta.className = "bf-form-help bf-u-no-margin--bottom";
       gridMeta.textContent = preset.grid.fitWithinSafeArea === false
