@@ -2,7 +2,7 @@
  * csv-draft-controller.ts — CSV draft staging, committing, and flushing.
  *
  * Manages the per-bucket CSV draft staging workflow: edits are staged per
- * (profileKey, formatKey) bucket, committed across profile-format buckets
+ * (documentFormatId, formatKey) bucket, committed across document-format buckets
  * on flush, and written to the dev-server authoring endpoint.
  */
 
@@ -11,7 +11,6 @@ import {
   normalizeOverlayParamsForEditing,
   type OverlayLayoutOperatorParams
 } from "@brand-layout-ops/operator-overlay-layout";
-import { OUTPUT_PROFILES } from "@brand-layout-ops/core-types";
 import { cloneOverlayParams } from "./sample-document.js";
 import type { PreviewState } from "./preview-app-context.js";
 
@@ -23,20 +22,20 @@ const CSV_AUTHORING_ENDPOINT = "/__authoring/overlay-csv";
 
 export interface CsvDraftControllerDeps {
   readonly state: PreviewState;
-  getProfileFormatBucket(profileKey: string): Record<string, OverlayLayoutOperatorParams>;
-  getOrCreateProfileFormatParams(profileKey: string, formatKey: string): OverlayLayoutOperatorParams;
+  getDocumentFormatBucket(formatId: string): Record<string, OverlayLayoutOperatorParams>;
+  getOrCreateDocumentFormatParams(formatId: string, formatKey: string): OverlayLayoutOperatorParams;
   markDocumentDirty(): void;
 }
 
 // ——— Controller ———
 
 export interface CsvDraftController {
-  getCsvDraftBucketKey(profileKey?: string, formatKey?: string): string;
-  getStagedCsvDraft(profileKey?: string, formatKey?: string): string | null;
-  setStagedCsvDraft(draft: string | null, profileKey?: string, formatKey?: string): void;
+  getCsvDraftBucketKey(formatId?: string, formatKey?: string): string;
+  getStagedCsvDraft(formatId?: string, formatKey?: string): string | null;
+  setStagedCsvDraft(draft: string | null, formatId?: string, formatKey?: string): void;
   hasStagedCsvDraft(): boolean;
-  commitCsvDraftToProfileFormat(profileKey: string, formatKey: string, draft: string): void;
-  syncCsvDraftAcrossFormatBuckets(formatKey: string, draft: string): void;
+  commitCsvDraftToDocumentFormat(formatId: string, formatKey: string, draft: string): void;
+  syncCsvDraftAcrossDocumentFormatBuckets(formatKey: string, draft: string): void;
   flushPendingCsvDrafts(): Promise<string[]>;
   applyStagedCsvDraft(): void;
   discardStagedCsvDraft(): void;
@@ -50,18 +49,22 @@ export function createCsvDraftController(deps: CsvDraftControllerDeps): CsvDraft
     return normalizeOverlayParamsForEditing(params);
   }
 
+  function getActiveDocumentFormatId(): string {
+    return state.documentProject.activeTargetId;
+  }
+
   function getCsvDraftBucketKey(
-    profileKey: string = state.outputProfileKey,
+    formatId: string = getActiveDocumentFormatId(),
     formatKey: string = state.contentFormatKey
   ): string {
-    return `${profileKey}::${formatKey}`;
+    return `${formatId}::${formatKey}`;
   }
 
   function getStagedCsvDraft(
-    profileKey: string = state.outputProfileKey,
+    formatId: string = getActiveDocumentFormatId(),
     formatKey: string = state.contentFormatKey
   ): string | null {
-    const bucketKey = getCsvDraftBucketKey(profileKey, formatKey);
+    const bucketKey = getCsvDraftBucketKey(formatId, formatKey);
     return Object.prototype.hasOwnProperty.call(state.pendingCsvDraftsByBucket, bucketKey)
       ? state.pendingCsvDraftsByBucket[bucketKey]
       : null;
@@ -69,10 +72,10 @@ export function createCsvDraftController(deps: CsvDraftControllerDeps): CsvDraft
 
   function setStagedCsvDraft(
     draft: string | null,
-    profileKey: string = state.outputProfileKey,
+    formatId: string = getActiveDocumentFormatId(),
     formatKey: string = state.contentFormatKey
   ): void {
-    const bucketKey = getCsvDraftBucketKey(profileKey, formatKey);
+    const bucketKey = getCsvDraftBucketKey(formatId, formatKey);
     if (draft === null) {
       delete state.pendingCsvDraftsByBucket[bucketKey];
       return;
@@ -80,13 +83,22 @@ export function createCsvDraftController(deps: CsvDraftControllerDeps): CsvDraft
     state.pendingCsvDraftsByBucket[bucketKey] = draft;
   }
 
-  function parseCsvDraftBucketKey(bucketKey: string): { profileKey: string; formatKey: string } | null {
+  function resolveDocumentFormatId(rawFormatIdOrProfileKey: string): string {
+    if (state.documentProject.targets.some((target) => target.id === rawFormatIdOrProfileKey)) {
+      return rawFormatIdOrProfileKey;
+    }
+
+    return state.documentProject.targets.find((target) => target.outputProfileKey === rawFormatIdOrProfileKey)?.id
+      ?? rawFormatIdOrProfileKey;
+  }
+
+  function parseCsvDraftBucketKey(bucketKey: string): { formatId: string; formatKey: string } | null {
     const separatorIndex = bucketKey.indexOf("::");
     if (separatorIndex <= 0 || separatorIndex >= bucketKey.length - 2) {
       return null;
     }
     return {
-      profileKey: bucketKey.slice(0, separatorIndex),
+      formatId: resolveDocumentFormatId(bucketKey.slice(0, separatorIndex)),
       formatKey: bucketKey.slice(separatorIndex + 2)
     };
   }
@@ -100,24 +112,25 @@ export function createCsvDraftController(deps: CsvDraftControllerDeps): CsvDraft
     return csvPath && csvPath.length > 0 ? csvPath : null;
   }
 
-  function getProfileKeysForCsvFormat(formatKey: string): string[] {
-    const profileKeys = new Set<string>([
-      state.outputProfileKey,
-      ...Object.keys(state.profileFormatBuckets),
-      ...Object.keys(state.contentFormatKeyByProfile)
+  function getDocumentFormatIdsForCsvFormat(formatKey: string): string[] {
+    const formatIds = new Set<string>([
+      getActiveDocumentFormatId(),
+      ...state.documentProject.targets.map((target) => target.id),
+      ...Object.keys(state.documentFormatBuckets),
+      ...Object.keys(state.contentFormatKeyByDocumentFormatId)
     ]);
-    return Array.from(profileKeys).filter((profileKey) => {
-      const profileBucket = state.profileFormatBuckets[profileKey];
-      return Boolean(profileBucket?.[formatKey])
-        || (profileKey === state.outputProfileKey && state.contentFormatKey === formatKey);
+    return Array.from(formatIds).filter((formatId) => {
+      const documentFormatBucket = state.documentFormatBuckets[formatId];
+      return Boolean(documentFormatBucket?.[formatKey])
+        || (formatId === getActiveDocumentFormatId() && state.contentFormatKey === formatKey);
     });
   }
 
-  function commitCsvDraftToProfileFormat(profileKey: string, formatKey: string, draft: string): void {
-    const isActiveBucket = profileKey === state.outputProfileKey && formatKey === state.contentFormatKey;
+  function commitCsvDraftToDocumentFormat(formatId: string, formatKey: string, draft: string): void {
+    const isActiveBucket = formatId === getActiveDocumentFormatId() && formatKey === state.contentFormatKey;
     const baseParams = isActiveBucket
       ? state.params
-      : deps.getOrCreateProfileFormatParams(profileKey, formatKey);
+      : deps.getOrCreateDocumentFormatParams(formatId, formatKey);
     const nextParams = normalizeParamsTextFieldOffsets({
       ...cloneOverlayParams(baseParams),
       csvContent: {
@@ -125,15 +138,15 @@ export function createCsvDraftController(deps: CsvDraftControllerDeps): CsvDraft
         rowIndex: baseParams.csvContent?.rowIndex ?? 1
       }
     });
-    deps.getProfileFormatBucket(profileKey)[formatKey] = cloneOverlayParams(nextParams);
+    deps.getDocumentFormatBucket(formatId)[formatKey] = cloneOverlayParams(nextParams);
     if (isActiveBucket) {
       state.params = nextParams;
     }
   }
 
-  function syncCsvDraftAcrossFormatBuckets(formatKey: string, draft: string): void {
-    for (const profileKey of getProfileKeysForCsvFormat(formatKey)) {
-      commitCsvDraftToProfileFormat(profileKey, formatKey, draft);
+  function syncCsvDraftAcrossDocumentFormatBuckets(formatKey: string, draft: string): void {
+    for (const formatId of getDocumentFormatIdsForCsvFormat(formatKey)) {
+      commitCsvDraftToDocumentFormat(formatId, formatKey, draft);
     }
   }
 
@@ -152,7 +165,7 @@ export function createCsvDraftController(deps: CsvDraftControllerDeps): CsvDraft
     const batchesByPath = new Map<string, {
       csvPath: string;
       draft: string;
-      bucketInfos: Array<{ bucketKey: string; profileKey: string; formatKey: string }>;
+      bucketInfos: Array<{ bucketKey: string; formatId: string; formatKey: string }>;
     }>();
 
     for (const [bucketKey, rawDraft] of pendingEntries) {
@@ -170,8 +183,8 @@ export function createCsvDraftController(deps: CsvDraftControllerDeps): CsvDraft
       const existingBatch = batchesByPath.get(csvPath);
       if (existingBatch && existingBatch.draft !== draft) {
         const conflictingBuckets = Array.from(new Set([
-          ...existingBatch.bucketInfos.map((info) => `${OUTPUT_PROFILES[info.profileKey]?.label ?? info.profileKey} / ${info.formatKey}`),
-          `${OUTPUT_PROFILES[bucketInfo.profileKey]?.label ?? bucketInfo.profileKey} / ${bucketInfo.formatKey}`
+          ...existingBatch.bucketInfos.map((info) => `${state.documentProject.targets.find((target) => target.id === info.formatId)?.label ?? info.formatId} / ${info.formatKey}`),
+          `${state.documentProject.targets.find((target) => target.id === bucketInfo.formatId)?.label ?? bucketInfo.formatId} / ${bucketInfo.formatKey}`
         ]));
         throw new Error(
           `Conflicting staged CSV drafts target ${csvPath}. Resolve ${conflictingBuckets.join(", ")} before writing source defaults.`
@@ -205,10 +218,10 @@ export function createCsvDraftController(deps: CsvDraftControllerDeps): CsvDraft
 
       const formatKeys = new Set(batch.bucketInfos.map((info) => info.formatKey));
       for (const formatKey of formatKeys) {
-        syncCsvDraftAcrossFormatBuckets(formatKey, batch.draft);
+        syncCsvDraftAcrossDocumentFormatBuckets(formatKey, batch.draft);
       }
       for (const info of batch.bucketInfos) {
-        setStagedCsvDraft(null, info.profileKey, info.formatKey);
+        setStagedCsvDraft(null, info.formatId, info.formatKey);
       }
 
       savedPaths.push(String(payload?.path || batch.csvPath));
@@ -241,8 +254,8 @@ export function createCsvDraftController(deps: CsvDraftControllerDeps): CsvDraft
     getStagedCsvDraft,
     setStagedCsvDraft,
     hasStagedCsvDraft,
-    commitCsvDraftToProfileFormat,
-    syncCsvDraftAcrossFormatBuckets,
+    commitCsvDraftToDocumentFormat,
+    syncCsvDraftAcrossDocumentFormatBuckets,
     flushPendingCsvDrafts,
     applyStagedCsvDraft,
     discardStagedCsvDraft,

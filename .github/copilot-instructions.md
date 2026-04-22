@@ -17,6 +17,25 @@
 
 **No other files should carry TODO lists or duplicated status.** `AGENT-INBOX.md` is the only allowed repo-level overflow channel for machine-to-machine notes, and it must not become a second `TODO.md` or `STATUS.md`. Session-scoped scratch (Copilot `/memories/session/`) is fine for in-progress notes but must not become a parallel tracking system.
 
+## Instruction file scope
+
+Use the two `.github` files for different layers of guidance:
+
+- `.github/copilot-instructions.md` is the stable repo-wide contract. Put workflow rules, planning thresholds, validation expectations, precedence rules, repo boundaries, and instructions that should apply to every future session here.
+- `.github/agents/agent.md` is optional and should stay short. Put only repo-specific resume guidance here: what to read first, which code or docs matter most, and any narrow continuation hints that help a fresh agent start quickly.
+- If a detail stops being a short resume hint and becomes durable project state, move it into the canonical workflow files instead of expanding `.github/agents/agent.md`.
+
+When deciding where extra detail belongs, use this map:
+
+- Current state or cold-start notes: `STATUS.md`
+- Active tasks or architecture notes: `TODO.md`
+- Long-term direction: `ROADMAP.md`
+- Completed work: `HISTORY.md`
+- Source-of-truth references: `docs/specs.md`
+- Human-readable overview: `README.md`
+- Async user notes: `INBOX.md`
+- Agent-to-agent handoffs or long diagnostics: `AGENT-INBOX.md`
+
 ## Source-of-truth precedence
 
 When sources disagree, use this order unless a higher-priority source explicitly narrows it further:
@@ -148,6 +167,7 @@ When work in one repo creates a dependency or follow-up in another:
 
 - `.github/copilot-instructions.md` is the single repo-wide instruction file.
 - `.github/agents/agent.md` is optional and should contain only repo-specific resume or subagent guidance.
+- `.github/agents/agent.md` should not become a second `STATUS.md`, `TODO.md`, or `README.md`; when details grow beyond a short resume prompt, move them into the canonical file for that kind of information.
 - Do not duplicate the full workflow rules in both places.
 
 The key insight: every piece of status information lives in exactly one place. If you find yourself writing the same fact in two files, delete one.

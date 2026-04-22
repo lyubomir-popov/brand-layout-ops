@@ -41,7 +41,8 @@ For deeper context:
 3. `ROADMAP.md` — long-term vision
 4. `HISTORY.md` — completed work archive
 5. `INBOX.md` — async user notes (agent drains on session start)
-6. `docs/specs.md` — linked specs and external reference paths
+6. `AGENT-INBOX.md` — agent-only handoffs and diagnostics awaiting triage
+7. `docs/specs.md` — linked specs and external reference paths
 
 Agent behavior rules are in `.github/copilot-instructions.md`.
 
@@ -127,23 +128,35 @@ This repo uses a standardized root-file workflow designed for AI-assisted develo
 | File | Purpose | When to update |
 |------|---------|----------------|
 | `INBOX.md` | Inbox — user drops async notes | Agent drains at session start |
+| `AGENT-INBOX.md` | Agent inbox — machine handoffs and diagnostics | Agent drains at session start |
 | `STATUS.md` | Cold-start handoff for a new chat | Every session |
 | `TODO.md` | Active plan, architecture, parity audit | When tasks/gaps change |
 | `ROADMAP.md` | Long-term 5-stage vision | Rarely |
 | `HISTORY.md` | Completed work archive | When tasks complete |
 | `docs/specs.md` | Linked specs and external reference paths | When source paths change |
 
+`INBOX.md` is for user-authored notes. `AGENT-INBOX.md` is for machine-generated handoffs, diagnostics, and cross-repo follow-ups.
+
+### LLM efficiency notes
+
+- Pick one model per task. Switching models mid-session often forces a full context reprocess.
+- Keep permanent instructions short. Durable rules belong in `.github/copilot-instructions.md`; one-off context belongs in the active task or prompt.
+- Keep project memory in the repo, not only in chat. `STATUS.md`, `TODO.md`, `HISTORY.md`, and `docs/specs.md` are the cheap recovery path.
+- Prefer markdown, plain text, and small verified reads over giant context dumps.
+- Search iteratively, then confirm against the owning file or reference repo.
+- Checkpoint and restart freely when a session gets noisy rather than trying to drag a bloated context forward.
+
 ### Recommended workflow
 
-1. **Start a new chat** → read `STATUS.md`, drain `INBOX.md`, read `TODO.md`.
+1. **Start a new chat** → read `STATUS.md`, drain `INBOX.md`, drain `AGENT-INBOX.md`, read `TODO.md`.
 2. **During work** → make code changes, run `npm run typecheck` to verify.
 3. **After completing a task** → update `TODO.md` (mark done), move completed items to `HISTORY.md`, update `STATUS.md` if current state changed.
 4. **Commit** with area prefix: `halo: add fold seam alpha`, `ui: accordion sections`, `docs: update sprint TODO`.
-5. **End of session** → verify `STATUS.md` reflects where you stopped. Ensure inbox is empty.
+5. **End of session** → verify `STATUS.md` reflects where you stopped. Ensure `INBOX.md` and `AGENT-INBOX.md` are empty.
 
 ### Copying to another project
 
 1. Create `.github/copilot-instructions.md` in the repo.
 2. Optionally create `.github/agents/agent.md` for repo-specific resume guidance.
-3. Create `README.md`, `ROADMAP.md`, `TODO.md`, `INBOX.md`, `STATUS.md`, `HISTORY.md`, and `docs/specs.md`.
+3. Create `README.md`, `ROADMAP.md`, `TODO.md`, `INBOX.md`, `AGENT-INBOX.md`, `STATUS.md`, `HISTORY.md`, and `docs/specs.md`.
 4. Delete any other TODO/status/handoff files. These canonical files are the maximum.

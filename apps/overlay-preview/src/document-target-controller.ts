@@ -43,7 +43,10 @@ interface RemoveDocumentTargetResult {
 export interface DocumentFormatControllerDeps {
   readonly state: PreviewState;
   getFormatOptions(): HTMLElement | null;
-  switchOutputProfile(profileKey: string): void;
+  switchOutputProfile(profileKey: string, options?: { persistCurrentState?: boolean }): void;
+  persistActiveDocumentFormatBuckets(): void;
+  persistActiveExportSettings(): void;
+  persistActiveHaloConfig(): void;
   markDocumentDirty(): void;
   buildConfigEditor(): void;
   renderStage(): Promise<void>;
@@ -94,6 +97,17 @@ export function createDocumentFormatController(
     return getOverlayFormatPresetKeyForProfile(profileKey);
   }
 
+  function createDocumentFormatId(): string {
+    let nextIndex = Math.max(1, state.documentProject.targets.length + 1);
+    let nextId = `format-${nextIndex}`;
+    while (state.documentProject.targets.some((target) => target.id === nextId)) {
+      nextIndex += 1;
+      nextId = `format-${nextIndex}`;
+    }
+
+    return nextId;
+  }
+
   function getDocumentTargetFrame(target: OverlayDocumentFormat): FrameSize {
     const profile = getOutputProfile(target.outputProfileKey);
     return {
@@ -108,7 +122,7 @@ export function createDocumentFormatController(
     options?: CreateDocumentFormatOptions
   ): OverlayDocumentFormat {
     return {
-      id: profileKey,
+      id: createDocumentFormatId(),
       label: labelOverride?.trim() || getDefaultDocumentTargetLabel(profileKey),
       outputProfileKey: profileKey,
       formatPresetKey: options?.formatPresetKey ?? getDefaultDocumentFormatPresetKey(profileKey),
@@ -217,15 +231,17 @@ export function createDocumentFormatController(
     ));
   }
 
-  function pruneDocumentTargetProfileState(profileKey: string): void {
-    if (state.documentProject.targets.some((target) => target.outputProfileKey === profileKey)) {
-      return;
-    }
+  function persistActiveDocumentTargetRuntimeState(): void {
+    deps.persistActiveDocumentFormatBuckets();
+    deps.persistActiveExportSettings();
+    deps.persistActiveHaloConfig();
+  }
 
-    delete state.profileFormatBuckets[profileKey];
-    delete state.contentFormatKeyByProfile[profileKey];
-    delete state.exportSettingsByProfile[profileKey];
-    delete state.haloConfigByProfile[profileKey];
+  function pruneDocumentTargetRuntimeState(targetId: string): void {
+    delete state.documentFormatBuckets[targetId];
+    delete state.contentFormatKeyByDocumentFormatId[targetId];
+    delete state.exportSettingsByDocumentFormatId[targetId];
+    delete state.haloConfigByDocumentFormatId[targetId];
   }
 
   function setActiveDocumentTarget(targetId: string): void {
@@ -246,16 +262,18 @@ export function createDocumentFormatController(
       };
     }
 
+      if (nextTarget.id === state.documentProject.activeTargetId && nextTarget.outputProfileKey === state.outputProfileKey) {
+        return;
+      }
+
+      persistActiveDocumentTargetRuntimeState();
+
     state.documentProject = {
       ...state.documentProject,
       activeTargetId: nextTarget.id
     };
 
-    if (nextTarget.outputProfileKey !== state.outputProfileKey) {
-      deps.switchOutputProfile(nextTarget.outputProfileKey);
-    } else {
-      syncDocumentProjectToCurrentOutputProfile();
-    }
+      deps.switchOutputProfile(nextTarget.outputProfileKey, { persistCurrentState: false });
   }
 
   function resolveDocumentTargetProfileKey(widthPx: number, heightPx: number): string {
@@ -371,26 +389,24 @@ export function createDocumentFormatController(
     const oldProfileKey = activeTarget.outputProfileKey;
     const shouldResetLabel = activeTarget.label.trim() === getDefaultDocumentTargetLabel(oldProfileKey);
 
+    const nextLabel = shouldResetLabel ? getDefaultDocumentTargetLabel(nextProfileKey) : activeTarget.label;
+
     state.documentProject = {
       ...state.documentProject,
-      activeTargetId: nextProfileKey,
       targets: state.documentProject.targets.map((target) => (
         target.id === activeTarget.id
           ? {
             ...target,
-            id: nextProfileKey,
             outputProfileKey: nextProfileKey,
             formatPresetKey: getDefaultDocumentFormatPresetKey(nextProfileKey),
-            label: shouldResetLabel ? getDefaultDocumentTargetLabel(nextProfileKey) : target.label
+            label: nextLabel
           }
-          : target.derivedFromFormatId === activeTarget.id
-            ? { ...target, derivedFromFormatId: nextProfileKey }
           : target
       ))
     };
 
-    setActiveDocumentTarget(nextProfileKey);
-    pruneDocumentTargetProfileState(oldProfileKey);
+    deps.switchOutputProfile(nextProfileKey);
+    setStatus(`Updated ${nextLabel} to ${getOutputProfile(nextProfileKey).widthPx}×${getOutputProfile(nextProfileKey).heightPx}.`, "success");
   }
 
   function removeDocumentTarget(targetId: string): RemoveDocumentTargetResult {
@@ -415,7 +431,7 @@ export function createDocumentFormatController(
         ...state.documentProject,
         targets: remainingTargets
       };
-      pruneDocumentTargetProfileState(target.outputProfileKey);
+      pruneDocumentTargetRuntimeState(target.id);
       setStatus(`Removed ${target.label}.`, "success");
       return { removed: true, activeChanged: false };
     }
@@ -426,14 +442,16 @@ export function createDocumentFormatController(
       return { removed: false, activeChanged: false };
     }
 
+    persistActiveDocumentTargetRuntimeState();
+
     state.documentProject = {
       ...state.documentProject,
       activeTargetId: fallbackTarget.id,
       targets: remainingTargets
     };
 
-    deps.switchOutputProfile(fallbackTarget.outputProfileKey);
-    pruneDocumentTargetProfileState(target.outputProfileKey);
+    deps.switchOutputProfile(fallbackTarget.outputProfileKey, { persistCurrentState: false });
+    pruneDocumentTargetRuntimeState(target.id);
     setStatus(`Removed ${target.label}.`, "success");
     return { removed: true, activeChanged: true };
   }

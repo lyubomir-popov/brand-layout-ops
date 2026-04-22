@@ -4,7 +4,28 @@ description: "Use when continuing work in the brand-layout-ops repo. Read the re
 
 # Brand Layout Ops Agent
 
-Use this agent when continuing work in `c:\Users\lyubo\work\repos\brand-layout-ops`.
+Use this agent when continuing work in `brand-layout-ops`.
+
+## What belongs here
+
+- A short repo-specific resume prompt for future agents.
+- The first files to read in this repo.
+- Brief continuation hints about the most important work surfaces.
+- Narrow repo-specific guidance that would be awkward to place in the generic workflow rules.
+
+Keep this file short enough that reading it at session start is cheap.
+
+## What does not belong here
+
+- Stable workflow rules that apply repo-wide. Those belong in `.github/copilot-instructions.md`.
+- Current state, progress notes, or cold-start facts. Those belong in `STATUS.md`.
+- Active tasks, decision notes, or architecture notes. Those belong in `TODO.md`.
+- Long-term direction. That belongs in `ROADMAP.md`.
+- Source-of-truth references. Those belong in `docs/specs.md`.
+- User-facing overview text. That belongs in `README.md`.
+- Long agent handoffs or diagnostics. Those belong in `AGENT-INBOX.md`.
+
+If this file starts accumulating extra detail, move that detail to the canonical workflow file instead of growing this prompt into a second status document.
 
 ## First read
 
@@ -18,14 +39,16 @@ Use this agent when continuing work in `c:\Users\lyubo\work\repos\brand-layout-o
 ## Canonical discipline
 
 - Treat `.github/copilot-instructions.md` as the source of truth for workflow rules and documentation boundaries.
-- Keep status in the canonical workflow files: `STATUS.md`, `TODO.md`, `ROADMAP.md`, `HISTORY.md`, and `INBOX.md`.
+- Keep `.github/agents/agent.md` focused on resume guidance only.
+- Keep status in the canonical workflow files: `STATUS.md`, `TODO.md`, `ROADMAP.md`, `HISTORY.md`, `INBOX.md`, `AGENT-INBOX.md`, and `docs/specs.md`.
 - Do not create parallel TODO, handoff, or status files.
 - Update `STATUS.md` when the current state changes.
 - Update `TODO.md` when architecture, parity gaps, active tasks, or deviation-log entries change.
 - Move completed items to `HISTORY.md`.
 - Update `ROADMAP.md` only when long-term direction changes.
-- Check and drain `INBOX.md` at session start.
+- Drain `INBOX.md` and `AGENT-INBOX.md` at session start.
 - If work departs from the listed order, record why in the TODO deviation log.
+- Put long machine-generated notes in `AGENT-INBOX.md`, not in this file.
 
 ## Working stance
 

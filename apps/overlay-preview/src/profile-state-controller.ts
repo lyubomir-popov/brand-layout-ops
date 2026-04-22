@@ -2,14 +2,14 @@ import { OVERLAY_CONTENT_FORMAT_ORDER } from "@brand-layout-ops/core-types";
 import type { HaloFieldConfig } from "@brand-layout-ops/operator-halo-field";
 import {
   createDefaultOverlayParams,
-  normalizeOverlayProfileBucketState,
   seedOverlayFormatVariantParams,
   syncOverlayParamsFrameToProfile,
   syncOverlaySharedProfileParams,
+  type OverlayDocumentFormat,
   type OverlayLayoutOperatorParams
 } from "@brand-layout-ops/operator-overlay-layout";
 
-import type { PreviewState } from "./preview-app-context.js";
+import type { PreviewState, SwitchOutputProfileOptions } from "./preview-app-context.js";
 import { cloneOverlayParams, type ExportSettings } from "./sample-document.js";
 
 function cloneJson<T>(value: T): T {
@@ -29,16 +29,14 @@ export interface ProfileStateControllerOptions {
 }
 
 export interface ProfileStateController {
-  getProfileFormatBucket(profileKey: string): Record<string, OverlayLayoutOperatorParams>;
-  getOrCreateExportSettingsForProfile(profileKey: string): ExportSettings;
-  getOrCreateHaloConfigForProfile(profileKey: string): HaloFieldConfig;
+  getDocumentFormatBucket(formatId: string): Record<string, OverlayLayoutOperatorParams>;
   persistActiveExportSettings(): void;
   persistActiveHaloConfig(): void;
   updateExportSettings(updater: (settings: ExportSettings) => ExportSettings): void;
-  persistActiveProfileBuckets(): void;
-  getOrCreateProfileFormatParams(profileKey: string, formatKey: string): OverlayLayoutOperatorParams;
-  syncHaloConfigToProfile(profileKey: string): void;
-  switchOutputProfile(profileKey: string): void;
+  persistActiveDocumentFormatBuckets(): void;
+  getOrCreateDocumentFormatParams(formatId: string, formatKey: string): OverlayLayoutOperatorParams;
+  syncHaloConfigForActiveDocumentFormat(): void;
+  switchOutputProfile(profileKey: string, options?: SwitchOutputProfileOptions): void;
   switchContentFormat(formatKey: string): void;
 }
 
@@ -47,19 +45,7 @@ export function createProfileStateController(
 ): ProfileStateController {
   const { state } = options;
 
-  function getProfileFormatBucket(profileKey: string): Record<string, OverlayLayoutOperatorParams> {
-    if (!state.profileFormatBuckets[profileKey]) {
-      state.profileFormatBuckets[profileKey] = {};
-    }
-
-    return state.profileFormatBuckets[profileKey];
-  }
-
-  function getDocumentFormatByProfileKey(profileKey: string) {
-    return state.documentProject.targets.find((target) => target.outputProfileKey === profileKey) ?? null;
-  }
-
-  function getDocumentFormatById(formatId: string | null | undefined) {
+  function getDocumentFormatById(formatId: string | null | undefined): OverlayDocumentFormat | null {
     if (!formatId) {
       return null;
     }
@@ -67,28 +53,83 @@ export function createProfileStateController(
     return state.documentProject.targets.find((target) => target.id === formatId) ?? null;
   }
 
-  function getOrCreateExportSettingsForProfile(profileKey: string): ExportSettings {
-    if (!state.exportSettingsByProfile[profileKey]) {
-      state.exportSettingsByProfile[profileKey] = options.createDefaultExportSettings(profileKey);
-    }
-
-    return cloneJson(state.exportSettingsByProfile[profileKey]);
+  function getDocumentFormatByProfileKey(profileKey: string): OverlayDocumentFormat | null {
+    return state.documentProject.targets.find((target) => target.outputProfileKey === profileKey) ?? null;
   }
 
-  function getOrCreateHaloConfigForProfile(profileKey: string): HaloFieldConfig {
-    if (!state.haloConfigByProfile[profileKey]) {
-      state.haloConfigByProfile[profileKey] = options.getHaloConfigForProfile(profileKey);
+  function getActiveDocumentFormat(): OverlayDocumentFormat | null {
+    const activeFormat = getDocumentFormatById(state.documentProject.activeTargetId)
+      ?? getDocumentFormatByProfileKey(state.outputProfileKey)
+      ?? state.documentProject.targets[0]
+      ?? null;
+
+    if (activeFormat && state.documentProject.activeTargetId !== activeFormat.id) {
+      state.documentProject = {
+        ...state.documentProject,
+        activeTargetId: activeFormat.id
+      };
     }
 
-    return cloneJson(state.haloConfigByProfile[profileKey]);
+    return activeFormat;
+  }
+
+  function getDocumentFormatBucket(formatId: string): Record<string, OverlayLayoutOperatorParams> {
+    if (!state.documentFormatBuckets[formatId]) {
+      state.documentFormatBuckets[formatId] = {};
+    }
+
+    return state.documentFormatBuckets[formatId];
+  }
+
+  function getActiveContentFormatKeyForDocumentFormat(formatId: string): string {
+    const bucket = getDocumentFormatBucket(formatId);
+    const mappedFormatKey = state.contentFormatKeyByDocumentFormatId[formatId];
+    if (mappedFormatKey) {
+      return mappedFormatKey;
+    }
+
+    const firstBucketKey = Object.keys(bucket)[0];
+    const fallbackFormatKey = firstBucketKey || state.contentFormatKey || OVERLAY_CONTENT_FORMAT_ORDER[0];
+    state.contentFormatKeyByDocumentFormatId[formatId] = fallbackFormatKey;
+    return fallbackFormatKey;
+  }
+
+  function getOrCreateExportSettingsForDocumentFormat(formatId: string): ExportSettings {
+    const documentFormat = getDocumentFormatById(formatId) ?? getActiveDocumentFormat();
+    const profileKey = documentFormat?.outputProfileKey ?? state.outputProfileKey;
+    if (!state.exportSettingsByDocumentFormatId[formatId]) {
+      state.exportSettingsByDocumentFormatId[formatId] = options.createDefaultExportSettings(profileKey);
+    }
+
+    return cloneJson(state.exportSettingsByDocumentFormatId[formatId]);
+  }
+
+  function getOrCreateHaloConfigForDocumentFormat(formatId: string): HaloFieldConfig {
+    const documentFormat = getDocumentFormatById(formatId) ?? getActiveDocumentFormat();
+    const profileKey = documentFormat?.outputProfileKey ?? state.outputProfileKey;
+    if (!state.haloConfigByDocumentFormatId[formatId]) {
+      state.haloConfigByDocumentFormatId[formatId] = options.getHaloConfigForProfile(profileKey);
+    }
+
+    return cloneJson(state.haloConfigByDocumentFormatId[formatId]);
   }
 
   function persistActiveExportSettings(): void {
-    state.exportSettingsByProfile[state.outputProfileKey] = cloneJson(state.exportSettings);
+    const activeFormat = getActiveDocumentFormat();
+    if (!activeFormat) {
+      return;
+    }
+
+    state.exportSettingsByDocumentFormatId[activeFormat.id] = cloneJson(state.exportSettings);
   }
 
   function persistActiveHaloConfig(): void {
-    state.haloConfigByProfile[state.outputProfileKey] = cloneJson(state.haloConfig);
+    const activeFormat = getActiveDocumentFormat();
+    if (!activeFormat) {
+      return;
+    }
+
+    state.haloConfigByDocumentFormatId[activeFormat.id] = cloneJson(state.haloConfig);
   }
 
   function updateExportSettings(updater: (settings: ExportSettings) => ExportSettings): void {
@@ -96,67 +137,56 @@ export function createProfileStateController(
     persistActiveExportSettings();
   }
 
-  function persistActiveProfileBuckets(): void {
+  function persistActiveDocumentFormatBuckets(): void {
+    const activeFormat = getActiveDocumentFormat();
+    if (!activeFormat) {
+      return;
+    }
+
     const activeParams = cloneOverlayParams(state.params);
-    const profileBucket = getProfileFormatBucket(state.outputProfileKey);
+    const documentFormatBucket = getDocumentFormatBucket(activeFormat.id);
     const formatKeys = new Set<string>([
       ...OVERLAY_CONTENT_FORMAT_ORDER,
-      ...Object.keys(profileBucket),
+      ...Object.keys(documentFormatBucket),
       state.contentFormatKey
     ]);
 
     for (const formatKey of formatKeys) {
-      const existing = profileBucket[formatKey] ?? cloneOverlayParams(syncOverlayParamsFrameToProfile(
+      const existing = documentFormatBucket[formatKey] ?? cloneOverlayParams(syncOverlayParamsFrameToProfile(
         state.params,
-        state.outputProfileKey
+        activeFormat.outputProfileKey
       ));
-      profileBucket[formatKey] = formatKey === state.contentFormatKey
+      documentFormatBucket[formatKey] = formatKey === state.contentFormatKey
         ? cloneOverlayParams(activeParams)
-        : syncOverlaySharedProfileParams(activeParams, existing, state.outputProfileKey);
+        : syncOverlaySharedProfileParams(activeParams, existing, activeFormat.outputProfileKey);
     }
+
+    state.contentFormatKeyByDocumentFormatId[activeFormat.id] = state.contentFormatKey;
   }
 
-  function getOrCreateProfileFormatParams(
-    profileKey: string,
+  function getOrCreateDocumentFormatParams(
+    formatId: string,
     formatKey: string
   ): OverlayLayoutOperatorParams {
-    const profileBucket = getProfileFormatBucket(profileKey);
-    const existing = profileBucket[formatKey];
+    const documentFormat = getDocumentFormatById(formatId) ?? getActiveDocumentFormat();
+    const profileKey = documentFormat?.outputProfileKey ?? state.outputProfileKey;
+    const documentFormatBucket = getDocumentFormatBucket(formatId);
+    const existing = documentFormatBucket[formatKey];
     if (existing) {
       return syncOverlayParamsFrameToProfile(existing, profileKey);
     }
 
-    const created = syncOverlayParamsFrameToProfile(state.params, profileKey);
-    const seeded = {
-      ...cloneOverlayParams(created),
-      contentFormatKey: formatKey
-    };
-    const nextParams = syncOverlaySharedProfileParams(seeded, created, profileKey);
-    profileBucket[formatKey] = cloneOverlayParams(nextParams);
-    return nextParams;
-  }
-
-  function getOrCreateOutputProfileFormatParams(
-    profileKey: string,
-    formatKey: string
-  ): OverlayLayoutOperatorParams {
-    const profileBucket = getProfileFormatBucket(profileKey);
-    const existing = profileBucket[formatKey];
-    if (existing) {
-      return syncOverlayParamsFrameToProfile(existing, profileKey);
-    }
-
-    const targetFormat = getDocumentFormatByProfileKey(profileKey);
+    const targetFormat = documentFormat;
     const targetSeed = createDefaultOverlayParams(profileKey, formatKey);
     const sourceFormat = getDocumentFormatById(targetFormat?.derivedFromFormatId);
 
     if (!sourceFormat) {
-      profileBucket[formatKey] = cloneOverlayParams(targetSeed);
+      documentFormatBucket[formatKey] = cloneOverlayParams(targetSeed);
       return targetSeed;
     }
 
-    const sourceParams = state.profileFormatBuckets[sourceFormat.outputProfileKey]?.[formatKey]
-      ? cloneOverlayParams(state.profileFormatBuckets[sourceFormat.outputProfileKey][formatKey])
+    const sourceParams = state.documentFormatBuckets[sourceFormat.id]?.[formatKey]
+      ? cloneOverlayParams(state.documentFormatBuckets[sourceFormat.id][formatKey])
       : createDefaultOverlayParams(sourceFormat.outputProfileKey, formatKey);
 
     const nextParams = seedOverlayFormatVariantParams(sourceParams, targetSeed, profileKey, {
@@ -164,74 +194,91 @@ export function createProfileStateController(
       preserveTargetGrid: Boolean(targetFormat?.formatPresetKey)
     });
 
-    profileBucket[formatKey] = cloneOverlayParams(nextParams);
+    documentFormatBucket[formatKey] = cloneOverlayParams(nextParams);
     return nextParams;
   }
 
-  function syncHaloConfigToProfile(profileKey: string): void {
-    state.haloConfig = getOrCreateHaloConfigForProfile(profileKey);
-  }
-
-  function switchOutputProfile(profileKey: string): void {
-    if (profileKey === state.outputProfileKey) {
+  function syncHaloConfigForActiveDocumentFormat(): void {
+    const activeFormat = getActiveDocumentFormat();
+    if (!activeFormat) {
       return;
     }
 
-    persistActiveProfileBuckets();
-    persistActiveExportSettings();
-    persistActiveHaloConfig();
-    state.contentFormatKeyByProfile[state.outputProfileKey] = state.contentFormatKey;
-    const normalizedProfileState = normalizeOverlayProfileBucketState({
-      outputProfileKey: profileKey,
-      contentFormatKey: state.contentFormatKey,
-      profileFormatBuckets: state.profileFormatBuckets,
-      contentFormatKeyByProfile: state.contentFormatKeyByProfile
-    });
-    state.outputProfileKey = normalizedProfileState.outputProfileKey;
-    state.contentFormatKey = normalizedProfileState.contentFormatKey;
-    state.profileFormatBuckets = normalizedProfileState.profileFormatBuckets;
-    state.contentFormatKeyByProfile = normalizedProfileState.contentFormatKeyByProfile;
+    state.haloConfig = getOrCreateHaloConfigForDocumentFormat(activeFormat.id);
+  }
+
+  function switchOutputProfile(
+    profileKey: string,
+    switchOptions: SwitchOutputProfileOptions = {}
+  ): void {
+    if (switchOptions.persistCurrentState !== false) {
+      persistActiveDocumentFormatBuckets();
+      persistActiveExportSettings();
+      persistActiveHaloConfig();
+    }
+
+    const nextFormat = getDocumentFormatByProfileKey(profileKey)
+      ?? getDocumentFormatById(state.documentProject.activeTargetId)
+      ?? getActiveDocumentFormat();
+    if (!nextFormat) {
+      return;
+    }
+
+    if (state.documentProject.activeTargetId !== nextFormat.id) {
+      state.documentProject = {
+        ...state.documentProject,
+        activeTargetId: nextFormat.id
+      };
+    }
+
+    state.outputProfileKey = nextFormat.outputProfileKey;
+    const nextContentFormatKey = getActiveContentFormatKeyForDocumentFormat(nextFormat.id);
+    state.contentFormatKeyByDocumentFormatId[nextFormat.id] = nextContentFormatKey;
+    state.contentFormatKey = nextContentFormatKey;
     state.params = options.normalizeParamsTextFieldOffsets(
-      cloneOverlayParams(getOrCreateOutputProfileFormatParams(state.outputProfileKey, state.contentFormatKey))
+      cloneOverlayParams(getOrCreateDocumentFormatParams(nextFormat.id, nextContentFormatKey))
     );
-    state.exportSettings = getOrCreateExportSettingsForProfile(state.outputProfileKey);
+    state.exportSettings = getOrCreateExportSettingsForDocumentFormat(nextFormat.id);
     options.normalizeSelection();
-    syncHaloConfigToProfile(state.outputProfileKey);
+    syncHaloConfigForActiveDocumentFormat();
     options.resizeRenderer();
     options.syncDocumentProjectToCurrentOutputProfile();
     options.saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
   }
 
   function switchContentFormat(formatKey: string): void {
+    const activeFormat = getActiveDocumentFormat();
+    if (!activeFormat) {
+      return;
+    }
+
     if (formatKey === state.contentFormatKey) {
       return;
     }
 
-    persistActiveProfileBuckets();
+    persistActiveDocumentFormatBuckets();
     const nextParams = syncOverlaySharedProfileParams(
       options.getEffectiveParams(),
-      getOrCreateProfileFormatParams(state.outputProfileKey, formatKey),
-      state.outputProfileKey
+      getOrCreateDocumentFormatParams(activeFormat.id, formatKey),
+      activeFormat.outputProfileKey
     );
 
-    getProfileFormatBucket(state.outputProfileKey)[formatKey] = cloneOverlayParams(nextParams);
+    getDocumentFormatBucket(activeFormat.id)[formatKey] = cloneOverlayParams(nextParams);
     state.contentFormatKey = formatKey;
-    state.contentFormatKeyByProfile[state.outputProfileKey] = formatKey;
+    state.contentFormatKeyByDocumentFormatId[activeFormat.id] = formatKey;
     state.params = options.normalizeParamsTextFieldOffsets(cloneOverlayParams(nextParams));
     options.normalizeSelection();
     options.saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
   }
 
   return {
-    getProfileFormatBucket,
-    getOrCreateExportSettingsForProfile,
-    getOrCreateHaloConfigForProfile,
+    getDocumentFormatBucket,
     persistActiveExportSettings,
     persistActiveHaloConfig,
     updateExportSettings,
-    persistActiveProfileBuckets,
-    getOrCreateProfileFormatParams,
-    syncHaloConfigToProfile,
+    persistActiveDocumentFormatBuckets,
+    getOrCreateDocumentFormatParams,
+    syncHaloConfigForActiveDocumentFormat,
     switchOutputProfile,
     switchContentFormat
   };

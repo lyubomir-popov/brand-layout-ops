@@ -3,6 +3,7 @@ import {
   cloneOverlaySourceDefaultSnapshot,
   normalizeOverlayDocumentProject,
   normalizeOverlayProfileBucketState,
+  type OverlayDocumentFormat,
   type OverlayDocumentProject,
   type OverlayLayoutOperatorParams,
   type OverlaySourceDefaultSnapshot,
@@ -22,191 +23,296 @@ import {
   type ExportSettings
 } from "./sample-document.js";
 
-function cloneJson<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value));
-}
+  function cloneJson<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value));
+  }
 
-export function cloneExportSettingsByProfile(
-  exportSettingsByProfile: Record<string, ExportSettings>
-): Record<string, ExportSettings> {
-  return cloneJson(exportSettingsByProfile);
-}
+  export function cloneExportSettingsByProfile(
+    exportSettingsByProfile: Record<string, ExportSettings>
+  ): Record<string, ExportSettings> {
+    return cloneJson(exportSettingsByProfile);
+  }
 
-export function cloneHaloConfigByProfile<THaloConfig extends object>(
-  haloConfigByProfile: Record<string, THaloConfig>
-): Record<string, THaloConfig> {
-  return cloneJson(haloConfigByProfile);
-}
+  export function cloneHaloConfigByProfile<THaloConfig extends object>(
+    haloConfigByProfile: Record<string, THaloConfig>
+  ): Record<string, THaloConfig> {
+    return cloneJson(haloConfigByProfile);
+  }
 
-export interface OverlayPreviewDocumentBridgeState<
-  THaloConfig extends object,
-  TGuideMode extends string = string,
-  TSelection = unknown
-> {
-  params: OverlayLayoutOperatorParams;
-  selected: TSelection | null;
-  guideMode: TGuideMode;
-  overlayVisible: boolean;
-  pendingCsvDraftsByBucket: Record<string, string>;
-  outputProfileKey: string;
-  contentFormatKey: string;
-  profileFormatBuckets: ProfileFormatBuckets;
-  contentFormatKeyByProfile: ProfileContentFormatMap;
-  exportSettings: ExportSettings;
-  exportSettingsByProfile: Record<string, ExportSettings>;
-  haloConfig: THaloConfig;
-  haloConfigByProfile: Record<string, THaloConfig>;
-  sourceDefaults: OverlaySourceDefaultSnapshot<ExportSettings, THaloConfig, TGuideMode>;
-  sourceDefaultProject: OverlayDocumentProject;
-  documentProject: OverlayDocumentProject;
-}
+  export interface OverlayPreviewDocumentBridgeState<
+    THaloConfig extends object,
+    TGuideMode extends string = string,
+    TSelection = unknown
+  > {
+    params: OverlayLayoutOperatorParams;
+    selected: TSelection | null;
+    guideMode: TGuideMode;
+    overlayVisible: boolean;
+    pendingCsvDraftsByBucket: Record<string, string>;
+    outputProfileKey: string;
+    contentFormatKey: string;
+    documentFormatBuckets: Record<string, Record<string, OverlayLayoutOperatorParams>>;
+    contentFormatKeyByDocumentFormatId: Record<string, string>;
+    exportSettings: ExportSettings;
+    exportSettingsByDocumentFormatId: Record<string, ExportSettings>;
+    haloConfig: THaloConfig;
+    haloConfigByDocumentFormatId: Record<string, THaloConfig>;
+    sourceDefaults: OverlaySourceDefaultSnapshot<ExportSettings, THaloConfig, TGuideMode>;
+    sourceDefaultProject: OverlayDocumentProject;
+    documentProject: OverlayDocumentProject;
+  }
 
-export interface OverlayPreviewDocumentBridgeAdapter<THaloConfig extends object> {
-  persistActiveProfileBuckets(): void;
-  persistActiveExportSettings(): void;
-  persistActiveHaloConfig(): void;
-  getOrCreateProfileFormatParams(profileKey: string, formatKey: string): OverlayLayoutOperatorParams;
-  normalizeParams(params: OverlayLayoutOperatorParams): OverlayLayoutOperatorParams;
-  syncHaloConfigToProfile(profileKey: string): void;
-}
+  export interface OverlayPreviewDocumentBridgeAdapter<THaloConfig extends object> {
+    persistActiveDocumentFormatBuckets(): void;
+    persistActiveExportSettings(): void;
+    persistActiveHaloConfig(): void;
+    getOrCreateDocumentFormatParams(formatId: string, formatKey: string): OverlayLayoutOperatorParams;
+    normalizeParams(params: OverlayLayoutOperatorParams): OverlayLayoutOperatorParams;
+    syncHaloConfigForActiveDocumentFormat(): void;
+  }
 
-export interface BuildOverlayPreviewDocumentOptions {
-  name: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
+  export interface BuildOverlayPreviewDocumentOptions {
+    name: string;
+    createdAt?: string;
+    updatedAt?: string;
+  }
 
-export function createCurrentSourceDefaultSnapshot<
-  THaloConfig extends object,
-  TGuideMode extends string = string,
-  TSelection = unknown
->(
-  state: OverlayPreviewDocumentBridgeState<THaloConfig, TGuideMode, TSelection>,
-  adapter: OverlayPreviewDocumentBridgeAdapter<THaloConfig>
-): OverlaySourceDefaultSnapshot<ExportSettings, THaloConfig, TGuideMode> {
-  adapter.persistActiveProfileBuckets();
-  adapter.persistActiveExportSettings();
-  adapter.persistActiveHaloConfig();
+  function getDocumentFormatById(
+    project: OverlayDocumentProject,
+    formatId: string | null | undefined
+  ): OverlayDocumentFormat | null {
+    if (!formatId) {
+      return null;
+    }
 
-  const normalizedProfileState = normalizeOverlayProfileBucketState({
-    outputProfileKey: state.outputProfileKey,
-    contentFormatKey: state.contentFormatKey,
-    profileFormatBuckets: state.profileFormatBuckets,
-    contentFormatKeyByProfile: state.contentFormatKeyByProfile
-  });
+    return project.targets.find((target) => target.id === formatId) ?? null;
+  }
 
-  return {
-    outputProfileKey: normalizedProfileState.outputProfileKey,
-    contentFormatKey: normalizedProfileState.contentFormatKey,
-    profileFormatBuckets: normalizedProfileState.profileFormatBuckets,
-    contentFormatKeyByProfile: normalizedProfileState.contentFormatKeyByProfile,
-    exportSettings: cloneJson(state.exportSettings),
-    exportSettingsByProfile: cloneExportSettingsByProfile(state.exportSettingsByProfile),
-    haloConfig: cloneJson(state.haloConfig),
-    haloConfigByProfile: cloneHaloConfigByProfile(state.haloConfigByProfile),
-    guideMode: state.guideMode
-  };
-}
+  function getDocumentFormatByProfileKey(
+    project: OverlayDocumentProject,
+    profileKey: string
+  ): OverlayDocumentFormat | null {
+    return project.targets.find((target) => target.outputProfileKey === profileKey) ?? null;
+  }
 
-export function applySourceDefaultSnapshotToState<
-  THaloConfig extends object,
-  TGuideMode extends string = string,
-  TSelection = unknown
->(
-  state: OverlayPreviewDocumentBridgeState<THaloConfig, TGuideMode, TSelection>,
-  snapshot: OverlaySourceDefaultSnapshot<ExportSettings, THaloConfig, TGuideMode>,
-  adapter: OverlayPreviewDocumentBridgeAdapter<THaloConfig>
-): void {
-  const normalizedProfileState = normalizeOverlayProfileBucketState({
-    outputProfileKey: snapshot.outputProfileKey,
-    contentFormatKey: snapshot.contentFormatKey,
-    profileFormatBuckets: snapshot.profileFormatBuckets,
-    contentFormatKeyByProfile: snapshot.contentFormatKeyByProfile
-  });
+  function getActiveDocumentFormat(
+    project: OverlayDocumentProject,
+    outputProfileKey: string
+  ): OverlayDocumentFormat | null {
+    return getDocumentFormatById(project, project.activeTargetId)
+      ?? getDocumentFormatByProfileKey(project, outputProfileKey)
+      ?? project.targets[0]
+      ?? null;
+  }
 
-  state.sourceDefaults = cloneOverlaySourceDefaultSnapshot(snapshot);
-  state.outputProfileKey = normalizedProfileState.outputProfileKey;
-  state.profileFormatBuckets = normalizedProfileState.profileFormatBuckets;
-  state.contentFormatKeyByProfile = normalizedProfileState.contentFormatKeyByProfile;
-  state.contentFormatKey = normalizedProfileState.contentFormatKey;
-  state.params = adapter.normalizeParams(cloneOverlayParams(
-    adapter.getOrCreateProfileFormatParams(state.outputProfileKey, state.contentFormatKey)
-  ));
-  state.exportSettingsByProfile = cloneExportSettingsByProfile(snapshot.exportSettingsByProfile);
-  state.exportSettings = cloneJson(
-    state.exportSettingsByProfile[state.outputProfileKey] ?? snapshot.exportSettings
-  );
-  state.haloConfigByProfile = cloneHaloConfigByProfile(snapshot.haloConfigByProfile);
-  state.haloConfig = cloneJson(
-    state.haloConfigByProfile[state.outputProfileKey] ?? snapshot.haloConfig
-  );
-  // Preserve guideMode across document loads — it's a UI display preference, not document state
-  // Preserve overlayVisible across document loads — it's a UI display preference, not document state
-  state.selected = null;
-  state.pendingCsvDraftsByBucket = {};
-  adapter.syncHaloConfigToProfile(state.outputProfileKey);
-}
+  export function createCurrentSourceDefaultSnapshot<
+    THaloConfig extends object,
+    TGuideMode extends string = string,
+    TSelection = unknown
+  >(
+    state: OverlayPreviewDocumentBridgeState<THaloConfig, TGuideMode, TSelection>,
+    adapter: OverlayPreviewDocumentBridgeAdapter<THaloConfig>
+  ): OverlaySourceDefaultSnapshot<ExportSettings, THaloConfig, TGuideMode> {
+    adapter.persistActiveDocumentFormatBuckets();
+    adapter.persistActiveExportSettings();
+    adapter.persistActiveHaloConfig();
 
-export function buildOverlayPreviewDocument<
-  THaloConfig extends object,
-  TGuideMode extends string = string,
-  TSelection = unknown
->(
-  state: OverlayPreviewDocumentBridgeState<THaloConfig, TGuideMode, TSelection>,
-  adapter: OverlayPreviewDocumentBridgeAdapter<THaloConfig>,
-  options: BuildOverlayPreviewDocumentOptions
-): OverlayPreviewDocument<THaloConfig, TGuideMode> {
-  const snapshot = createCurrentSourceDefaultSnapshot(state, adapter);
+    const activeDocumentFormat = getActiveDocumentFormat(state.documentProject, state.outputProfileKey);
+    const activeProfileKey = activeDocumentFormat?.outputProfileKey ?? state.outputProfileKey;
+    const activeFormatId = activeDocumentFormat?.id ?? state.documentProject.activeTargetId;
+    const activeContentFormatKey = activeFormatId
+      ? state.contentFormatKeyByDocumentFormatId[activeFormatId] ?? state.contentFormatKey
+      : state.contentFormatKey;
 
-  return createOverlayPreviewDocument({
-    name: options.name,
-    ...(options.createdAt ? { createdAt: options.createdAt } : {}),
-    ...(options.updatedAt ? { updatedAt: options.updatedAt } : {}),
-    project: normalizeOverlayDocumentProject(state.documentProject, snapshot),
-    state: snapshot,
-    pendingCsvDraftsByBucket: state.pendingCsvDraftsByBucket
-  });
-}
+    const profileFormatBuckets: ProfileFormatBuckets = {};
+    const contentFormatKeyByProfile: ProfileContentFormatMap = {};
+    const exportSettingsByProfile: Record<string, ExportSettings> = {};
+    const haloConfigByProfile: Record<string, THaloConfig> = {};
 
-export function buildOverlayPreviewDocumentPersistence<
-  THaloConfig extends object,
-  TGuideMode extends string = string,
-  TSelection = unknown
->(
-  state: OverlayPreviewDocumentBridgeState<THaloConfig, TGuideMode, TSelection>,
-  adapter: OverlayPreviewDocumentBridgeAdapter<THaloConfig>,
-  options: BuildOverlayPreviewDocumentOptions
-): PersistedOverlayPreviewDocument {
-  return normalizeOverlayPreviewDocumentForPersistence(
-    buildOverlayPreviewDocument(state, adapter, options)
-  );
-}
+    for (const target of state.documentProject.targets) {
+      const bucket = state.documentFormatBuckets[target.id];
+      if (bucket) {
+        profileFormatBuckets[target.outputProfileKey] = cloneJson(bucket);
+      }
 
-export function applyOverlayPreviewDocumentState<
-  THaloConfig extends object,
-  TGuideMode extends string = string,
-  TSelection = unknown
->(
-  state: OverlayPreviewDocumentBridgeState<THaloConfig, TGuideMode, TSelection>,
-  previewDocument: OverlayPreviewDocument<THaloConfig, TGuideMode>,
-  adapter: OverlayPreviewDocumentBridgeAdapter<THaloConfig>
-): void {
-  applySourceDefaultSnapshotToState(state, previewDocument.document.state, adapter);
-  state.documentProject = cloneOverlayDocumentProject(previewDocument.document.project);
-  state.pendingCsvDraftsByBucket = { ...previewDocument.pendingCsvDraftsByBucket };
-  saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
-}
+      const contentFormatKey = state.contentFormatKeyByDocumentFormatId[target.id];
+      if (contentFormatKey) {
+        contentFormatKeyByProfile[target.outputProfileKey] = contentFormatKey;
+      }
 
-export function resetOverlayPreviewDocumentState<
-  THaloConfig extends object,
-  TGuideMode extends string = string,
-  TSelection = unknown
->(
-  state: OverlayPreviewDocumentBridgeState<THaloConfig, TGuideMode, TSelection>,
-  adapter: OverlayPreviewDocumentBridgeAdapter<THaloConfig>
-): void {
-  applySourceDefaultSnapshotToState(state, state.sourceDefaults, adapter);
-  state.documentProject = cloneOverlayDocumentProject(state.sourceDefaultProject);
-  state.pendingCsvDraftsByBucket = {};
-  saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
-}
+      const exportSettings = state.exportSettingsByDocumentFormatId[target.id];
+      if (exportSettings) {
+        exportSettingsByProfile[target.outputProfileKey] = cloneJson(exportSettings);
+      }
+
+      const haloConfig = state.haloConfigByDocumentFormatId[target.id];
+      if (haloConfig) {
+        haloConfigByProfile[target.outputProfileKey] = cloneJson(haloConfig);
+      }
+    }
+
+    const normalizedProfileState = normalizeOverlayProfileBucketState({
+      outputProfileKey: activeProfileKey,
+      contentFormatKey: activeContentFormatKey,
+      profileFormatBuckets,
+      contentFormatKeyByProfile
+    });
+
+    const activeExportSettings = cloneJson(
+      activeFormatId ? state.exportSettingsByDocumentFormatId[activeFormatId] ?? state.exportSettings : state.exportSettings
+    );
+    const activeHaloConfig = cloneJson(
+      activeFormatId ? state.haloConfigByDocumentFormatId[activeFormatId] ?? state.haloConfig : state.haloConfig
+    );
+    exportSettingsByProfile[activeProfileKey] ??= cloneJson(activeExportSettings);
+    haloConfigByProfile[activeProfileKey] ??= cloneJson(activeHaloConfig);
+
+    return {
+      outputProfileKey: normalizedProfileState.outputProfileKey,
+      contentFormatKey: normalizedProfileState.contentFormatKey,
+      profileFormatBuckets: normalizedProfileState.profileFormatBuckets,
+      contentFormatKeyByProfile: normalizedProfileState.contentFormatKeyByProfile,
+      exportSettings: activeExportSettings,
+      exportSettingsByProfile: cloneExportSettingsByProfile(exportSettingsByProfile),
+      haloConfig: activeHaloConfig,
+      haloConfigByProfile: cloneHaloConfigByProfile(haloConfigByProfile),
+      guideMode: state.guideMode
+    };
+  }
+
+  export function applySourceDefaultSnapshotToState<
+    THaloConfig extends object,
+    TGuideMode extends string = string,
+    TSelection = unknown
+  >(
+    state: OverlayPreviewDocumentBridgeState<THaloConfig, TGuideMode, TSelection>,
+    snapshot: OverlaySourceDefaultSnapshot<ExportSettings, THaloConfig, TGuideMode>,
+    adapter: OverlayPreviewDocumentBridgeAdapter<THaloConfig>,
+    project: OverlayDocumentProject = state.documentProject
+  ): void {
+    const activeDocumentFormat = getActiveDocumentFormat(project, snapshot.outputProfileKey);
+    const normalizedProfileState = normalizeOverlayProfileBucketState({
+      outputProfileKey: activeDocumentFormat?.outputProfileKey ?? snapshot.outputProfileKey,
+      contentFormatKey: snapshot.contentFormatKey,
+      profileFormatBuckets: snapshot.profileFormatBuckets,
+      contentFormatKeyByProfile: snapshot.contentFormatKeyByProfile
+    });
+    const activeFormatId = activeDocumentFormat?.id ?? project.activeTargetId;
+    const documentFormatBuckets: Record<string, Record<string, OverlayLayoutOperatorParams>> = {};
+    const contentFormatKeyByDocumentFormatId: Record<string, string> = {};
+    const exportSettingsByDocumentFormatId: Record<string, ExportSettings> = {};
+    const haloConfigByDocumentFormatId: Record<string, THaloConfig> = {};
+
+    for (const target of project.targets) {
+      const profileKey = target.outputProfileKey;
+      const bucket = normalizedProfileState.profileFormatBuckets[profileKey];
+      if (bucket) {
+        documentFormatBuckets[target.id] = cloneJson(bucket);
+      }
+
+      const contentFormatKey = normalizedProfileState.contentFormatKeyByProfile[profileKey];
+      if (contentFormatKey) {
+        contentFormatKeyByDocumentFormatId[target.id] = contentFormatKey;
+      }
+
+      const exportSettings = snapshot.exportSettingsByProfile[profileKey];
+      if (exportSettings) {
+        exportSettingsByDocumentFormatId[target.id] = cloneJson(exportSettings);
+      }
+
+      const haloConfig = snapshot.haloConfigByProfile[profileKey];
+      if (haloConfig) {
+        haloConfigByDocumentFormatId[target.id] = cloneJson(haloConfig);
+      }
+    }
+
+    const activeContentFormatKey = activeFormatId
+      ? contentFormatKeyByDocumentFormatId[activeFormatId] ?? normalizedProfileState.contentFormatKey
+      : normalizedProfileState.contentFormatKey;
+
+    state.sourceDefaults = cloneOverlaySourceDefaultSnapshot(snapshot);
+    state.outputProfileKey = activeDocumentFormat?.outputProfileKey ?? normalizedProfileState.outputProfileKey;
+    state.documentFormatBuckets = documentFormatBuckets;
+    state.contentFormatKeyByDocumentFormatId = contentFormatKeyByDocumentFormatId;
+    state.contentFormatKey = activeContentFormatKey;
+    state.params = adapter.normalizeParams(cloneOverlayParams(
+      adapter.getOrCreateDocumentFormatParams(activeFormatId, state.contentFormatKey)
+    ));
+    state.exportSettingsByDocumentFormatId = cloneExportSettingsByProfile(exportSettingsByDocumentFormatId);
+    state.exportSettings = cloneJson(
+      activeFormatId ? state.exportSettingsByDocumentFormatId[activeFormatId] ?? snapshot.exportSettings : snapshot.exportSettings
+    );
+    state.haloConfigByDocumentFormatId = cloneHaloConfigByProfile(haloConfigByDocumentFormatId);
+    state.haloConfig = cloneJson(
+      activeFormatId ? state.haloConfigByDocumentFormatId[activeFormatId] ?? snapshot.haloConfig : snapshot.haloConfig
+    );
+    // Preserve guideMode across document loads — it's a UI display preference, not document state
+    // Preserve overlayVisible across document loads — it's a UI display preference, not document state
+    state.selected = null;
+    state.pendingCsvDraftsByBucket = {};
+    adapter.syncHaloConfigForActiveDocumentFormat();
+  }
+
+  export function buildOverlayPreviewDocument<
+    THaloConfig extends object,
+    TGuideMode extends string = string,
+    TSelection = unknown
+  >(
+    state: OverlayPreviewDocumentBridgeState<THaloConfig, TGuideMode, TSelection>,
+    adapter: OverlayPreviewDocumentBridgeAdapter<THaloConfig>,
+    options: BuildOverlayPreviewDocumentOptions
+  ): OverlayPreviewDocument<THaloConfig, TGuideMode> {
+    const snapshot = createCurrentSourceDefaultSnapshot(state, adapter);
+
+    return createOverlayPreviewDocument({
+      name: options.name,
+      ...(options.createdAt ? { createdAt: options.createdAt } : {}),
+      ...(options.updatedAt ? { updatedAt: options.updatedAt } : {}),
+      project: normalizeOverlayDocumentProject(state.documentProject, snapshot),
+      state: snapshot,
+      pendingCsvDraftsByBucket: state.pendingCsvDraftsByBucket
+    });
+  }
+
+  export function buildOverlayPreviewDocumentPersistence<
+    THaloConfig extends object,
+    TGuideMode extends string = string,
+    TSelection = unknown
+  >(
+    state: OverlayPreviewDocumentBridgeState<THaloConfig, TGuideMode, TSelection>,
+    adapter: OverlayPreviewDocumentBridgeAdapter<THaloConfig>,
+    options: BuildOverlayPreviewDocumentOptions
+  ): PersistedOverlayPreviewDocument {
+    return normalizeOverlayPreviewDocumentForPersistence(
+      buildOverlayPreviewDocument(state, adapter, options)
+    );
+  }
+
+  export function applyOverlayPreviewDocumentState<
+    THaloConfig extends object,
+    TGuideMode extends string = string,
+    TSelection = unknown
+  >(
+    state: OverlayPreviewDocumentBridgeState<THaloConfig, TGuideMode, TSelection>,
+    previewDocument: OverlayPreviewDocument<THaloConfig, TGuideMode>,
+    adapter: OverlayPreviewDocumentBridgeAdapter<THaloConfig>
+  ): void {
+    state.documentProject = cloneOverlayDocumentProject(previewDocument.document.project);
+    applySourceDefaultSnapshotToState(state, previewDocument.document.state, adapter, state.documentProject);
+    state.pendingCsvDraftsByBucket = { ...previewDocument.pendingCsvDraftsByBucket };
+    saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
+  }
+
+  export function resetOverlayPreviewDocumentState<
+    THaloConfig extends object,
+    TGuideMode extends string = string,
+    TSelection = unknown
+  >(
+    state: OverlayPreviewDocumentBridgeState<THaloConfig, TGuideMode, TSelection>,
+    adapter: OverlayPreviewDocumentBridgeAdapter<THaloConfig>
+  ): void {
+    state.documentProject = cloneOverlayDocumentProject(state.sourceDefaultProject);
+    applySourceDefaultSnapshotToState(state, state.sourceDefaults, adapter, state.documentProject);
+    state.pendingCsvDraftsByBucket = {};
+    saveOutputFormatKey(state.outputProfileKey, state.contentFormatKey);
+  }

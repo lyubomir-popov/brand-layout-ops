@@ -122,10 +122,10 @@ export function createSourceDefaultController(opts: SourceDefaultControllerOptio
     snapshot: SourceDefaultSnapshot,
     project: OverlayDocumentProject = state.sourceDefaultProject
   ) {
-    applySourceDefaultSnapshotToState(state, snapshot, previewDocumentBridge);
     const normalizedProject = createOverlayDocumentProjectFromSnapshot(snapshot, project);
     state.sourceDefaultProject = cloneOverlayDocumentProject(normalizedProject);
     state.documentProject = cloneOverlayDocumentProject(normalizedProject);
+    applySourceDefaultSnapshotToState(state, snapshot, previewDocumentBridge, state.documentProject);
     syncDocumentProjectToCurrentOutputProfile();
     normalizeSelectedBackgroundNodeId(state.documentProject.backgroundGraph.activeNodeId);
     normalizeSelectedOperatorId(state.selectedOperatorId);

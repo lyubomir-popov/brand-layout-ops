@@ -44,6 +44,13 @@ export type Selection =
 
 export type GuideMode = "off" | "composition" | "baseline";
 
+export interface SwitchOutputProfileOptions {
+  persistCurrentState?: boolean;
+}
+
+export type DocumentFormatBuckets = Record<string, Record<string, OverlayLayoutOperatorParams>>;
+export type ContentFormatKeyByDocumentFormatId = Record<string, string>;
+
 export type SourceDefaultSnapshot = OverlaySourceDefaultSnapshot<ExportSettings, HaloFieldConfig, GuideMode>;
 
 export type OverlayPreviewDocument = OverlayPreviewDocumentModel<HaloFieldConfig, GuideMode>;
@@ -63,12 +70,12 @@ export interface PreviewState {
   pendingCsvDraftsByBucket: Record<string, string>;
   outputProfileKey: string;
   contentFormatKey: string;
-  profileFormatBuckets: import("@brand-layout-ops/operator-overlay-layout").ProfileFormatBuckets;
-  contentFormatKeyByProfile: import("@brand-layout-ops/operator-overlay-layout").ProfileContentFormatMap;
+  documentFormatBuckets: DocumentFormatBuckets;
+  contentFormatKeyByDocumentFormatId: ContentFormatKeyByDocumentFormatId;
   exportSettings: ExportSettings;
-  exportSettingsByProfile: Record<string, ExportSettings>;
+  exportSettingsByDocumentFormatId: Record<string, ExportSettings>;
   haloConfig: HaloFieldConfig;
-  haloConfigByProfile: Record<string, HaloFieldConfig>;
+  haloConfigByDocumentFormatId: Record<string, HaloFieldConfig>;
   sourceDefaults: SourceDefaultSnapshot;
   sourceDefaultProject: OverlayDocumentProject;
   documentProject: OverlayDocumentProject;
@@ -187,7 +194,7 @@ export interface PreviewAppContext {
   // — Profile / document actions —
 
   /** Switch to a different output profile. */
-  switchOutputProfile(key: string): void;
+  switchOutputProfile(key: string, options?: SwitchOutputProfileOptions): void;
 
   // — Source defaults —
 

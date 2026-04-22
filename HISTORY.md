@@ -6,6 +6,20 @@ Items moved here from `TODO.md` to keep the active backlog lean.
 
 ## Long-term
 
+## Lane P5b — runtime buckets keyed by document format ids (2026-04-19)
+
+- Moved the live preview runtime off raw profile keys: authored params, export settings, halo config, and staged CSV drafts are now keyed by stable document format ids instead of collapsing onto `outputProfileKey`.
+- Updated the preview-document bridge so save/load still round-trips through the older profile-keyed snapshot shape for compatibility while the in-memory app state stays format-id keyed.
+- Threaded the new format-id runtime through the format controller, source-default apply path, and main composition wiring so format switches and profile mutation persist the active authored state before hopping between formats.
+- Validation: `npm run typecheck`, `npm run preview:build`, and a live browser smoke test covering `File -> Formats...`, preset add, and saved-format activation.
+
+## Lane P5a — stable format ids during profile mutation (2026-04-19)
+
+- Cleaned the stale Lane P4 note out of the canonical docs and promoted the real next step into Lane P5 so the active queue now matches the code again.
+- New document formats now get stable authored ids instead of defaulting every new format id to the output profile key.
+- Changing the active format's output profile now keeps the existing format id, preserves derivation references, and primes the new profile-scoped runtime state from the active format before switching so authored layout, export settings, and halo state survive the mutation.
+- Remaining gap: runtime buckets are still keyed by output profile, so same-size authored variants still need a later P5 slice instead of landing as part of this one-step refactor.
+
 ## Lane P1–P2 — formats shell terminology + preset activation (2026-04-03)
 
 - Reframed the old `Document Setup` shell surface as `Formats...` in the live File menu and modal title so the user-facing workflow reads as authored formats instead of output-only target rows.

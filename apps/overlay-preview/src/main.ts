@@ -139,6 +139,7 @@ const INITIAL_SOURCE_DEFAULTS = createBuiltInOverlaySourceDefaultSnapshot<Export
 });
 
 const INITIAL_SOURCE_DEFAULT_PROJECT = createOverlayDocumentProjectFromSnapshot(INITIAL_SOURCE_DEFAULTS);
+const INITIAL_DOCUMENT_FORMAT_ID = INITIAL_SOURCE_DEFAULT_PROJECT.activeTargetId;
 
 const state: PreviewState = {
   params: cloneOverlayParams(INITIAL_PARAMS),
@@ -149,21 +150,21 @@ const state: PreviewState = {
   pendingCsvDraftsByBucket: {},
   outputProfileKey: startProfileKey,
   contentFormatKey: startFormatKey,
-  profileFormatBuckets: {
-    [startProfileKey]: {
+  documentFormatBuckets: {
+    [INITIAL_DOCUMENT_FORMAT_ID]: {
       [startFormatKey]: cloneOverlayParams(INITIAL_PARAMS)
     }
   },
-  contentFormatKeyByProfile: {
-    [startProfileKey]: startFormatKey
+  contentFormatKeyByDocumentFormatId: {
+    [INITIAL_DOCUMENT_FORMAT_ID]: startFormatKey
   },
   exportSettings: createDefaultExportSettings(startProfileKey),
-  exportSettingsByProfile: {
-    [startProfileKey]: createDefaultExportSettings(startProfileKey)
+  exportSettingsByDocumentFormatId: {
+    [INITIAL_DOCUMENT_FORMAT_ID]: createDefaultExportSettings(startProfileKey)
   },
   haloConfig: getHaloConfigForProfile(startProfileKey),
-  haloConfigByProfile: {
-    [startProfileKey]: getHaloConfigForProfile(startProfileKey)
+  haloConfigByDocumentFormatId: {
+    [INITIAL_DOCUMENT_FORMAT_ID]: getHaloConfigForProfile(startProfileKey)
   },
   sourceDefaults: cloneOverlaySourceDefaultSnapshot(INITIAL_SOURCE_DEFAULTS),
   sourceDefaultProject: cloneOverlayDocumentProject(INITIAL_SOURCE_DEFAULT_PROJECT),
@@ -177,12 +178,12 @@ const state: PreviewState = {
 const backgroundGraphController = createBackgroundGraphController({ state });
 
 const previewDocumentBridge = {
-  persistActiveProfileBuckets,
+  persistActiveDocumentFormatBuckets,
   persistActiveExportSettings,
   persistActiveHaloConfig,
-  getOrCreateProfileFormatParams,
+  getOrCreateDocumentFormatParams,
   normalizeParams: normalizeParamsTextFieldOffsets,
-  syncHaloConfigToProfile
+  syncHaloConfigForActiveDocumentFormat
 };
 
 let previewShellController: PreviewShellController | null = null;
@@ -291,7 +292,7 @@ profileStateController = createProfileStateController({
   saveOutputFormatKey
 });
 
-syncHaloConfigToProfile(state.outputProfileKey);
+syncHaloConfigForActiveDocumentFormat();
 
 function getNormalizedDocumentName(rawName: string = documentWorkspaceController.state.name): string {
   return documentWorkspaceController.getNormalizedName(rawName);
@@ -330,28 +331,20 @@ function updateDocumentUi(): void {
   previewShellController?.updateDocumentUi();
 }
 
-function getCsvDraftBucketKey(profileKey?: string, formatKey?: string): string {
-  return csvDraftController!.getCsvDraftBucketKey(profileKey, formatKey);
+function getCsvDraftBucketKey(formatId?: string, formatKey?: string): string {
+  return csvDraftController!.getCsvDraftBucketKey(formatId, formatKey);
 }
 
-function getStagedCsvDraft(profileKey?: string, formatKey?: string): string | null {
-  return csvDraftController!.getStagedCsvDraft(profileKey, formatKey);
+function getStagedCsvDraft(formatId?: string, formatKey?: string): string | null {
+  return csvDraftController!.getStagedCsvDraft(formatId, formatKey);
 }
 
-function setStagedCsvDraft(draft: string | null, profileKey?: string, formatKey?: string): void {
-  csvDraftController!.setStagedCsvDraft(draft, profileKey, formatKey);
+function setStagedCsvDraft(draft: string | null, formatId?: string, formatKey?: string): void {
+  csvDraftController!.setStagedCsvDraft(draft, formatId, formatKey);
 }
 
 function getOverlayFormatCsvPath(formatKey: string): string | null {
   return csvDraftController!.getOverlayFormatCsvPath(formatKey);
-}
-
-function commitCsvDraftToProfileFormat(profileKey: string, formatKey: string, draft: string): void {
-  csvDraftController!.commitCsvDraftToProfileFormat(profileKey, formatKey, draft);
-}
-
-function syncCsvDraftAcrossFormatBuckets(formatKey: string, draft: string): void {
-  csvDraftController!.syncCsvDraftAcrossFormatBuckets(formatKey, draft);
 }
 
 async function flushPendingCsvDrafts(): Promise<string[]> {
@@ -458,16 +451,8 @@ function hasStagedCsvDraft(): boolean {
   return csvDraftController!.hasStagedCsvDraft();
 }
 
-function getProfileFormatBucket(profileKey: string): Record<string, OverlayLayoutOperatorParams> {
-  return profileStateController!.getProfileFormatBucket(profileKey);
-}
-
-function getOrCreateExportSettingsForProfile(profileKey: string): ExportSettings {
-  return profileStateController!.getOrCreateExportSettingsForProfile(profileKey);
-}
-
-function getOrCreateHaloConfigForProfile(profileKey: string): HaloFieldConfig {
-  return profileStateController!.getOrCreateHaloConfigForProfile(profileKey);
+function getDocumentFormatBucket(formatId: string): Record<string, OverlayLayoutOperatorParams> {
+  return profileStateController!.getDocumentFormatBucket(formatId);
 }
 
 function persistActiveExportSettings(): void {
@@ -482,19 +467,19 @@ function updateExportSettings(updater: (settings: ExportSettings) => ExportSetti
   profileStateController!.updateExportSettings(updater);
 }
 
-function persistActiveProfileBuckets(): void {
-  profileStateController!.persistActiveProfileBuckets();
+function persistActiveDocumentFormatBuckets(): void {
+  profileStateController!.persistActiveDocumentFormatBuckets();
 }
 
-function getOrCreateProfileFormatParams(
-  profileKey: string,
+function getOrCreateDocumentFormatParams(
+  formatId: string,
   formatKey: string
 ): OverlayLayoutOperatorParams {
-  return profileStateController!.getOrCreateProfileFormatParams(profileKey, formatKey);
+  return profileStateController!.getOrCreateDocumentFormatParams(formatId, formatKey);
 }
 
-function syncHaloConfigToProfile(profileKey: string) {
-  profileStateController!.syncHaloConfigToProfile(profileKey);
+function syncHaloConfigForActiveDocumentFormat() {
+  profileStateController!.syncHaloConfigForActiveDocumentFormat();
 }
 
 function normalizeSelection() {
@@ -618,8 +603,8 @@ function removeActiveDocumentFormat(): boolean {
   return documentFormatController!.removeActiveDocumentFormat();
 }
 
-function switchOutputProfile(profileKey: string) {
-  profileStateController!.switchOutputProfile(profileKey);
+function switchOutputProfile(profileKey: string, options?: import("./preview-app-context.js").SwitchOutputProfileOptions) {
+  profileStateController!.switchOutputProfile(profileKey, options);
   networkOverlayController?.render();
 }
 
@@ -886,8 +871,8 @@ exportAutomationController = createExportAutomationController({
 
 csvDraftController = createCsvDraftController({
   state,
-  getProfileFormatBucket,
-  getOrCreateProfileFormatParams,
+  getDocumentFormatBucket,
+  getOrCreateDocumentFormatParams,
   markDocumentDirty
 });
 
@@ -998,6 +983,9 @@ documentFormatController = createDocumentFormatController({
   state,
   getFormatOptions,
   switchOutputProfile,
+  persistActiveDocumentFormatBuckets,
+  persistActiveExportSettings,
+  persistActiveHaloConfig,
   markDocumentDirty,
   buildConfigEditor,
   renderStage
