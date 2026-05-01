@@ -71,13 +71,13 @@ git status --short
 
 ## Reference repo
 
-Use `c:\Users\lyubo\work\repos\racoon-anim` only as the behavior reference for parity checks, not as the place to continue product-architecture work.
+Use the local `racoon-anim` clone only as the behavior reference for parity checks, not as the place to continue product-architecture work.
 
 ## Resume focus
 
 The current work is centered on:
 
-1. Remaining Ubuntu Summit parity passes.
-2. Non-halo scene-family fidelity.
-3. Authoring-shell cleanup toward ordered visual layers and dedicated project/export chrome.
-4. Clarifying the file-backed document/project model without returning to browser-local presets.
+1. Lane P follow-up: authored format variants over the current compatibility persistence shape.
+2. Keeping persisted preview-document snapshots compatibility-keyed by output profile until the saved-file redesign is intentional.
+3. Using the format-id keyed runtime to evaluate same-size authored variants before widening the saved-file model.
+4. Preserving the document-first workflow while shell terminology and behavior keep shifting from targets to formats.

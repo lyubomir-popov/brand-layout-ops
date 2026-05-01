@@ -6,13 +6,13 @@ Rebuild the current mascot-animation project in this new architecture and verify
 
 Work should now center on:
 
-- `c:\Users\lyubo\work\repos\brand-layout-ops`
+- `brand-layout-ops` (current workspace)
 
 The original app remains the reference implementation for behavior and output, not the place to continue product architecture work.
 
 Reference source repo:
 
-- `c:\Users\lyubo\work\repos\racoon-anim`
+- local `racoon-anim` clone (read-only parity reference)
 
 ## Working Rules
 

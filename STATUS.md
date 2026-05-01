@@ -10,10 +10,11 @@
 
 | Role | Path |
 |------|------|
-| Primary repo | `c:\Users\lyubo\work\repos\brand-layout-ops` |
-| Reference-only repo | `c:\Users\lyubo\work\repos\racoon-anim` |
+| Primary repo | `brand-layout-ops` (current workspace) |
+| Reference-only repo | local `racoon-anim` clone when parity checks need it |
 
 Do not continue product architecture work in the reference repo unless explicitly asked.
+Keep repo and reference mentions location-agnostic so these docs stay valid across Windows and WSL checkouts.
 
 ## Quick start
 
@@ -86,4 +87,4 @@ Lane P is active.
 
 ## Fresh chat prompt
 
-Continue work in `c:\Users\lyubo\work\repos\brand-layout-ops` using `c:\Users\lyubo\work\repos\racoon-anim` as the read-only reference app. Read `.github/copilot-instructions.md`, `.github/agents/agent.md`, `STATUS.md`, `TODO.md`, `ROADMAP.md`, `docs/specs.md`, and `README.md` first. Treat `TODO.md` as the canonical active queue. Stage 1 parity, the selected-operator pane, the baseline-foundry shell cleanup, the preset-residue cleanup, the graph-first family-persistence migration, Lane J1-J5, and Lane K1-K3 are complete. The current baseline is a `bf-top-navigation` action shell plus a dedicated Layers palette and a layer-following Parameters rail, with persisted documents now storing `sceneFamilyGraphs` without serializing `backgroundGraph`. Lane P is now the active follow-up lane: make the live shell and controller behavior read as authored formats or variants instead of output-only targets, starting with the existing compatible `project.targets` persistence shape.
+Continue work in this `brand-layout-ops` repo, using a local `racoon-anim` clone as the read-only reference app when parity checks need it. Read `.github/copilot-instructions.md`, `.github/agents/agent.md`, `STATUS.md`, `TODO.md`, `ROADMAP.md`, `docs/specs.md`, and `README.md` first. Treat `TODO.md` as the canonical active queue. Stage 1 parity, the selected-operator pane, the baseline-foundry shell cleanup, the preset-residue cleanup, the graph-first family-persistence migration, Lane J1-J5, and Lane K1-K3 are complete. The current baseline is a `bf-top-navigation` action shell plus a dedicated Layers palette and a layer-following Parameters rail, with persisted documents now storing `sceneFamilyGraphs` without serializing `backgroundGraph`. Lane P is now the active follow-up lane: make the live shell and controller behavior read as authored formats or variants instead of output-only targets, starting with the existing compatible `project.targets` persistence shape.

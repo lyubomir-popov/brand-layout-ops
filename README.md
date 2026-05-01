@@ -1,7 +1,7 @@
 # Brand Layout Ops
 
 This repo is the extracted product kernel for the browser-native operator-graph direction.
-Original repo for reference: h:\HOUDINI PROJECTS\RacoonTail\mascot-animation-clean-port\
+Reference app for parity work: local `racoon-anim` clone (path varies by machine)
 It is intentionally not the current full app.
 
 It holds the pieces that should survive renderer changes:
@@ -48,9 +48,9 @@ Agent behavior rules are in `.github/copilot-instructions.md`.
 
 If the task is parity-related, inspect these comparison sources next:
 
-- Reference app behavior and presets: `c:\Users\lyubo\work\repos\racoon-anim\src\app\config-schema.js`, `default-config-source.js`, `editor-constants.js`, `index.js`
-- Reference motion and halo-field rendering: `c:\Users\lyubo\work\repos\racoon-anim\src\app\rendering.js`, `halo-field.js`
-- Reference content and assets: `c:\Users\lyubo\work\repos\racoon-anim\assets\content.csv`, `content-speaker-highlight.csv`, `UbuntuTagLogo.svg`, `racoon-mascot-face.svg`, `racoon-mascot-halo.svg`
+- Reference app behavior and presets in `racoon-anim`: `src/app/config-schema.js`, `default-config-source.js`, `editor-constants.js`, `index.js`
+- Reference motion and halo-field rendering in `racoon-anim`: `src/app/rendering.js`, `halo-field.js`
+- Reference content and assets in `racoon-anim`: `assets/content.csv`, `content-speaker-highlight.csv`, `UbuntuTagLogo.svg`, `racoon-mascot-face.svg`, `racoon-mascot-halo.svg`
 - Current preview implementation: `apps/overlay-preview/src/main.ts`, `apps/overlay-preview/src/document-workspace.ts`, `apps/overlay-preview/src/preview-document.ts`, `apps/overlay-preview/src/preview-document-bridge.ts`, `apps/overlay-preview/src/sample-document.ts`, `apps/overlay-preview/src/sample-motion.ts`
 - Current layout and motion kernels: `packages/operator-overlay-layout/src/index.ts`, `packages/layout-engine/src/index.ts`, `packages/operator-orbits/src/index.ts`, `packages/operator-spokes/src/index.ts`
 
@@ -61,8 +61,9 @@ There is now a browser preview shell for parity work.
 Run:
 
 ```bash
-npm run dev
 npm run preview:dev
+# equivalent alias:
+npm run dev
 ```
 
 That starts a Vite app at `apps/overlay-preview/` which currently:

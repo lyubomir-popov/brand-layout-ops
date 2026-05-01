@@ -17,7 +17,7 @@ This repo does not own a single standalone design-spec programme. Instead, it fo
 | Reference | Path | Role |
 |-----------|------|------|
 | Baseline Foundry | `../baseline-foundry/` | Shared shell, modal, navigation, and application-surface contracts used by this repo |
-| Product parity reference | `c:/Users/lyubo/work/repos/racoon-anim/` | Behavior and content reference only, not a normative design spec |
+| Product parity reference | local `racoon-anim` clone | Behavior and content reference only, not a normative design spec |
 
 ## Notes
 
